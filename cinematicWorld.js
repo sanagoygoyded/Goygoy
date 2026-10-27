@@ -9,6 +9,7 @@
         {
             match: /raningemisi/,
             fog: 0x080d20,
+            fogDensity: 0.0007,
             sky: 0xb9c9ff,
             ground: 0x100c27,
             skyTop: '#030611',
@@ -16,6 +17,16 @@
             skyHorizon: '#b68c75',
             skyBottom: '#21152a',
             skyGlow: '#f1a86c',
+            cloudTint: '#a8bbff',
+            cloudOpacity: 0.14,
+            glowX: 690,
+            glowY: 350,
+            particleStyle: 'starlight',
+            wind: 0.016,
+            surfaces: {
+                stone: [184, 192, 211], sand: [198, 180, 159], cloth: [196, 198, 211],
+                organic: [155, 176, 171], metal: [211, 199, 168]
+            },
             stars: 420,
             mote: 0xa8c7ff,
             density: 0.1,
@@ -25,6 +36,7 @@
         {
             match: /ahiret/,
             fog: 0x100e20,
+            fogDensity: 0.0022,
             sky: 0xb9a6ff,
             ground: 0x170d1b,
             skyTop: '#05050c',
@@ -32,6 +44,16 @@
             skyHorizon: '#49334f',
             skyBottom: '#110c19',
             skyGlow: '#ed7954',
+            cloudTint: '#a885ba',
+            cloudOpacity: 0.22,
+            glowX: 720,
+            glowY: 340,
+            particleStyle: 'ash',
+            wind: 0.027,
+            surfaces: {
+                stone: [176, 163, 183], sand: [184, 157, 145], cloth: [191, 176, 200],
+                organic: [154, 171, 152], metal: [211, 183, 157]
+            },
             stars: 180,
             mote: 0xc3a5ff,
             density: 0.2,
@@ -41,6 +63,7 @@
         {
             match: /horustap/,
             fog: 0x16100f,
+            fogDensity: 0.0025,
             sky: 0xffd18a,
             ground: 0x21100b,
             skyTop: '#0a0c12',
@@ -48,6 +71,16 @@
             skyHorizon: '#9e5931',
             skyBottom: '#1e120d',
             skyGlow: '#f4b65f',
+            cloudTint: '#ffc47a',
+            cloudOpacity: 0.2,
+            glowX: 715,
+            glowY: 350,
+            particleStyle: 'ember',
+            wind: 0.04,
+            surfaces: {
+                stone: [217, 192, 164], sand: [224, 194, 153], cloth: [222, 209, 182],
+                organic: [183, 172, 124], metal: [234, 205, 143]
+            },
             stars: 0,
             mote: 0xffb35c,
             density: 0.16,
@@ -57,6 +90,7 @@
         {
             match: /saray/,
             fog: 0x2a160c,
+            fogDensity: 0.0016,
             sky: 0xffd58f,
             ground: 0x391a0b,
             skyTop: '#141323',
@@ -64,6 +98,16 @@
             skyHorizon: '#ed914b',
             skyBottom: '#452114',
             skyGlow: '#fff0bd',
+            cloudTint: '#ffd9a1',
+            cloudOpacity: 0.26,
+            glowX: 690,
+            glowY: 340,
+            particleStyle: 'dust',
+            wind: 0.025,
+            surfaces: {
+                stone: [222, 198, 168], sand: [232, 205, 162], cloth: [228, 216, 190],
+                organic: [190, 179, 128], metal: [239, 211, 151]
+            },
             stars: 0,
             mote: 0xffd17a,
             density: 0.14,
@@ -73,6 +117,7 @@
         {
             match: /karakter|kiz\.html/,
             fog: 0x241509,
+            fogDensity: 0.0035,
             sky: 0xffd79c,
             ground: 0x2b1409,
             skyTop: '#171425',
@@ -80,6 +125,16 @@
             skyHorizon: '#d4874b',
             skyBottom: '#32190f',
             skyGlow: '#ffe5ae',
+            cloudTint: '#ffcb83',
+            cloudOpacity: 0.18,
+            glowX: 700,
+            glowY: 345,
+            particleStyle: 'gold',
+            wind: 0.02,
+            surfaces: {
+                stone: [222, 195, 160], sand: [229, 198, 151], cloth: [233, 215, 183],
+                organic: [190, 176, 125], metal: [239, 207, 142]
+            },
             stars: 0,
             mote: 0xffc76a,
             density: 0.1,
@@ -89,6 +144,7 @@
         {
             match: /misir|mısır/,
             fog: 0xc78b55,
+            fogDensity: 0.0012,
             sky: 0xffe0a1,
             ground: 0x4c3019,
             skyTop: '#11182b',
@@ -96,6 +152,16 @@
             skyHorizon: '#f2a45d',
             skyBottom: '#66341c',
             skyGlow: '#fff0b0',
+            cloudTint: '#ffe2aa',
+            cloudOpacity: 0.3,
+            glowX: 690,
+            glowY: 345,
+            particleStyle: 'dust',
+            wind: 0.048,
+            surfaces: {
+                stone: [224, 206, 177], sand: [236, 216, 174], cloth: [235, 222, 196],
+                organic: [184, 191, 135], metal: [239, 210, 149]
+            },
             stars: 0,
             mote: 0xffd475,
             density: 0.12,
@@ -122,18 +188,44 @@
         context.fillStyle = gradient;
         context.fillRect(0, 0, canvas.width, canvas.height);
 
-        const glow = context.createRadialGradient(690, 350, 4, 690, 350, 170);
+        const glow = context.createRadialGradient(profile.glowX, profile.glowY, 4, profile.glowX, profile.glowY, 190);
         glow.addColorStop(0, `${profile.skyGlow}cc`);
         glow.addColorStop(0.18, `${profile.skyGlow}75`);
         glow.addColorStop(1, `${profile.skyGlow}00`);
         context.fillStyle = glow;
-        context.fillRect(500, 160, 380, 380);
+        context.fillRect(profile.glowX - 210, profile.glowY - 210, 420, 420);
 
         let seed = 1987;
         const random = () => {
             seed = (seed * 16807) % 2147483647;
             return (seed - 1) / 2147483646;
         };
+        context.save();
+        context.filter = 'blur(13px)';
+        for (let i = 0; i < 34; i++) {
+            const x = random() * canvas.width;
+            const y = canvas.height * (0.39 + random() * 0.28);
+            const length = 34 + random() * 125;
+            const height = 2 + random() * 9;
+            context.globalAlpha = profile.cloudOpacity * (0.28 + random() * 0.55);
+            context.fillStyle = profile.cloudTint;
+            context.beginPath();
+            context.ellipse(x, y, length, height, (random() - 0.5) * 0.12, 0, Math.PI * 2);
+            context.ellipse(x + length * 0.28, y - height, length * 0.44, height * 1.4, 0, 0, Math.PI * 2);
+            context.fill();
+        }
+        context.restore();
+
+        if (profile.stars === 0) {
+            const sun = context.createRadialGradient(profile.glowX, profile.glowY, 2, profile.glowX, profile.glowY, 34);
+            sun.addColorStop(0, '#fff9df');
+            sun.addColorStop(0.3, profile.skyGlow);
+            sun.addColorStop(1, `${profile.skyGlow}00`);
+            context.fillStyle = sun;
+            context.beginPath();
+            context.arc(profile.glowX, profile.glowY, 34, 0, Math.PI * 2);
+            context.fill();
+        }
         for (let i = 0; i < profile.stars; i++) {
             const x = random() * canvas.width;
             const y = random() * canvas.height * 0.72;
@@ -182,19 +274,31 @@
         spriteCanvas.height = 32;
         const spriteContext = spriteCanvas.getContext('2d');
         const spriteGradient = spriteContext.createRadialGradient(16, 16, 0, 16, 16, 16);
-        spriteGradient.addColorStop(0, 'rgba(255,255,255,1)');
-        spriteGradient.addColorStop(0.18, 'rgba(255,255,255,0.72)');
+        const spriteCore = profile.particleStyle === 'ash' ? 'rgba(238,207,222,0.85)' : 'rgba(255,255,255,1)';
+        const spriteMid = profile.particleStyle === 'dust' ? 'rgba(255,221,157,0.58)' : 'rgba(255,255,255,0.72)';
+        spriteGradient.addColorStop(0, spriteCore);
+        spriteGradient.addColorStop(0.18, spriteMid);
         spriteGradient.addColorStop(0.58, 'rgba(255,255,255,0.16)');
         spriteGradient.addColorStop(1, 'rgba(255,255,255,0)');
         spriteContext.fillStyle = spriteGradient;
         spriteContext.fillRect(0, 0, 32, 32);
+        if (profile.particleStyle === 'starlight') {
+            spriteContext.save();
+            spriteContext.globalAlpha = 0.62;
+            spriteContext.fillStyle = '#ffffff';
+            spriteContext.beginPath();
+            spriteContext.ellipse(16, 16, 1, 13, 0, 0, Math.PI * 2);
+            spriteContext.ellipse(16, 16, 13, 1, 0, 0, Math.PI * 2);
+            spriteContext.fill();
+            spriteContext.restore();
+        }
         const spriteTexture = new THREE.CanvasTexture(spriteCanvas);
 
         const material = new THREE.PointsMaterial({
             color: 0xffffff,
             map: spriteTexture,
             vertexColors: true,
-            size: 0.12,
+            size: profile.particleStyle === 'starlight' ? 0.16 : 0.12,
             transparent: true,
             opacity: profile.density,
             alphaTest: 0.01,
@@ -213,11 +317,13 @@
             camera.getWorldQuaternion(cameraRotation);
             motes.position.copy(cameraPosition);
             motes.quaternion.copy(cameraRotation);
+            const gust = Math.sin(elapsed * 0.24) * profile.wind
+                + Math.sin(elapsed * 0.61 + 1.7) * profile.wind * 0.34;
 
             for (let i = 0; i < count; i++) {
                 const offset = i * 3;
-                positions[offset] += velocities[offset] * delta * 60;
-                positions[offset + 1] += velocities[offset + 1] * delta * 60;
+                positions[offset] += (velocities[offset] + gust) * delta * 60;
+                positions[offset + 1] += (velocities[offset + 1] + Math.sin(elapsed * 0.52 + i * 0.39) * profile.wind * 0.025) * delta * 60;
                 positions[offset + 2] += velocities[offset + 2] * delta * 60;
                 positions[offset + 1] += Math.sin(elapsed * 0.7 + i * 1.7) * 0.0007;
 
@@ -232,8 +338,8 @@
         };
     }
 
-    function createSurfaceMaps(kind, maxAnisotropy) {
-        const size = window.innerWidth < 720 ? 256 : 384;
+    function createSurfaceMaps(kind, maxAnisotropy, profile) {
+        const size = window.innerWidth < 720 ? 256 : 512;
         const heights = new Uint8Array(size * size);
         const roughness = new Uint8Array(size * size);
         const albedo = new Uint8Array(size * size * 4);
@@ -257,10 +363,10 @@
             const bottom = THREE.MathUtils.lerp(hash(x0, y0 + 1, period), hash(x0 + 1, y0 + 1, period), tx);
             return THREE.MathUtils.lerp(top, bottom, ty);
         };
-        const baseColor = kind === 'sand' ? [239, 222, 194]
+        const baseColor = profile.surfaces[kind] || (kind === 'sand' ? [239, 222, 194]
             : kind === 'cloth' ? [234, 224, 204]
                 : kind === 'organic' ? [218, 226, 194]
-                    : kind === 'metal' ? [238, 230, 207] : [222, 217, 207];
+                    : kind === 'metal' ? [238, 230, 207] : [222, 217, 207]);
         for (let y = 0; y < size; y++) {
             for (let x = 0; x < size; x++) {
                 const u = x / size;
@@ -290,7 +396,9 @@
 
                 const index = y * size + x;
                 heights[index] = Math.max(0, Math.min(255, Math.round(128 + detail * 72)));
-                const roughBase = kind === 'cloth' ? 218 : 202;
+                const roughBase = kind === 'metal' ? 148
+                    : kind === 'cloth' ? 228
+                        : kind === 'organic' ? 198 : kind === 'sand' ? 232 : 216;
                 roughness[index] = Math.max(0, Math.min(255, Math.round(roughBase + grain * 34)));
                 const albedoOffset = index * 4;
                 const colorVariation = detail * 27;
@@ -378,7 +486,7 @@
         return 'stone';
     }
 
-    function addSurfaceDetail(scene, skyTexture, maxAnisotropy) {
+    function addSurfaceDetail(scene, skyTexture, maxAnisotropy, profile) {
         const surfaceMaps = {};
         const treatedMaterials = new Set();
         const treatedTextures = new Set();
@@ -408,7 +516,7 @@
                     }
                 }
                 const kind = getSurfaceKind(material);
-                const maps = surfaceMaps[kind] || (surfaceMaps[kind] = createSurfaceMaps(kind, maxAnisotropy));
+                const maps = surfaceMaps[kind] || (surfaceMaps[kind] = createSurfaceMaps(kind, maxAnisotropy, profile));
                 if (!material.map) material.map = maps.map;
                 if (!material.normalMap) material.normalMap = maps.normalMap;
                 if (!material.roughnessMap) material.roughnessMap = maps.roughnessMap;
@@ -458,7 +566,11 @@
             : 1;
         skyTexture.anisotropy = maxAnisotropy;
 
-        if (scene.fog && scene.fog.color) scene.fog.color.setHex(profile.fog);
+        if (scene.fog && scene.fog.color) {
+            scene.fog.color.setHex(profile.fog);
+        } else {
+            scene.fog = new THREE.FogExp2(profile.fog, profile.fogDensity);
+        }
         scene.add(new THREE.HemisphereLight(profile.sky, profile.ground, profile.moteCount > 200 ? 0.12 : 0.16));
         const updateMotes = createMotes(scene, camera, profile);
         addFrame();
@@ -468,7 +580,7 @@
         let surfaceDetailReady = false;
         const initializeSurfaceDetail = () => {
             if (surfaceDetailReady) return;
-            addSurfaceDetail(scene, skyTexture, maxAnisotropy);
+            addSurfaceDetail(scene, skyTexture, maxAnisotropy, profile);
             surfaceDetailReady = true;
         };
         if (window.requestIdleCallback) {

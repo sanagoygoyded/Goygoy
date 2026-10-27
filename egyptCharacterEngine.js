@@ -1212,13 +1212,13 @@ function buildTextures(rendererInstance) {
             const hairMat = new THREE.MeshStandardMaterial({ color: appearance.hair, roughness: 0.82 });
             const darkMat = new THREE.MeshStandardMaterial({ color: 0x241914, roughness: 0.75 });
 
-            const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.27, 0.72, 24, 2, true), clothMat);
+            const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.34, 0.78, 32, 3, true), clothMat);
             skirt.position.y = -0.27;
             skirt.castShadow = true;
             skirt.receiveShadow = true;
             pelvis.add(skirt);
-            const skirtHem = new THREE.Mesh(new THREE.TorusGeometry(0.265, 0.018, 6, 28), goldMat);
-            skirtHem.position.y = -0.63;
+            const skirtHem = new THREE.Mesh(new THREE.TorusGeometry(0.335, 0.018, 6, 32), goldMat);
+            skirtHem.position.y = -0.66;
             skirtHem.rotation.x = Math.PI / 2;
             pelvis.add(skirtHem);
 
@@ -1470,8 +1470,8 @@ function buildTextures(rendererInstance) {
                 pelvis.rotation.z = THREE.MathUtils.lerp(pelvis.rotation.z, Math.sin(gait) * 0.045 * char.gaitWeight, 0.18);
                 pelvis.rotation.y = Math.sin(gait) * 0.06 * char.gaitWeight;
                 spine.rotation.y = Math.sin(gait) * 0.045 * char.gaitWeight;
-                const hipSwing = isNpc ? 0.27 : 0.38;
-                const kneeBend = isNpc ? 0.24 : 0.36;
+                const hipSwing = isNpc ? 0.20 : 0.30;
+                const kneeBend = isNpc ? 0.18 : 0.28;
                 pelvis.position.y = 0.91 + Math.abs(Math.cos(gait)) * (isNpc ? 0.009 : 0.016) * char.gaitWeight;
                 legs.left.hip.rotation.x = Math.sin(gait) * hipSwing * strideSpeed * char.gaitWeight;
                 legs.right.hip.rotation.x = Math.sin(gait + Math.PI) * hipSwing * strideSpeed * char.gaitWeight;
@@ -1662,22 +1662,22 @@ function buildTextures(rendererInstance) {
             pelvis.position.y = 0.94;
             root.add(pelvis);
 
-            // Etek üst çapı (0.136) bel çapıyla birebir eşleştirildi -> Yukarıdan bakınca asla simit boşluğu görünmez!
-            const kiltGeom = new THREE.CylinderGeometry(0.136 * muscleScale, 0.188 * muscleScale, 0.34, 48, 8, false);
+            // Belden dize doğru genişleyen, yürüyüşte üst bacakları örten shendyt kesimi.
+            const kiltGeom = new THREE.CylinderGeometry(0.15 * muscleScale, 0.238 * muscleScale, 0.42, 48, 8, false);
             const kPos = kiltGeom.attributes.position;
             for (let i = 0; i < kPos.count; i++) {
                 let kx = kPos.getX(i), ky = kPos.getY(i), kz = kPos.getZ(i);
                 const angle = Math.atan2(kx, kz);
                 const pleat = 1.0 + Math.sin(angle * 28) * 0.015;
-                kx *= 1.04 * pleat;
-                kz *= 0.95 * pleat;
+                kx *= 1.08 * pleat;
+                kz *= 1.12 * pleat;
                 kPos.setXYZ(i, kx, ky, kz);
             }
             kiltGeom.computeVertexNormals();
 
             const kiltMat = isHorusGod ? darkGoldMat : (isSetGod ? obsidianMat : linenMat);
             const kilt = new THREE.Mesh(kiltGeom, kiltMat);
-            kilt.position.y = -0.11;
+            kilt.position.y = -0.15;
             kilt.castShadow = true;
             kilt.receiveShadow = true;
             pelvis.add(kilt);
@@ -2086,8 +2086,8 @@ function buildTextures(rendererInstance) {
                 head.rotation.y = -spine.rotation.y * 0.75;
                 head.rotation.x = -0.02 + Math.cos(p * 2) * 0.015 * char.gaitWeight;
 
-                const hipSwing = isNpc ? 0.30 : 0.43;
-                const kneeBend = isNpc ? 0.40 : 0.62;
+                const hipSwing = isNpc ? 0.24 : 0.33;
+                const kneeBend = isNpc ? 0.32 : 0.46;
                 const lHip = Math.sin(p) * hipSwing * strideSpeed * char.gaitWeight;
                 const rHip = Math.sin(p + Math.PI) * hipSwing * strideSpeed * char.gaitWeight;
                 legs.left.hip.rotation.x = lHip;
