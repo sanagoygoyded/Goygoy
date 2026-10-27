@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Gods of Egypt (2016) - Sinematik Karakter & Tanrı Zırhı Motoru</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -29,7 +29,7 @@
             user-select: none;
             -webkit-user-select: none;
         }
-        canvas { display: block; width: 100vw; height: 100vh; }
+        body > canvas { position: fixed; inset: 0; display: block; width: 100%; height: 100%; }
         .ui-glass {
             background: rgba(18, 12, 6, 0.84);
             backdrop-filter: blur(14px);
