@@ -261,6 +261,7 @@
     class EgyptCinematicStudio {
         constructor() {
             this.active = false;
+            this.isGameplayRecording = false;
             this.currentPreset = 'trailer_45s';
             this.sequenceTimer = 0;
             this.totalDuration = 45.0;
@@ -269,7 +270,8 @@
             this.lastTitle = '';
             
             // Format & VFX Ayarları
-            this.format = '16:9'; // '16:9' | '9:16' | '2.39:1'
+            this.format = '9:16'; // '16:9' | '9:16' | '1:1' | '2.39:1'
+            this.outputQuality = 1080;
             this.showTitles = true;
             this.showFlares = true;
             this.allowShake = true;
@@ -288,6 +290,9 @@
             this.isRecording = false;
             this.mediaRecorder = null;
             this.recordedChunks = [];
+            this.lastRecordedBlob = null;
+            this.lastRecordedUrl = null;
+            this.lastRecordedFileName = '';
 
             // DOM Referansları
             this.dom = {};
@@ -313,13 +318,13 @@
                 if (isInput) return;
 
                 if (e.key === 'Escape') {
-                    if (this.active) {
+                    if (this.active || this.isGameplayRecording) {
                         this.stopCinematic('Kullanıcı [ESC] ile durdurdu');
                     } else {
                         this.closeStudioModal();
                     }
                 } else if (e.key.toLowerCase() === 'k' && !e.repeat) {
-                    if (this.active) {
+                    if (this.active || this.isGameplayRecording) {
                         this.stopCinematic('Kullanıcı [K] ile durdurdu');
                     } else {
                         this.openStudioModal();
@@ -344,9 +349,9 @@
                 <div id="cine-letterbox-bottom" class="absolute bottom-0 left-0 right-0 bg-black transition-all duration-700 h-0 border-t border-amber-500/30 z-20"></div>
 
                 <!-- 9:16 Dikey TikTok & Reels Maskesi -->
-                <div id="cine-tiktok-mask" class="absolute inset-0 flex justify-between pointer-events-none hidden z-20">
-                    <div class="h-full bg-black/90 backdrop-blur-[4px] border-r-2 border-amber-400/60 shadow-2xl transition-all duration-500" style="width: calc((100vw - (100vh * 9 / 16)) / 2);"></div>
-                    <div class="h-full flex flex-col justify-between items-center py-6 pointer-events-none" style="width: calc(100vh * 9 / 16);">
+                <div id="cine-tiktok-mask" class="absolute inset-0 flex items-center justify-between pointer-events-none hidden z-20">
+                    <div class="h-full bg-black/90 backdrop-blur-[4px] border-r-2 border-amber-400/60 shadow-2xl transition-all duration-500" style="width:max(0px,calc((100vw - min(100vw,56.25vh))/2));"></div>
+                    <div class="relative flex flex-col justify-between items-center py-6 pointer-events-none border-x border-amber-400/60" style="width:min(100vw,56.25vh);height:min(100vh,177.7778vw);">
                         <div class="bg-black/80 px-4 py-1.5 rounded-full border border-amber-400/70 text-[11px] font-black text-amber-200 tracking-widest shadow-2xl animate-pulse">
                             📱 TIKTOK & REELS VİRAL (9:16)
                         </div>
@@ -355,7 +360,9 @@
                             <span>▲ TİKTOK ALANI</span>
                         </div>
                     </div>
-                    <div class="h-full bg-black/90 backdrop-blur-[4px] border-l-2 border-amber-400/60 shadow-2xl transition-all duration-500" style="width: calc((100vw - (100vh * 9 / 16)) / 2);"></div>
+                    <div class="h-full bg-black/90 backdrop-blur-[4px] border-l-2 border-amber-400/60 shadow-2xl transition-all duration-500" style="width:max(0px,calc((100vw - min(100vw,56.25vh))/2));"></div>
+                    <div class="absolute inset-x-0 top-0 bg-black/90 border-b border-amber-400/30" style="height:max(0px,calc((100vh - min(100vh,177.7778vw))/2));"></div>
+                    <div class="absolute inset-x-0 bottom-0 bg-black/90 border-t border-amber-400/30" style="height:max(0px,calc((100vh - min(100vh,177.7778vw))/2));"></div>
                 </div>
 
                 <!-- Hollywood Beyaz / Altın Perde Kesme Flaşı (Cut Flash) -->
@@ -547,12 +554,15 @@
                         <!-- Format Seçimi -->
                         <div class="flex flex-col gap-2">
                             <span class="text-xs font-black uppercase text-amber-300 tracking-wider">📱 Video / Sinema Formatı</span>
-                            <div class="flex items-center gap-2">
-                                <button onclick="window.EgyptCinematicStudio.setFormat('9:16', this)" id="btn-format-tiktok" class="flex-1 py-2 rounded-xl text-xs font-extrabold border border-amber-500/40 bg-black/50 hover:border-amber-300 transition-all">
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                <button onclick="window.EgyptCinematicStudio.setFormat('9:16', this)" id="btn-format-tiktok" class="flex-1 py-2 rounded-xl text-xs font-extrabold border-2 border-amber-400 bg-amber-500/25 text-yellow-200 hover:border-amber-300 transition-all">
                                     📱 9:16 TikTok
                                 </button>
-                                <button onclick="window.EgyptCinematicStudio.setFormat('16:9', this)" id="btn-format-yt" class="flex-1 py-2 rounded-xl text-xs font-extrabold border-2 border-amber-400 bg-amber-500/25 text-yellow-200 transition-all">
-                                    🖥️ 16:9 4K
+                                <button onclick="window.EgyptCinematicStudio.setFormat('16:9', this)" id="btn-format-yt" class="flex-1 py-2 rounded-xl text-xs font-extrabold border border-amber-500/40 bg-black/50 hover:border-amber-300 transition-all">
+                                    🖥️ 16:9 YouTube
+                                </button>
+                                <button onclick="window.EgyptCinematicStudio.setFormat('1:1', this)" id="btn-format-square" class="flex-1 py-2 rounded-xl text-xs font-extrabold border border-amber-500/40 bg-black/50 hover:border-amber-300 transition-all">
+                                    ◼️ 1:1 Kare
                                 </button>
                                 <button onclick="window.EgyptCinematicStudio.setFormat('2.39:1', this)" id="btn-format-cine" class="flex-1 py-2 rounded-xl text-xs font-extrabold border border-amber-500/40 bg-black/50 hover:border-amber-300 transition-all">
                                     🎬 2.39:1 Sinema
@@ -572,6 +582,24 @@
                                 </button>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-amber-500/20 pt-3">
+                        <label class="flex flex-col gap-1 text-xs font-bold text-amber-200">
+                            <span>🎞️ Çıktı kalitesi</span>
+                            <select onchange="window.EgyptCinematicStudio.setOutputQuality(this.value)" class="rounded-xl border border-amber-500/40 bg-black/60 px-3 py-2 text-amber-100">
+                                <option value="1080" selected>1080p HD · Önerilen</option>
+                                <option value="720">720p · Daha hafif kayıt</option>
+                            </select>
+                        </label>
+                        <label class="flex flex-col gap-1 text-xs font-bold text-amber-200">
+                            <span>✍️ Paylaşım açıklaması</span>
+                            <input id="cine-custom-caption" type="text" maxlength="180" placeholder="Klip için kısa bir kanca yaz..." class="rounded-xl border border-amber-500/40 bg-black/60 px-3 py-2 text-amber-100 placeholder:text-amber-200/40">
+                        </label>
+                        <label class="flex flex-col gap-1 text-xs font-bold text-amber-200 sm:col-span-2">
+                            <span>🏷️ İsteğe bağlı video imzası</span>
+                            <input id="cine-creator-tag" type="text" maxlength="32" placeholder="@kullaniciadi" class="rounded-xl border border-amber-500/40 bg-black/60 px-3 py-2 text-amber-100 placeholder:text-amber-200/40">
+                        </label>
                     </div>
 
                     <!-- Bölüm 3: Gelişmiş VFX Seçenekleri -->
@@ -608,6 +636,10 @@
                         </button>
                     </div>
 
+                    <button onclick="window.EgyptCinematicStudio.startGameplayRecording()" class="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-800 to-blue-800 hover:from-cyan-700 hover:to-blue-700 border border-cyan-300/70 text-white font-black text-sm tracking-wide shadow-lg transition-all active:scale-95">
+                        🎮 SERBEST OYUN KAYDINI BAŞLAT · KENDİ ANINI YAKALA
+                    </button>
+
                     <!-- Alt Bilgi & Kapat -->
                     <div class="flex items-center justify-between text-[11px] text-amber-300/80 pt-1 border-t border-amber-500/20">
                         <span>💡 Oynatma sırasında dilediğin an sağ üstteki <b>[✕ DURDUR]</b> veya <b>[ESC]</b> ile çıkabilirsin.</span>
@@ -619,10 +651,51 @@
             `;
             document.body.appendChild(modal);
 
+            const sharePanel = document.createElement('div');
+            sharePanel.id = 'cine-share-panel';
+            sharePanel.style.cssText = `
+                position: fixed !important;
+                inset: 0 !important;
+                z-index: 2147483642 !important;
+                display: none;
+                align-items: center !important;
+                justify-content: center !important;
+                background: rgba(0, 0, 0, 0.9) !important;
+                backdrop-filter: blur(12px) !important;
+                -webkit-backdrop-filter: blur(12px) !important;
+                padding: 16px !important;
+                pointer-events: auto !important;
+            `;
+            sharePanel.innerHTML = `
+                <section style="width:min(100%,760px);max-height:92vh;overflow-y:auto;background:linear-gradient(160deg,#221408,#0d0703);border:2px solid #fbbf24;border-radius:24px;padding:20px;color:#fef3c7;box-shadow:0 0 50px rgba(245,158,11,.3)">
+                    <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+                        <div>
+                            <h2 style="margin:0;color:#fde68a;font-size:20px;font-weight:900">Klibin paylaşmaya hazır</h2>
+                            <p id="cine-share-file-details" style="margin:4px 0 0;color:#fcd34d;font-size:12px"></p>
+                        </div>
+                        <button onclick="window.EgyptCinematicStudio.closeSharePanel()" aria-label="Kapat" style="width:40px;height:40px;border:1px solid #f87171;border-radius:50%;background:#7f1d1d;color:white;font-size:20px;font-weight:900">✕</button>
+                    </header>
+                    <video id="cine-share-preview" controls playsinline style="display:block;width:100%;max-height:52vh;background:#050403;border-radius:14px"></video>
+                    <label for="cine-share-caption" style="display:block;margin:14px 0 6px;font-size:12px;font-weight:800;color:#fcd34d">PAYLAŞIM AÇIKLAMASI</label>
+                    <textarea id="cine-share-caption" rows="3" maxlength="500" style="box-sizing:border-box;width:100%;resize:vertical;border:1px solid #b45309;border-radius:12px;background:#100a05;color:#fff7d6;padding:10px;font:inherit"></textarea>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+                        <button onclick="window.EgyptCinematicStudio.shareRecordedVideo()" style="flex:1;min-width:180px;padding:12px;border:1px solid #fde68a;border-radius:12px;background:linear-gradient(90deg,#7c3aed,#db2777);color:white;font-weight:900">📲 Paylaş...</button>
+                        <button onclick="window.EgyptCinematicStudio.downloadRecordedVideo()" style="flex:1;min-width:150px;padding:12px;border:1px solid #fbbf24;border-radius:12px;background:#78350f;color:#fff7d6;font-weight:900">⬇ Videoyu indir</button>
+                        <button onclick="window.EgyptCinematicStudio.copyShareCaption()" style="flex:1;min-width:150px;padding:12px;border:1px solid #fbbf24;border-radius:12px;background:#292016;color:#fff7d6;font-weight:900">📋 Açıklamayı kopyala</button>
+                    </div>
+                    <p style="margin:10px 0 0;color:#d6b879;font-size:11px">Paylaşım, cihazının desteklediği uygulama seçicisini açar. Desteklenmiyorsa videoyu indirip uygulamaya ekleyebilirsin.</p>
+                </section>
+            `;
+            document.body.appendChild(sharePanel);
+
             // DOM Elemanlarını Önbelleğe Al
             this.dom = {
                 overlay,
                 modal,
+                sharePanel,
+                sharePreview: document.getElementById('cine-share-preview'),
+                shareCaption: document.getElementById('cine-share-caption'),
+                shareFileDetails: document.getElementById('cine-share-file-details'),
                 exitBtnContainer,
                 exitBtn,
                 letterboxTop: document.getElementById('cine-letterbox-top'),
@@ -642,6 +715,7 @@
 
             this.initDustParticles();
             this.currentPreset = 'trailer_45s';
+            this.updateStudioFormatButtons();
         }
 
         // =====================================================================
@@ -725,6 +799,19 @@
             }
         }
 
+        closeSharePanel() {
+            if (this.dom.sharePreview) {
+                this.dom.sharePreview.pause();
+                this.dom.sharePreview.removeAttribute('src');
+                this.dom.sharePreview.load();
+            }
+            if (this.lastRecordedUrl) {
+                URL.revokeObjectURL(this.lastRecordedUrl);
+                this.lastRecordedUrl = null;
+            }
+            if (this.dom.sharePanel) this.dom.sharePanel.style.display = 'none';
+        }
+
         selectPreset(presetKey, el) {
             this.currentPreset = presetKey;
             if (el && el.parentNode) {
@@ -738,6 +825,9 @@
         }
 
         setFormat(fmt, el) {
+            if (!['9:16', '16:9', '1:1', '2.39:1'].includes(fmt)) {
+                throw new Error(`Desteklenmeyen video formatı: ${fmt}`);
+            }
             this.format = fmt;
             if (el && el.parentNode) {
                 el.parentNode.querySelectorAll('button').forEach(b => {
@@ -747,6 +837,129 @@
                 el.classList.add('border-2', 'border-amber-400', 'bg-amber-500/25', 'text-yellow-200');
                 el.classList.remove('border-amber-500/40', 'bg-black/50');
             }
+            if (this.active) this.applyFormatOverlay();
+        }
+
+        updateStudioFormatButtons() {
+            const buttonIds = {
+                '9:16': 'btn-format-tiktok',
+                '16:9': 'btn-format-yt',
+                '1:1': 'btn-format-square',
+                '2.39:1': 'btn-format-cine'
+            };
+            const activeId = buttonIds[this.format];
+            for (const id of Object.values(buttonIds)) {
+                const button = document.getElementById(id);
+                if (!button) continue;
+                const selected = id === activeId;
+                button.classList.toggle('border-2', selected);
+                button.classList.toggle('border-amber-400', selected);
+                button.classList.toggle('bg-amber-500/25', selected);
+                button.classList.toggle('text-yellow-200', selected);
+                button.classList.toggle('border', !selected);
+                button.classList.toggle('border-amber-500/40', !selected);
+                button.classList.toggle('bg-black/50', !selected);
+            }
+        }
+
+        setOutputQuality(quality) {
+            const value = Number(quality);
+            if (value !== 720 && value !== 1080) {
+                throw new Error(`Desteklenmeyen çıktı kalitesi: ${quality}`);
+            }
+            this.outputQuality = value;
+        }
+
+        getOutputDimensions() {
+            const aspectByFormat = {
+                '9:16': 9 / 16,
+                '16:9': 16 / 9,
+                '1:1': 1,
+                '2.39:1': 2.39
+            };
+            const aspect = aspectByFormat[this.format];
+            if (!aspect) throw new Error(`Desteklenmeyen video formatı: ${this.format}`);
+            return {
+                aspect,
+                width: aspect < 1 ? this.outputQuality : Math.round(this.outputQuality * aspect),
+                height: aspect < 1 ? Math.round(this.outputQuality / aspect) : this.outputQuality
+            };
+        }
+
+        getShareCaption() {
+            const customCaption = document.getElementById('cine-custom-caption');
+            const caption = customCaption && customCaption.value.trim();
+            const tags = this.format === '9:16'
+                ? '#TikTok #Reels #Shorts'
+                : (this.format === '1:1' ? '#Instagram #Reels' : '#YouTube #Gaming');
+            return `${caption || this.lastTitle || 'Kadim Mısır dünyasında sinematik bir macera!'}\n\n${tags} #GodsOfEgypt #IndieGame`;
+        }
+
+        async copyShareCaption() {
+            if (!navigator.clipboard || !navigator.clipboard.writeText) {
+                if (window.GameHUD) window.GameHUD.showToast('Bu tarayıcı panoya kopyalamayı desteklemiyor.', 'system');
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(this.dom.shareCaption ? this.dom.shareCaption.value : this.getShareCaption());
+                if (window.GameHUD) window.GameHUD.showToast('Paylaşım açıklaması kopyalandı.', 'gold');
+            } catch (error) {
+                console.error('Paylaşım açıklaması kopyalanamadı:', error);
+                if (window.GameHUD) window.GameHUD.showToast('Açıklama panoya kopyalanamadı.', 'danger');
+            }
+        }
+
+        async shareRecordedVideo() {
+            if (!this.lastRecordedBlob) {
+                throw new Error('Paylaşılacak kayıt bulunamadı.');
+            }
+            if (typeof File === 'undefined') {
+                if (window.GameHUD) window.GameHUD.showToast('Bu tarayıcı videoyu doğrudan paylaşamıyor; indirip paylaşabilirsin.', 'system');
+                this.downloadRecordedVideo();
+                return;
+            }
+            const file = new File([this.lastRecordedBlob], this.lastRecordedFileName, { type: this.lastRecordedBlob.type || 'video/webm' });
+            const shareData = {
+                files: [file],
+                title: 'Gods of Egypt',
+                text: this.dom.shareCaption ? this.dom.shareCaption.value : this.getShareCaption()
+            };
+            let canShareFiles = typeof navigator.share === 'function';
+            if (canShareFiles && navigator.canShare) {
+                try {
+                    canShareFiles = navigator.canShare({ files: shareData.files });
+                } catch (error) {
+                    console.warn('Dosya paylaşım desteği doğrulanamadı:', error);
+                    canShareFiles = false;
+                }
+            }
+            if (!canShareFiles) {
+                if (window.GameHUD) window.GameHUD.showToast('Dosya paylaşımı desteklenmiyor; video indiriliyor.', 'system');
+                this.downloadRecordedVideo();
+                return;
+            }
+            try {
+                await navigator.share(shareData);
+            } catch (error) {
+                if (error.name === 'AbortError') return;
+                console.error('Video paylaşılamadı:', error);
+                if (window.GameHUD) window.GameHUD.showToast('Video paylaşımı başarısız oldu; videoyu indirip deneyebilirsin.', 'danger');
+            }
+        }
+
+        downloadRecordedVideo() {
+            if (!this.lastRecordedBlob) {
+                throw new Error('İndirilecek kayıt bulunamadı.');
+            }
+            const url = this.lastRecordedUrl || URL.createObjectURL(this.lastRecordedBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = this.lastRecordedFileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            if (!this.lastRecordedUrl) setTimeout(() => URL.revokeObjectURL(url), 60000);
+            if (window.GameHUD) window.GameHUD.showToast(`Video indiriliyor: ${this.lastRecordedFileName}`, 'gold');
         }
 
         setTimeScale(scale, el) {
@@ -768,10 +981,16 @@
         }
 
         copyHashtags() {
-            const tags = "#GodsOfEgypt #AncientEgypt #MythologyGame #IndieGame #Threejs #WebGL #GameTrailer #ActionRPG";
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(tags);
-                if (window.GameHUD) window.GameHUD.showToast('📋 Hashtag\'ler panoya kopyalandı! TikTok/Reels açıklamana yapıştırabilirsin!', 'gold');
+            const tags = this.getShareCaption();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(tags)
+                    .then(() => window.GameHUD && window.GameHUD.showToast('📋 Paylaşım açıklaması kopyalandı!', 'gold'))
+                    .catch(error => {
+                        console.error('Paylaşım açıklaması kopyalanamadı:', error);
+                        if (window.GameHUD) window.GameHUD.showToast('Açıklama panoya kopyalanamadı.', 'danger');
+                    });
+            } else if (window.GameHUD) {
+                window.GameHUD.showToast('Bu tarayıcı panoya kopyalamayı desteklemiyor.', 'system');
             }
         }
 
@@ -785,6 +1004,7 @@
         startCinematic(recordVideo = false) {
             this.closeStudioModal();
             this.active = true;
+            this.isGameplayRecording = false;
             this.sequenceTimer = 0;
             this.currentShotIndex = -1;
 
@@ -805,10 +1025,10 @@
                 this.hideGameHUD();
             }
 
-            // REC Banner'ını ve ENGELLENEMEZ DURDUR BUTONUNU göster
+            // REC Banner'ını yalnız gerçek kayıt sırasında göster.
             if (this.dom.recBanner) {
                 this.dom.recBanner.classList.remove('hidden');
-                this.dom.recBanner.style.display = 'block';
+                this.dom.recBanner.style.display = recordVideo ? 'block' : 'none';
             }
             if (this.dom.exitBtnContainer) {
                 this.dom.exitBtnContainer.style.display = 'block';
@@ -818,6 +1038,7 @@
             if (recordVideo) {
                 this.startCanvasRecording();
             }
+            if (!this.isRecording && this.dom.recBanner) this.dom.recBanner.style.display = 'none';
 
             // Start the soundtrack after the recorder is connected to its output.
             if (this.soundEnabled) {
@@ -828,6 +1049,40 @@
             if (window.GameHUD) {
                 window.GameHUD.showToast(`🎬 Sinematik Çekim Başladı! Durdurmak için sağ üstteki [✕ DURDUR] butonuna basabilirsin.`, 'gold');
             }
+        }
+
+        startGameplayRecording() {
+            if (this.isGameplayRecording) {
+                this.stopCinematic('Serbest kayıt durduruldu');
+                return;
+            }
+            if (this.active) return;
+
+            this.closeStudioModal();
+            this.isGameplayRecording = true;
+            this.currentPreset = 'gameplay';
+            this.lastTitle = '✦ GODS OF EGYPT ✦';
+            const caption = document.getElementById('cine-custom-caption');
+            if (this.dom.mainTitle) this.dom.mainTitle.textContent = this.lastTitle;
+            if (this.dom.subTitle) this.dom.subTitle.textContent = caption && caption.value.trim()
+                ? caption.value.trim()
+                : 'Kendi oyun anını yakala';
+            this.applyFormatOverlay();
+            if (this.dom.recBanner) {
+                this.dom.recBanner.classList.remove('hidden');
+                this.dom.recBanner.style.display = 'block';
+            }
+            if (this.dom.shotName) this.dom.shotName.textContent = 'Serbest oyun kaydı';
+            if (this.dom.exitBtnContainer) this.dom.exitBtnContainer.style.display = 'block';
+
+            this.startCanvasRecording();
+            if (!this.isRecording) {
+                this.isGameplayRecording = false;
+                if (this.dom.recBanner) this.dom.recBanner.style.display = 'none';
+                if (this.dom.exitBtnContainer) this.dom.exitBtnContainer.style.display = 'none';
+                return;
+            }
+            if (window.GameHUD) window.GameHUD.showToast('Serbest kayıt başladı · En fazla 60 saniye. Durdurmak için [ESC] veya sağ üstteki düğmeyi kullan.', 'gold');
         }
 
         applyFormatOverlay() {
@@ -871,16 +1126,17 @@
         // =====================================================================
         startCanvasRecording() {
             try {
-                const sourceCanvas = window.renderer && window.renderer.domElement;
+                const sourceCanvas = (window.renderer && window.renderer.domElement)
+                    || document.querySelector('body > canvas');
                 if (!sourceCanvas || typeof sourceCanvas.captureStream !== 'function' || typeof MediaRecorder === 'undefined') {
                     if (window.GameHUD) window.GameHUD.showToast('ℹ️ Tarayıcın doğrudan canvas kaydını desteklemiyor, harici ekran kaydedici kullanabilirsin.', 'system');
                     return;
                 }
 
                 const outputCanvas = document.createElement('canvas');
-                const aspect = this.format === '9:16' ? 9 / 16 : (this.format === '2.39:1' ? 2.39 : 16 / 9);
-                outputCanvas.width = aspect < 1 ? 720 : 1280;
-                outputCanvas.height = Math.round(outputCanvas.width / aspect);
+                const { aspect, width, height } = this.getOutputDimensions();
+                outputCanvas.width = width;
+                outputCanvas.height = height;
                 const outputContext = outputCanvas.getContext('2d');
                 if (!outputContext) throw new Error('Video kompozisyon tuvali başlatılamadı.');
 
@@ -904,16 +1160,19 @@
                 this.recordCanvas = outputCanvas;
                 this.recordContext = outputContext;
                 this.recordedChunks = [];
+                this.lastRecordedBlob = null;
+                this.closeSharePanel();
 
-                let options = { mimeType: 'video/webm;codecs=vp9' };
-                if (!MediaRecorder.isTypeSupported || !MediaRecorder.isTypeSupported(options.mimeType)) {
-                    options = { mimeType: 'video/webm;codecs=vp8' };
-                    if (!MediaRecorder.isTypeSupported || !MediaRecorder.isTypeSupported(options.mimeType)) {
-                        options = { mimeType: 'video/webm' };
-                    }
-                }
-
-                this.mediaRecorder = new MediaRecorder(this.recordStream, options);
+                const supportedTypes = [
+                    'video/webm;codecs=vp9',
+                    'video/webm;codecs=vp8',
+                    'video/webm',
+                    'video/mp4'
+                ];
+                const mimeType = supportedTypes.find(type => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type));
+                this.mediaRecorder = mimeType
+                    ? new MediaRecorder(this.recordStream, { mimeType })
+                    : new MediaRecorder(this.recordStream);
                 this.mediaRecorder.ondataavailable = (e) => {
                     if (e.data && e.data.size > 0) {
                         this.recordedChunks.push(e.data);
@@ -921,21 +1180,48 @@
                 };
 
                 this.mediaRecorder.onstop = () => {
-                    this.saveRecordedVideoFile();
-                    if (this.recordStream) this.recordStream.getTracks().forEach(track => track.stop());
-                    this.recordStream = null;
-                    this.recordCanvas = null;
-                    this.recordContext = null;
-                    if (this.audio) this.audio.recordDestination = null;
-                    if (window.GameAudio) window.GameAudio.recordDestination = null;
+                    try {
+                        this.saveRecordedVideoFile();
+                    } catch (error) {
+                        console.error('Kayıt sonlandırılırken video hazırlanamadı:', error);
+                        if (window.GameHUD) window.GameHUD.showToast('Kayıt tamamlandı ancak paylaşım paneli hazırlanamadı.', 'danger');
+                    } finally {
+                        if (this.recordStream) this.recordStream.getTracks().forEach(track => track.stop());
+                        this.recordStream = null;
+                        this.recordCanvas = null;
+                        this.recordContext = null;
+                        this.isRecording = false;
+                        if (this.audio) this.audio.recordDestination = null;
+                        if (window.GameAudio) window.GameAudio.recordDestination = null;
+                    }
+                };
+                this.mediaRecorder.onerror = (event) => {
+                    console.error('Video kaydı sırasında hata:', event.error);
+                    if (window.GameHUD) window.GameHUD.showToast('Video kaydı sırasında hata oluştu; cihaz depolamasını kontrol et.', 'danger');
                 };
 
                 this.mediaRecorder.start(250);
                 this.isRecording = true;
+                this.recordStartedAt = performance.now();
                 const drawFrame = () => {
                     if (!this.isRecording || !this.recordCanvas || !this.recordContext) return;
+                    const elapsedSeconds = Math.floor((performance.now() - this.recordStartedAt) / 1000);
+                    const pad = (value) => String(value).padStart(2, '0');
+                    if (this.dom.recStatus) {
+                        this.dom.recStatus.textContent = this.active
+                            ? `REC [00:${pad(Math.floor(this.sequenceTimer))} / 00:${pad(Math.floor(this.totalDuration))}] • ${this.format}`
+                            : `REC [${pad(Math.floor(elapsedSeconds / 60))}:${pad(elapsedSeconds % 60)}] • ${this.format}`;
+                    }
+                    if (this.isGameplayRecording && elapsedSeconds >= 60) {
+                        this.stopCinematic('Serbest kayıt 60 saniye sınırına ulaştı');
+                        return;
+                    }
                     const sourceWidth = sourceCanvas.width;
                     const sourceHeight = sourceCanvas.height;
+                    if (!sourceWidth || !sourceHeight) {
+                        this.recordFrameId = requestAnimationFrame(drawFrame);
+                        return;
+                    }
                     const sourceAspect = sourceWidth / sourceHeight;
                     let cropWidth = sourceWidth;
                     let cropHeight = sourceHeight;
@@ -955,16 +1241,28 @@
                     const titleText = this.dom.mainTitle && this.dom.mainTitle.textContent.trim();
                     const subtitleText = this.dom.subTitle && this.dom.subTitle.textContent.trim();
                     if (this.showTitles && (titleText || subtitleText)) {
-                        const baseY = outputCanvas.height * 0.84;
+                        const baseY = outputCanvas.height * (aspect < 1 ? 0.72 : 0.82);
                         outputContext.textAlign = 'center';
                         outputContext.shadowColor = '#000000';
                         outputContext.shadowBlur = 10;
                         outputContext.fillStyle = '#ffe08a';
-                        outputContext.font = `bold ${Math.max(20, outputCanvas.width * 0.035)}px system-ui`;
+                        outputContext.font = `bold ${Math.max(20, outputCanvas.width * (aspect < 1 ? 0.046 : 0.035))}px system-ui`;
                         if (titleText) outputContext.fillText(titleText, outputCanvas.width / 2, baseY, outputCanvas.width * 0.86);
                         outputContext.fillStyle = '#fff4d1';
-                        outputContext.font = `${Math.max(14, outputCanvas.width * 0.018)}px system-ui`;
+                        outputContext.font = `${Math.max(14, outputCanvas.width * (aspect < 1 ? 0.026 : 0.018))}px system-ui`;
                         if (subtitleText) outputContext.fillText(subtitleText, outputCanvas.width / 2, baseY + outputCanvas.height * 0.04, outputCanvas.width * 0.86);
+                        outputContext.shadowBlur = 0;
+                    }
+                    const creatorTag = document.getElementById('cine-creator-tag');
+                    const creatorText = creatorTag && creatorTag.value.trim();
+                    if (creatorText) {
+                        const safeTag = creatorText.startsWith('@') ? creatorText : `@${creatorText}`;
+                        outputContext.textAlign = 'left';
+                        outputContext.font = `bold ${Math.max(16, outputCanvas.width * 0.022)}px system-ui`;
+                        outputContext.fillStyle = '#fff4d1';
+                        outputContext.shadowColor = '#000000';
+                        outputContext.shadowBlur = 8;
+                        outputContext.fillText(safeTag, outputCanvas.width * 0.055, outputCanvas.height * 0.065, outputCanvas.width * 0.75);
                         outputContext.shadowBlur = 0;
                     }
                     this.recordFrameId = requestAnimationFrame(drawFrame);
@@ -972,7 +1270,16 @@
                 this.recordFrameId = requestAnimationFrame(drawFrame);
                 if (this.dom.recDot) this.dom.recDot.className = 'w-3.5 h-3.5 rounded-full bg-red-600 animate-ping';
             } catch (err) {
-                console.warn('Canvas recorder init error:', err);
+                console.error('Canvas recorder init error:', err);
+                if (this.recordFrameId) cancelAnimationFrame(this.recordFrameId);
+                if (this.recordStream) this.recordStream.getTracks().forEach(track => track.stop());
+                this.recordFrameId = null;
+                this.recordStream = null;
+                this.recordCanvas = null;
+                this.recordContext = null;
+                this.isRecording = false;
+                if (this.audio) this.audio.recordDestination = null;
+                if (window.GameAudio) window.GameAudio.recordDestination = null;
                 if (window.GameHUD) window.GameHUD.showToast('Video kaydı başlatılamadı. Tarayıcı izinlerini ve WebM desteğini kontrol et.', 'danger');
             }
         }
@@ -987,24 +1294,27 @@
         }
 
         saveRecordedVideoFile() {
-            if (this.recordedChunks.length === 0) return;
-            const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            const fileName = `GodsOfEgypt_${this.currentPreset}_${this.format.replace(':', 'x')}.webm`;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-            }, 100);
-
-            if (window.GameHUD) {
-                window.GameHUD.showToast(`🎉 Video İndirildi: ${fileName}! TikTok ve YouTube'da paylaşmaya hazır!`, 'gold');
+            if (this.recordedChunks.length === 0) {
+                if (window.GameHUD) window.GameHUD.showToast('Kayıt verisi alınamadı; kayıt indirme paneli oluşturulmadı.', 'danger');
+                return;
             }
+            const mimeType = (this.mediaRecorder && this.mediaRecorder.mimeType)
+                || this.recordedChunks.find(chunk => chunk.type)?.type
+                || 'video/webm';
+            this.lastRecordedBlob = new Blob(this.recordedChunks, { type: mimeType });
+            const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+            const safePreset = String(this.currentPreset).replace(/[^a-z0-9_-]/gi, '_');
+            this.lastRecordedFileName = `GodsOfEgypt_${safePreset}_${this.format.replace(':', 'x').replace('.', '_')}.${extension}`;
+            this.lastRecordedUrl = URL.createObjectURL(this.lastRecordedBlob);
+
+            if (this.dom.sharePreview) this.dom.sharePreview.src = this.lastRecordedUrl;
+            if (this.dom.shareCaption) this.dom.shareCaption.value = this.getShareCaption();
+            if (this.dom.shareFileDetails) {
+                const sizeMb = (this.lastRecordedBlob.size / (1024 * 1024)).toFixed(1);
+                this.dom.shareFileDetails.textContent = `${this.format} · ${this.outputQuality}p · ${sizeMb} MB · ${this.lastRecordedFileName}`;
+            }
+            if (this.dom.sharePanel) this.dom.sharePanel.style.display = 'flex';
+            if (window.GameHUD) window.GameHUD.showToast('Klip hazır. Önizleyebilir, indirebilir veya cihazının paylaşım menüsünü açabilirsin.', 'gold');
         }
 
         // =====================================================================
@@ -1012,6 +1322,7 @@
         // =====================================================================
         stopCinematic(reason) {
             this.active = false;
+            this.isGameplayRecording = false;
             if (this.isRecording) {
                 this.stopCanvasRecording();
             }

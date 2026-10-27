@@ -2548,6 +2548,10 @@
                 mat.depthWrite = mat.opacity > 0.5;
             }
 
+            if (window.EgyptCinematicStudio && window.EgyptCinematicStudio.isActive()) {
+                window.EgyptCinematicStudio.update(camera, player, delta, elapsed);
+            }
+            if (window.EgyptCameraSystem) window.EgyptCameraSystem.refineCamera(camera, player, delta);
             renderer.render(scene, camera);
         }
 

@@ -2300,6 +2300,7 @@
                 frontKeyLight.position.set(camera.position.x, camera.position.y + 0.8, camera.position.z);
             }
 
+            if (window.EgyptCameraSystem) window.EgyptCameraSystem.refineCamera(camera, player, delta);
             renderer.render(scene, camera);
         }
 

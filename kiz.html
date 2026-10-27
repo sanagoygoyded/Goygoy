@@ -2903,6 +2903,10 @@
                 warmFillLight.position.set(player.root.position.x + 1.5, player.root.position.y + 1.2, player.root.position.z + 1.5);
             }
 
+            if (window.EgyptCinematicStudio && window.EgyptCinematicStudio.isActive()) {
+                window.EgyptCinematicStudio.update(camera, player, delta, elapsed);
+            }
+            if (window.EgyptCameraSystem) window.EgyptCameraSystem.refineCamera(camera, player, delta);
             renderer.render(scene, camera);
         }
 

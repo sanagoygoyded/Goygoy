@@ -467,6 +467,9 @@
     .mmo-pc-only {
         display: none !important;
     }
+    #hud-camera-style-btn {
+        display: none !important;
+    }
     .mmo-mobile-only {
         display: flex !important;
     }
@@ -1029,7 +1032,7 @@
         right: max(8px, env(safe-area-inset-right));
         left: auto;
         transform: none;
-        max-width: 38vw;
+        max-width: calc(48vw - 20px);
         padding: 5px;
         gap: 4px;
         border-width: 1px;
@@ -1038,7 +1041,7 @@
 
     .mmo-pc-realmbanner > button:first-child > span:nth-child(n+2),
     #hud-cam-btn > span:last-child,
-    #hud-studio-btn,
+    #hud-studio-btn > span:last-child,
     #hud-flight-btn {
         display: none !important;
     }
@@ -1046,9 +1049,30 @@
     #hud-cam-btn {
         width: 38px;
         height: 38px;
+        flex: 0 0 38px;
         justify-content: center;
         padding: 0 !important;
         margin: 0 !important;
+    }
+
+    #hud-studio-btn {
+        display: flex !important;
+        width: 38px;
+        height: 38px;
+        flex: 0 0 38px;
+        align-items: center;
+        justify-content: center;
+        padding: 0 !important;
+        margin: 0 !important;
+        border-radius: 10px;
+        animation: none;
+    }
+
+    #hud-camera-style-mobile {
+        grid-column: span 2;
+        justify-content: center;
+        min-height: 36px;
+        gap: 6px;
     }
 
     .mmo-pc-topright {
@@ -1186,6 +1210,17 @@
     #hud-avatar-box {
         width: 32px;
         height: 32px;
+    }
+
+    #hud-cam-btn,
+    #hud-studio-btn {
+        width: 34px;
+        height: 34px;
+        flex-basis: 34px;
+    }
+
+    #hud-camera-style-mobile {
+        min-height: 32px;
     }
 
     .mmo-pc-realmbanner {

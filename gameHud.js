@@ -142,6 +142,10 @@
                         <span id="cam-icon">👁️</span>
                         <span id="cam-label">[V] 1. ŞAHIS</span>
                     </button>
+                    <button onclick="window.EgyptCameraSystem && window.EgyptCameraSystem.cycleCameraStyle()" id="hud-camera-style-btn" class="hud-camera-style-btn flex items-center gap-1.5 text-xs font-black text-cyan-100 bg-cyan-500/20 hover:bg-cyan-400 hover:text-black border border-cyan-300/50 px-2.5 py-1 rounded-xl shadow-lg transition-all active:scale-95 ml-1" title="Sinematik kamera açısını değiştir [N]" aria-label="Sinematik kamera açısını değiştir">
+                        <span data-camera-style-icon>🎬</span>
+                        <span data-camera-style-label>Sinematik takip</span>
+                    </button>
                     <!-- TİKTOK & SİNEMATİK VİDEO STÜDYOSU [K] -->
                     <button onclick="window.openCinematicStudio ? window.openCinematicStudio() : (window.EgyptCinematicStudio && window.EgyptCinematicStudio.openStudioModal())" id="hud-studio-btn" class="flex items-center gap-1.5 text-xs font-black text-yellow-300 bg-gradient-to-r from-red-600/35 via-amber-600/35 to-yellow-600/35 hover:from-red-500 hover:to-yellow-400 hover:text-black border border-amber-400/60 px-2.5 py-1 rounded-xl shadow-lg transition-all active:scale-95 ml-1 animate-pulse" title="TikTok, Reels & YouTube Sinematik Video Stüdyosu [K]">
                         <span>🎬</span>
@@ -325,6 +329,10 @@
                         <button onclick="window.GameHUD.openModal('craft')" class="action-pill-btn px-2.5 py-1.5 rounded-xl text-xs font-bold">Demirhane</button>
                         <button onclick="window.GameHUD.openModal('inventory')" class="action-pill-btn px-2.5 py-1.5 rounded-xl text-xs font-bold">Çanta</button>
                         <button onclick="window.GameHUD.openModal('quests')" class="action-pill-btn px-2.5 py-1.5 rounded-xl text-xs font-bold">Görevler</button>
+                        <button id="hud-camera-style-mobile" onclick="window.EgyptCameraSystem && window.EgyptCameraSystem.cycleCameraStyle()" class="action-pill-btn px-2.5 py-1.5 rounded-xl text-xs font-bold" title="Sinematik kamera açısını değiştir" aria-label="Sinematik kamera açısını değiştir">
+                            <span data-camera-style-icon>🎬</span>
+                            <span data-camera-style-label>Sinematik takip</span>
+                        </button>
                     </div>
                 </div>
 
@@ -503,6 +511,10 @@
                 // V: Kamera Modu Değiştir (1. Şahıs / 3. Şahıs)
                 else if (key === 'v') {
                     if (window.EgyptCameraSystem) window.EgyptCameraSystem.toggleFirstPerson();
+                }
+                // N: Sinematik kamera açısını değiştir
+                else if (key === 'n') {
+                    if (window.EgyptCameraSystem) window.EgyptCameraSystem.cycleCameraStyle();
                 }
                 // K: Sinematik TikTok & Reklam Stüdyosu
                 else if (key === 'k') {
