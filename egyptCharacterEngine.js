@@ -1447,6 +1447,9 @@ function buildTextures(rendererInstance) {
             const { pelvis, spine, head, arms, legs, wings } = char;
             const phase = char.phase || 0;
             const isNpc = char !== window.player;
+            const gaitTarget = isWalking ? 1 : 0;
+            const gaitBlend = 1 - Math.exp(-delta * 9.0);
+            char.gaitWeight = THREE.MathUtils.lerp(char.gaitWeight || 0, gaitTarget, gaitBlend);
             if (char.isAttacking) {
                 char.attackProgress = (char.attackProgress || 0) + delta * 3.8;
                 if (char.attackProgress >= 1) {
@@ -1461,22 +1464,23 @@ function buildTextures(rendererInstance) {
                     pelvis.rotation.z = strike * 0.05;
                 }
             } else if (isWalking) {
-                char.phase += delta * 6.8 * Math.max(0.55, speedRatio);
+                const strideSpeed = THREE.MathUtils.clamp(speedRatio || 0, 0.45, 1.55);
+                char.phase += delta * THREE.MathUtils.lerp(5.2, 8.0, strideSpeed) * strideSpeed;
                 const gait = char.phase;
-                pelvis.rotation.z = THREE.MathUtils.lerp(pelvis.rotation.z, Math.sin(gait) * 0.055, 0.18);
-                pelvis.rotation.y = Math.sin(gait) * 0.075;
-                spine.rotation.y = Math.sin(gait) * 0.05;
-                const hipSwing = isNpc ? 0.30 : 0.43;
-                const kneeBend = isNpc ? 0.28 : 0.45;
-                pelvis.position.y = 0.91 + Math.abs(Math.cos(gait)) * (isNpc ? 0.012 : 0.02);
-                legs.left.hip.rotation.x = Math.sin(gait) * hipSwing;
-                legs.right.hip.rotation.x = Math.sin(gait + Math.PI) * hipSwing;
-                legs.left.knee.rotation.x = Math.max(0, -Math.cos(gait) * kneeBend);
-                legs.right.knee.rotation.x = Math.max(0, -Math.cos(gait + Math.PI) * kneeBend);
-                arms.left.shoulder.rotation.x = Math.sin(gait + Math.PI) * 0.32;
-                arms.right.shoulder.rotation.x = Math.sin(gait) * 0.32;
-                arms.left.elbow.rotation.x = -0.15;
-                arms.right.elbow.rotation.x = -0.18;
+                pelvis.rotation.z = THREE.MathUtils.lerp(pelvis.rotation.z, Math.sin(gait) * 0.045 * char.gaitWeight, 0.18);
+                pelvis.rotation.y = Math.sin(gait) * 0.06 * char.gaitWeight;
+                spine.rotation.y = Math.sin(gait) * 0.045 * char.gaitWeight;
+                const hipSwing = isNpc ? 0.27 : 0.38;
+                const kneeBend = isNpc ? 0.24 : 0.36;
+                pelvis.position.y = 0.91 + Math.abs(Math.cos(gait)) * (isNpc ? 0.009 : 0.016) * char.gaitWeight;
+                legs.left.hip.rotation.x = Math.sin(gait) * hipSwing * strideSpeed * char.gaitWeight;
+                legs.right.hip.rotation.x = Math.sin(gait + Math.PI) * hipSwing * strideSpeed * char.gaitWeight;
+                legs.left.knee.rotation.x = Math.max(0, -Math.cos(gait) * kneeBend * char.gaitWeight);
+                legs.right.knee.rotation.x = Math.max(0, -Math.cos(gait + Math.PI) * kneeBend * char.gaitWeight);
+                arms.left.shoulder.rotation.x = Math.sin(gait + Math.PI) * 0.27 * char.gaitWeight;
+                arms.right.shoulder.rotation.x = Math.sin(gait) * 0.27 * char.gaitWeight;
+                arms.left.elbow.rotation.x = -0.12;
+                arms.right.elbow.rotation.x = -0.14;
             } else if (char.isGathering) {
                 if (char.gatherType === 'mine') {
                     const strike = Math.sin(elapsed * 5.2 + phase);
@@ -2062,36 +2066,40 @@ function buildTextures(rendererInstance) {
 
             // Havada mı (Zıplama / Süzülme Kontrolü)
             const isAirborne = (window.EgyptCollisionEngine && !window.EgyptCollisionEngine.isGrounded && char === window.player);
+            const gaitTarget = isWalking && !isAirborne ? 1 : 0;
+            const gaitBlend = 1 - Math.exp(-delta * 9.0);
+            char.gaitWeight = THREE.MathUtils.lerp(char.gaitWeight || 0, gaitTarget, gaitBlend);
 
             if (isWalking && !isAirborne) {
-                char.phase += delta * 7.2 * Math.max(0.55, speedRatio);
+                const strideSpeed = THREE.MathUtils.clamp(speedRatio || 0, 0.45, 1.55);
+                char.phase += delta * THREE.MathUtils.lerp(5.4, 8.6, strideSpeed) * strideSpeed;
                 const p = char.phase;
 
-                pelvis.position.y = 0.94 - Math.abs(Math.cos(p)) * (isNpc ? 0.012 : 0.026);
-                pelvis.rotation.z = Math.sin(p) * 0.04;
-                pelvis.rotation.y = -Math.sin(p) * 0.08;
+                pelvis.position.y = 0.94 - Math.abs(Math.cos(p)) * (isNpc ? 0.012 : 0.026) * char.gaitWeight;
+                pelvis.rotation.z = Math.sin(p) * 0.04 * char.gaitWeight;
+                pelvis.rotation.y = -Math.sin(p) * 0.08 * char.gaitWeight;
 
-                spine.rotation.y = Math.sin(p) * 0.10;
-                spine.rotation.x = 0.045 * speedRatio;
-                spine.rotation.z = -Math.sin(p) * 0.028;
+                spine.rotation.y = Math.sin(p) * 0.10 * char.gaitWeight;
+                spine.rotation.x = 0.045 * strideSpeed * char.gaitWeight;
+                spine.rotation.z = -Math.sin(p) * 0.028 * char.gaitWeight;
 
                 head.rotation.y = -spine.rotation.y * 0.75;
-                head.rotation.x = -0.02 + Math.cos(p * 2) * 0.015;
+                head.rotation.x = -0.02 + Math.cos(p * 2) * 0.015 * char.gaitWeight;
 
-                const hipSwing = isNpc ? 0.34 : 0.52;
-                const kneeBend = isNpc ? 0.5 : 0.78;
-                const lHip = Math.sin(p) * hipSwing * speedRatio;
-                const rHip = Math.sin(p + Math.PI) * hipSwing * speedRatio;
+                const hipSwing = isNpc ? 0.30 : 0.43;
+                const kneeBend = isNpc ? 0.40 : 0.62;
+                const lHip = Math.sin(p) * hipSwing * strideSpeed * char.gaitWeight;
+                const rHip = Math.sin(p + Math.PI) * hipSwing * strideSpeed * char.gaitWeight;
                 legs.left.hip.rotation.x = lHip;
                 legs.right.hip.rotation.x = rHip;
 
-                char.kneeL = Math.max(0.03, -Math.cos(p - 0.3) * kneeBend * speedRatio + 0.05);
-                char.kneeR = Math.max(0.03, -Math.cos(p + Math.PI - 0.3) * kneeBend * speedRatio + 0.05);
+                char.kneeL = Math.max(0.03, -Math.cos(p - 0.3) * kneeBend * strideSpeed * char.gaitWeight + 0.035);
+                char.kneeR = Math.max(0.03, -Math.cos(p + Math.PI - 0.3) * kneeBend * strideSpeed * char.gaitWeight + 0.035);
                 legs.left.continuousLeg.updateBend(char.kneeL);
                 legs.right.continuousLeg.updateBend(char.kneeR);
 
-                const lArm = Math.sin(p + Math.PI) * 0.42 * speedRatio;
-                const rArm = Math.sin(p) * 0.42 * speedRatio;
+                const lArm = Math.sin(p + Math.PI) * 0.36 * strideSpeed * char.gaitWeight;
+                const rArm = Math.sin(p) * 0.36 * strideSpeed * char.gaitWeight;
 
                 arms.left.shoulder.rotation.x = lArm;
                 arms.left.shoulder.rotation.z = -0.09;
