@@ -6,6 +6,7 @@
     <title>Gods of Egypt - Devasa Açık Dünya Başkent ve Nil Nehri Haritası (Tam Kod)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="cinematicWorld.js"></script>
     <link rel="stylesheet" href="gameHud.css">
     <script src="errorHandler.js"></script>
     <script src="loadingScreen.js"></script>
@@ -85,6 +86,9 @@
         let flameBasePositions = [];
         let wheatInst = null;
         let wheatStalkData = [];
+        let wheatStalkGrid = new Map();
+        let wheatFlyIcons = [];
+        let wheatIconTexture = null;
         let wheatAnimDummy = new THREE.Object3D();
         let reedInst = null;
         let waterCausticsMesh = null;
@@ -1739,6 +1743,7 @@
             wheatInst = new THREE.InstancedMesh(emmerGeo, wheatMat, 5200);
 
             let wCount = 0;
+            wheatStalkGrid = new Map();
             // 1. Batı Bereketli Nil Floodplain Tarlaları (x: 8 .. 25.8, z: -210 .. 210)
             for (let wx = 8.2; wx <= 25.8; wx += 0.82) {
                 for (let wz = -210; wz <= 210; wz += 1.05) {
@@ -1750,7 +1755,7 @@
                     const sc = 0.88 + Math.random() * 0.36;
                     const phase = Math.random() * Math.PI * 2;
 
-                    wheatStalkData.push({ x: posX, z: posZ, baseRotY: rotY, scale: sc, phase, tiltX: 0, tiltZ: 0 });
+                    wheatStalkData.push({ x: posX, z: posZ, baseRotY: rotY, scale: sc, phase, tiltX: 0, tiltZ: 0, harvested: false, cutProgress: 0, regrowAt: 0 });
                     wheatAnimDummy.position.set(posX, 0.02, posZ);
                     wheatAnimDummy.rotation.set(0, rotY, 0);
                     wheatAnimDummy.scale.set(sc, sc, sc);
@@ -1769,7 +1774,7 @@
                     const sc = 0.85 + Math.random() * 0.38;
                     const phase = Math.random() * Math.PI * 2;
 
-                    wheatStalkData.push({ x: posX, z: posZ, baseRotY: rotY, scale: sc, phase, tiltX: 0, tiltZ: 0 });
+                    wheatStalkData.push({ x: posX, z: posZ, baseRotY: rotY, scale: sc, phase, tiltX: 0, tiltZ: 0, harvested: false, cutProgress: 0, regrowAt: 0 });
                     wheatAnimDummy.position.set(posX, 0.02, posZ);
                     wheatAnimDummy.rotation.set(0, rotY, 0);
                     wheatAnimDummy.scale.set(sc, sc, sc);
@@ -1779,6 +1784,55 @@
             }
             wheatInst.count = wCount;
             worldGroup.add(wheatInst);
+
+            const wheatCellSize = 4;
+            for (let i = 0; i < wheatStalkData.length; i++) {
+                const stalk = wheatStalkData[i];
+                const cellKey = `${Math.floor(stalk.x / wheatCellSize)},${Math.floor(stalk.z / wheatCellSize)}`;
+                if (!wheatStalkGrid.has(cellKey)) wheatStalkGrid.set(cellKey, []);
+                wheatStalkGrid.get(cellKey).push(i);
+            }
+
+            window.getNearestWheatStalk = function(x, z, maxDistance = Infinity) {
+                let nearestIndex = -1;
+                let nearestDistanceSq = maxDistance * maxDistance;
+                const candidateIndices = [];
+                if (Number.isFinite(maxDistance)) {
+                    for (let cellX = Math.floor((x - maxDistance) / wheatCellSize); cellX <= Math.floor((x + maxDistance) / wheatCellSize); cellX++) {
+                        for (let cellZ = Math.floor((z - maxDistance) / wheatCellSize); cellZ <= Math.floor((z + maxDistance) / wheatCellSize); cellZ++) {
+                            const indices = wheatStalkGrid.get(`${cellX},${cellZ}`);
+                            if (indices) candidateIndices.push(...indices);
+                        }
+                    }
+                } else {
+                    for (let i = 0; i < wheatStalkData.length; i++) candidateIndices.push(i);
+                }
+                for (const i of candidateIndices) {
+                    const stalk = wheatStalkData[i];
+                    if (stalk.harvested) continue;
+                    const dx = stalk.x - x;
+                    const dz = stalk.z - z;
+                    const distanceSq = dx * dx + dz * dz;
+                    if (distanceSq < nearestDistanceSq) {
+                        nearestDistanceSq = distanceSq;
+                        nearestIndex = i;
+                    }
+                }
+                if (nearestIndex < 0) return null;
+                const stalk = wheatStalkData[nearestIndex];
+                return { index: nearestIndex, x: stalk.x, z: stalk.z, distance: Math.sqrt(nearestDistanceSq) };
+            };
+
+            window.harvestWheatStalk = function(index, onCollected, elapsed) {
+                const stalk = wheatStalkData[index];
+                if (!stalk || stalk.harvested) return false;
+                stalk.harvested = true;
+                stalk.cutProgress = 0;
+                stalk.regrowAt = elapsed + 12;
+                stalk.cutDirection = player ? Math.sign(stalk.x - player.root.position.x) || 1 : 1;
+                wheatFlyIcons.push({ index, delay: 0.38, elapsed: 0, duration: 0.72, sprite: null, onCollected });
+                return true;
+            };
 
             // Altın Buğday Tozu ve Polen Parçacıkları (Golden Pollen Motes)
             const polGeo = new THREE.BufferGeometry();
@@ -2763,6 +2817,7 @@
 
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.3, 1600);
             clock = new THREE.Clock();
+            window.EgyptCinematicWorld.install(scene, renderer, camera);
 
             const skyC = document.createElement('canvas');
             skyC.width = 512; skyC.height = 256;
@@ -2968,12 +3023,7 @@
             window.interactiveNodeMeshes = [];
             const buildInteractiveNodeVisuals = () => {
                 const nodeDefs = [
-                    { x: 14.0, z: -15.0, color: 0xeab308, name: 'Nil Buğdayı' },
-                    { x: 18.5, z: 8.0, color: 0xeab308, name: 'Altın Başak' },
                     { x: -14.5, z: -14.0, color: 0xfbbf24, name: 'Horus Dikilitaşı' },
-                    { x: 21.0, z: -38.0, color: 0xeab308, name: 'Sulak Vadi Buğdayı' },
-                    { x: 12.5, z: 46.0, color: 0xeab308, name: 'Kuzey Çiftlik' },
-                    { x: 19.0, z: 85.0, color: 0xeab308, name: 'Nil Deltası Buğdayı' },
                     { x: 30.5, z: -25.0, color: 0x22c55e, name: 'Nil Papirüsü' },
                     { x: 31.0, z: 32.0, color: 0x22c55e, name: 'Kraliyet Papirüsü' },
                     { x: 84.0, z: -45.0, color: 0x22c55e, name: 'Doğu Papirüsü' },
@@ -3403,6 +3453,11 @@
 
                 for (let i = 0; i < wheatStalkData.length; i++) {
                     const st = wheatStalkData[i];
+                    if (st.harvested && st.cutProgress >= 1 && elapsed >= st.regrowAt) {
+                        st.harvested = false;
+                        st.cutProgress = 0;
+                        st.regrowAt = 0;
+                    }
 
                     // 1. Nil Vadisi Boyunca Akan Yönlü Rüzgar Dalgaları (Traveling Wind Wave)
                     const windAngle = (st.z * 0.075 + st.x * 0.038 - elapsed * 2.8);
@@ -3411,6 +3466,12 @@
 
                     let rotX = windWave * 0.75;
                     let rotZ = (windWave + gust) * 0.95;
+
+                    if (st.harvested) {
+                        st.cutProgress = Math.min(1, st.cutProgress + delta / 0.36);
+                        rotZ += st.cutDirection * st.cutProgress * 1.25;
+                        rotX *= 1 - st.cutProgress;
+                    }
 
                     // 2. Oyuncu Yaklaştığında Buğdayların İki Yana Ayrılması (Player Trampling / Parting)
                     const dx = st.x - px;
@@ -3427,13 +3488,66 @@
                     st.tiltX = THREE.MathUtils.lerp(st.tiltX, rotX, 0.18);
                     st.tiltZ = THREE.MathUtils.lerp(st.tiltZ, rotZ, 0.18);
 
-                    wheatAnimDummy.position.set(st.x, 0.02, st.z);
+                    wheatAnimDummy.position.set(st.x, 0.02 + st.scale * st.cutProgress * 0.45, st.z);
                     wheatAnimDummy.rotation.set(st.tiltX, st.baseRotY, st.tiltZ);
-                    wheatAnimDummy.scale.set(st.scale, st.scale, st.scale);
+                    wheatAnimDummy.scale.set(st.scale, st.scale * Math.max(0.001, 1 - st.cutProgress), st.scale);
                     wheatAnimDummy.updateMatrix();
                     wheatInst.setMatrixAt(i, wheatAnimDummy.matrix);
                 }
                 wheatInst.instanceMatrix.needsUpdate = true;
+            }
+
+            for (let i = wheatFlyIcons.length - 1; i >= 0; i--) {
+                const pickup = wheatFlyIcons[i];
+                pickup.delay -= delta;
+                if (pickup.delay > 0) continue;
+
+                if (!pickup.sprite) {
+                    if (!wheatIconTexture) {
+                        const iconCanvas = document.createElement('canvas');
+                        iconCanvas.width = 96;
+                        iconCanvas.height = 96;
+                        const iconContext = iconCanvas.getContext('2d');
+                        iconContext.font = '72px system-ui, sans-serif';
+                        iconContext.textAlign = 'center';
+                        iconContext.textBaseline = 'middle';
+                        iconContext.fillText('🌾', 48, 50);
+                        wheatIconTexture = new THREE.CanvasTexture(iconCanvas);
+                        if ('colorSpace' in wheatIconTexture) wheatIconTexture.colorSpace = THREE.SRGBColorSpace;
+                    }
+                    const spriteMaterial = new THREE.SpriteMaterial({
+                        map: wheatIconTexture,
+                        transparent: true,
+                        depthWrite: false
+                    });
+                    pickup.sprite = new THREE.Sprite(spriteMaterial);
+                    wheatInst.updateWorldMatrix(true, false);
+                    pickup.sprite.position.copy(wheatInst.localToWorld(
+                        new THREE.Vector3(wheatStalkData[pickup.index].x, 0.85, wheatStalkData[pickup.index].z)
+                    ));
+                    pickup.sprite.scale.set(0.72, 0.72, 1);
+                    pickup.sprite.renderOrder = 10;
+                    scene.add(pickup.sprite);
+                }
+
+                pickup.elapsed += delta;
+                const progress = Math.min(1, pickup.elapsed / pickup.duration);
+                const easedProgress = 1 - Math.pow(1 - progress, 3);
+                const stalk = wheatStalkData[pickup.index];
+                const target = player
+                    ? player.root.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 1.15, 0))
+                    : pickup.sprite.position.clone();
+                const start = wheatInst.localToWorld(new THREE.Vector3(stalk.x, 0.85, stalk.z));
+                pickup.sprite.position.lerpVectors(start, target, easedProgress);
+                pickup.sprite.position.y += Math.sin(Math.PI * progress) * 0.65;
+                pickup.sprite.scale.setScalar(0.72 * (1 - progress * 0.35));
+
+                if (progress >= 1) {
+                    scene.remove(pickup.sprite);
+                    pickup.sprite.material.dispose();
+                    if (typeof pickup.onCollected === 'function') pickup.onCollected();
+                    wheatFlyIcons.splice(i, 1);
+                }
             }
 
             // Altın Buğday Tozu ve Polen Parçacıklarının Hareketi

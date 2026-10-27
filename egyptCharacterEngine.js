@@ -8,6 +8,9 @@
     'use strict';
 
     let heroicPoseActive = false;
+    const groundProbeCenter = new THREE.Vector3();
+    const groundProbePosition = new THREE.Vector3();
+    const groundProbeScale = new THREE.Vector3();
 
 function buildTextures(rendererInstance) {
             // 1. Stüdyo & Mısır Tapınağı HDR Yansıma Haritası
@@ -1343,7 +1346,7 @@ function buildTextures(rendererInstance) {
                 const foot = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.055, 0.17), goldMat);
                 foot.position.set(0, -0.39, 0.04);
                 knee.add(foot);
-                legs[key] = { hip, knee };
+                legs[key] = { hip, knee, groundContact: foot };
             });
 
             const wings = ['nephthys', 'isis'].includes(role) ? { left: new THREE.Group(), right: new THREE.Group() } : null;
@@ -1404,10 +1407,46 @@ function buildTextures(rendererInstance) {
             };
         }
 
+        function keepNpcFeetOnGround(char) {
+            if (!char || char === window.player || !char.root || !char.pelvis || !char.legs) return;
+
+            let lowestFootY = Infinity;
+            for (const side of ['left', 'right']) {
+                const contact = char.legs[side] && char.legs[side].groundContact;
+                if (!contact) continue;
+
+                contact.updateWorldMatrix(true, false);
+                const geometry = contact.geometry;
+                if (!geometry.boundingBox) geometry.computeBoundingBox();
+                const bounds = geometry.boundingBox;
+                const matrix = contact.matrixWorld;
+                groundProbeCenter.set(
+                    (bounds.min.x + bounds.max.x) * 0.5,
+                    (bounds.min.y + bounds.max.y) * 0.5,
+                    (bounds.min.z + bounds.max.z) * 0.5
+                ).applyMatrix4(matrix);
+
+                const halfX = (bounds.max.x - bounds.min.x) * 0.5;
+                const halfY = (bounds.max.y - bounds.min.y) * 0.5;
+                const halfZ = (bounds.max.z - bounds.min.z) * 0.5;
+                const elements = matrix.elements;
+                const verticalRadius = Math.abs(elements[1]) * halfX
+                    + Math.abs(elements[5]) * halfY
+                    + Math.abs(elements[9]) * halfZ;
+                lowestFootY = Math.min(lowestFootY, groundProbeCenter.y - verticalRadius);
+            }
+
+            if (!Number.isFinite(lowestFootY)) return;
+            char.root.getWorldPosition(groundProbePosition);
+            char.root.getWorldScale(groundProbeScale);
+            char.pelvis.position.y += (groundProbePosition.y - lowestFootY) / (groundProbeScale.y || 1);
+        }
+
         function animateFemaleCharacter(char, isWalking, speedRatio, delta, elapsed) {
             if (!char || !char.pelvis) return;
             const { pelvis, spine, head, arms, legs, wings } = char;
             const phase = char.phase || 0;
+            const isNpc = char !== window.player;
             if (char.isAttacking) {
                 char.attackProgress = (char.attackProgress || 0) + delta * 3.8;
                 if (char.attackProgress >= 1) {
@@ -1427,25 +1466,46 @@ function buildTextures(rendererInstance) {
                 pelvis.rotation.z = THREE.MathUtils.lerp(pelvis.rotation.z, Math.sin(gait) * 0.055, 0.18);
                 pelvis.rotation.y = Math.sin(gait) * 0.075;
                 spine.rotation.y = Math.sin(gait) * 0.05;
-                legs.left.hip.rotation.x = Math.sin(gait) * 0.43;
-                legs.right.hip.rotation.x = Math.sin(gait + Math.PI) * 0.43;
-                legs.left.knee.rotation.x = Math.max(0, -Math.cos(gait) * 0.45);
-                legs.right.knee.rotation.x = Math.max(0, -Math.cos(gait + Math.PI) * 0.45);
+                const hipSwing = isNpc ? 0.30 : 0.43;
+                const kneeBend = isNpc ? 0.28 : 0.45;
+                pelvis.position.y = 0.91 + Math.abs(Math.cos(gait)) * (isNpc ? 0.012 : 0.02);
+                legs.left.hip.rotation.x = Math.sin(gait) * hipSwing;
+                legs.right.hip.rotation.x = Math.sin(gait + Math.PI) * hipSwing;
+                legs.left.knee.rotation.x = Math.max(0, -Math.cos(gait) * kneeBend);
+                legs.right.knee.rotation.x = Math.max(0, -Math.cos(gait + Math.PI) * kneeBend);
                 arms.left.shoulder.rotation.x = Math.sin(gait + Math.PI) * 0.32;
                 arms.right.shoulder.rotation.x = Math.sin(gait) * 0.32;
                 arms.left.elbow.rotation.x = -0.15;
                 arms.right.elbow.rotation.x = -0.18;
             } else if (char.isGathering) {
-                const harvest = Math.sin(elapsed * 5.2 + phase);
-                pelvis.position.y = THREE.MathUtils.lerp(pelvis.position.y, 0.72, 0.18);
-                spine.rotation.x = THREE.MathUtils.lerp(spine.rotation.x, 0.42, 0.2);
-                head.rotation.x = THREE.MathUtils.lerp(head.rotation.x, 0.35, 0.18);
-                arms.right.shoulder.rotation.x = -0.7 + harvest * 0.35;
-                arms.right.shoulder.rotation.z = 0.28 + harvest * 0.12;
-                arms.left.shoulder.rotation.x = -0.62;
-                arms.left.shoulder.rotation.z = -0.22;
-                legs.left.hip.rotation.x = 0.34;
-                legs.right.hip.rotation.x = 0.28;
+                if (char.gatherType === 'mine') {
+                    const strike = Math.sin(elapsed * 5.2 + phase);
+                    pelvis.position.y = THREE.MathUtils.lerp(pelvis.position.y, 0.82 + Math.max(0, -strike) * 0.12, 0.18);
+                    spine.rotation.x = THREE.MathUtils.lerp(spine.rotation.x, strike < 0 ? 0.5 : -0.12, 0.2);
+                    arms.right.shoulder.rotation.x = -0.55 + strike * 0.85;
+                    arms.left.shoulder.rotation.x = -0.5 + strike * 0.75;
+                    arms.right.elbow.rotation.x = -0.8;
+                    arms.left.elbow.rotation.x = -0.8;
+                } else {
+                    const reapCycle = (elapsed * 5.2 + phase) % (Math.PI * 2);
+                    const reapSweep = Math.sin(reapCycle);
+                    pelvis.position.y = THREE.MathUtils.lerp(pelvis.position.y, isNpc ? 0.86 : 0.72, 0.18);
+                    spine.rotation.x = THREE.MathUtils.lerp(spine.rotation.x, 0.52, 0.2);
+                    spine.rotation.y = THREE.MathUtils.lerp(spine.rotation.y, reapSweep * 0.12, 0.18);
+                    head.rotation.x = THREE.MathUtils.lerp(head.rotation.x, 0.45, 0.18);
+                    arms.right.shoulder.rotation.x = -0.9 + reapSweep * 0.55;
+                    arms.right.shoulder.rotation.z = 0.3 + reapSweep * 0.16;
+                    arms.right.elbow.rotation.x = -0.75 + reapSweep * 0.28;
+                    arms.left.shoulder.rotation.x = -0.78;
+                    arms.left.shoulder.rotation.z = -0.24;
+                    arms.left.elbow.rotation.x = -0.88;
+                    legs.left.hip.rotation.x = isNpc ? 0.22 : 0.42;
+                    legs.right.hip.rotation.x = isNpc ? 0.18 : 0.34;
+                    if (isNpc) {
+                        legs.left.knee.rotation.x = 0.14;
+                        legs.right.knee.rotation.x = 0.12;
+                    }
+                }
             } else {
                 const breath = Math.sin(elapsed * 2.1 + phase);
                 pelvis.position.y = THREE.MathUtils.lerp(pelvis.position.y, 0.91 + breath * 0.004, 0.1);
@@ -1454,7 +1514,12 @@ function buildTextures(rendererInstance) {
                 head.rotation.y = THREE.MathUtils.lerp(head.rotation.y, Math.sin(elapsed * 0.7 + phase) * 0.07, 0.08);
                 arms.left.shoulder.rotation.x = THREE.MathUtils.lerp(arms.left.shoulder.rotation.x, 0.02, 0.1);
                 arms.right.shoulder.rotation.x = THREE.MathUtils.lerp(arms.right.shoulder.rotation.x, -0.04, 0.1);
+                legs.left.hip.rotation.x = THREE.MathUtils.lerp(legs.left.hip.rotation.x, 0, 0.15);
+                legs.right.hip.rotation.x = THREE.MathUtils.lerp(legs.right.hip.rotation.x, 0, 0.15);
+                legs.left.knee.rotation.x = THREE.MathUtils.lerp(legs.left.knee.rotation.x, 0, 0.15);
+                legs.right.knee.rotation.x = THREE.MathUtils.lerp(legs.right.knee.rotation.x, 0, 0.15);
             }
+            keepNpcFeetOnGround(char);
             if (wings) {
                 const flap = Math.sin(elapsed * (isWalking ? 3.2 : 1.5) + phase) * (isWalking ? 0.16 : 0.06);
                 wings.left.rotation.y = -flap;
@@ -1601,7 +1666,7 @@ function buildTextures(rendererInstance) {
                 const angle = Math.atan2(kx, kz);
                 const pleat = 1.0 + Math.sin(angle * 28) * 0.015;
                 kx *= 1.04 * pleat;
-                kz *= 0.78 * pleat;
+                kz *= 0.95 * pleat;
                 kPos.setXYZ(i, kx, ky, kz);
             }
             kiltGeom.computeVertexNormals();
@@ -1936,7 +2001,7 @@ function buildTextures(rendererInstance) {
                 sole.position.set(0, -0.046, 0.038);
                 ankle.add(sole);
 
-                legs[side] = { hip, continuousLeg, ankle };
+                legs[side] = { hip, continuousLeg, ankle, groundContact: sole };
             });
 
             // 7. YELPAZE KAVİSLİ BİYOMEKANİK ŞAHİN KANATLARI
@@ -1992,6 +2057,7 @@ function buildTextures(rendererInstance) {
             if (!delta) delta = 0.016;
             if (!elapsed) elapsed = performance.now() / 1000;
             const { pelvis, spine, head, arms, legs, wings } = char;
+            const isNpc = char !== window.player;
             const poseBoost = isSelected && heroicPoseActive;
 
             // Havada mı (Zıplama / Süzülme Kontrolü)
@@ -2001,7 +2067,7 @@ function buildTextures(rendererInstance) {
                 char.phase += delta * 7.2 * Math.max(0.55, speedRatio);
                 const p = char.phase;
 
-                pelvis.position.y = 0.94 - Math.abs(Math.cos(p)) * 0.026;
+                pelvis.position.y = 0.94 - Math.abs(Math.cos(p)) * (isNpc ? 0.012 : 0.026);
                 pelvis.rotation.z = Math.sin(p) * 0.04;
                 pelvis.rotation.y = -Math.sin(p) * 0.08;
 
@@ -2012,13 +2078,15 @@ function buildTextures(rendererInstance) {
                 head.rotation.y = -spine.rotation.y * 0.75;
                 head.rotation.x = -0.02 + Math.cos(p * 2) * 0.015;
 
-                const lHip = Math.sin(p) * 0.52 * speedRatio;
-                const rHip = Math.sin(p + Math.PI) * 0.52 * speedRatio;
+                const hipSwing = isNpc ? 0.34 : 0.52;
+                const kneeBend = isNpc ? 0.5 : 0.78;
+                const lHip = Math.sin(p) * hipSwing * speedRatio;
+                const rHip = Math.sin(p + Math.PI) * hipSwing * speedRatio;
                 legs.left.hip.rotation.x = lHip;
                 legs.right.hip.rotation.x = rHip;
 
-                char.kneeL = Math.max(0.03, -Math.cos(p - 0.3) * 0.78 * speedRatio + 0.05);
-                char.kneeR = Math.max(0.03, -Math.cos(p + Math.PI - 0.3) * 0.78 * speedRatio + 0.05);
+                char.kneeL = Math.max(0.03, -Math.cos(p - 0.3) * kneeBend * speedRatio + 0.05);
+                char.kneeR = Math.max(0.03, -Math.cos(p + Math.PI - 0.3) * kneeBend * speedRatio + 0.05);
                 legs.left.continuousLeg.updateBend(char.kneeL);
                 legs.right.continuousLeg.updateBend(char.kneeR);
 
@@ -2100,7 +2168,7 @@ function buildTextures(rendererInstance) {
                     legs.right.continuousLeg.updateBend(char.kneeR);
                 } else {
                     // Nil Buğdayı ve Papirüs Hasadı: Öne eğilip orakla biçme ve sol elle başak toplama
-                    pelvis.position.y = THREE.MathUtils.lerp(pelvis.position.y, 0.70, 0.18); // Diz çökme / eğilme
+                    pelvis.position.y = THREE.MathUtils.lerp(pelvis.position.y, isNpc ? 0.86 : 0.70, 0.18); // Diz çökme / eğilme
                     spine.rotation.x = THREE.MathUtils.lerp(spine.rotation.x, 0.58, 0.2);  // Gövde öne eğik
                     spine.rotation.y = THREE.MathUtils.lerp(spine.rotation.y, gPhase * 0.18, 0.18);
                     head.rotation.x = THREE.MathUtils.lerp(head.rotation.x, 0.52, 0.2);   // Yere / buğdaya odaklanma
@@ -2119,10 +2187,10 @@ function buildTextures(rendererInstance) {
                     arms.left.continuousArm.updateBend(char.elbowL);
 
                     // Bacaklar: Derin çömelme
-                    legs.left.hip.rotation.x = 0.58;
-                    legs.right.hip.rotation.x = 0.42;
-                    char.kneeL = 0.72;
-                    char.kneeR = 0.65;
+                    legs.left.hip.rotation.x = isNpc ? 0.24 : 0.58;
+                    legs.right.hip.rotation.x = isNpc ? 0.18 : 0.42;
+                    char.kneeL = isNpc ? 0.32 : 0.72;
+                    char.kneeR = isNpc ? 0.28 : 0.65;
                     legs.left.continuousLeg.updateBend(char.kneeL);
                     legs.right.continuousLeg.updateBend(char.kneeR);
                 }
@@ -2267,6 +2335,7 @@ function buildTextures(rendererInstance) {
                 wings.leftOuter.rotation.z = THREE.MathUtils.lerp(wings.leftOuter.rotation.z, -outerSpreadZ, 0.12);
                 wings.rightOuter.rotation.z = THREE.MathUtils.lerp(wings.rightOuter.rotation.z, outerSpreadZ, 0.12);
             }
+            keepNpcFeetOnGround(char);
         }
 
         // ==========================================

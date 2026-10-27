@@ -6,6 +6,7 @@
     <title>Gods of Egypt (2016) - Gerçekçi 3B İnsan, Tanrıça & Tanrı Anatomisi Motoru</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="cinematicWorld.js"></script>
     <link rel="stylesheet" href="gameHud.css">
     <script src="errorHandler.js"></script>
     <script src="loadingScreen.js"></script>
@@ -2456,6 +2457,7 @@
 
             camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.15, 250);
             clock = new THREE.Clock();
+            window.EgyptCinematicWorld.install(scene, renderer, camera);
 
             const skyGeo = new THREE.SphereGeometry(140, 32, 24);
             const skyMat = new THREE.MeshBasicMaterial({

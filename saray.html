@@ -6,6 +6,7 @@
     <title>Gods of Egypt - Kraliyet Sarayı İçi, Taht Salonu ve Avlusu</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="cinematicWorld.js"></script>
     <link rel="stylesheet" href="gameHud.css">
     <script src="errorHandler.js"></script>
     <script src="loadingScreen.js"></script>
@@ -1983,6 +1984,7 @@
 
             camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.25, 1200);
             clock = new THREE.Clock();
+            window.EgyptCinematicWorld.install(scene, renderer, camera);
 
             // Heliopolis Altın Günbatımı Gökyüzü Kubbesi
             const skyC = document.createElement('canvas');

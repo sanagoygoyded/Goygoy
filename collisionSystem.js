@@ -67,66 +67,180 @@
             this.groundElevationFunc = fn;
         }
 
-        // Kayarak Çarpışma Kontrolü (Sliding Collision)
+        isPositionBlocked(x, z, playerRadius = this.playerRadius, pY = 0) {
+            for (const collider of this.colliders) {
+                if (collider.type === 'ramp' || pY < collider.minY || pY > collider.maxY) continue;
+
+                if (collider.type === 'cylinder') {
+                    const minDist = collider.radius + playerRadius;
+                    const dx = x - collider.x;
+                    const dz = z - collider.z;
+                    if (dx * dx + dz * dz < minDist * minDist) return true;
+                } else if (collider.type === 'box') {
+                    const closestX = Math.max(collider.minX, Math.min(x, collider.maxX));
+                    const closestZ = Math.max(collider.minZ, Math.min(z, collider.maxZ));
+                    const dx = x - closestX;
+                    const dz = z - closestZ;
+                    if (dx * dx + dz * dz < playerRadius * playerRadius) return true;
+                }
+            }
+            return false;
+        }
+
+        findPath(start, target, playerRadius = this.playerRadius, pY = 0, cellSize = 1.25) {
+            if (!start || !target || !Number.isFinite(start.x) || !Number.isFinite(start.z)
+                || !Number.isFinite(target.x) || !Number.isFinite(target.z)) return null;
+
+            const startNode = { x: 0, z: 0 };
+            const goal = {
+                x: Math.round((target.x - start.x) / cellSize),
+                z: Math.round((target.z - start.z) / cellSize)
+            };
+            const cellPosition = node => ({
+                x: start.x + node.x * cellSize,
+                z: start.z + node.z * cellSize
+            });
+            const isWalkable = node => {
+                const position = cellPosition(node);
+                return !this.isPositionBlocked(position.x, position.z, playerRadius, pY);
+            };
+
+            let goalNode = goal;
+            if (!isWalkable(goalNode)) {
+                let nearest = null;
+                for (let radius = 1; radius <= 5 && !nearest; radius++) {
+                    for (let x = -radius; x <= radius; x++) {
+                        for (let z = -radius; z <= radius; z++) {
+                            if (Math.max(Math.abs(x), Math.abs(z)) !== radius) continue;
+                            const candidate = { x: goal.x + x, z: goal.z + z };
+                            if (!isWalkable(candidate)) continue;
+                            const p = cellPosition(candidate);
+                            const distanceSq = (p.x - target.x) ** 2 + (p.z - target.z) ** 2;
+                            if (!nearest || distanceSq < nearest.distanceSq) nearest = { node: candidate, distanceSq };
+                        }
+                    }
+                    if (nearest) goalNode = nearest.node;
+                }
+                if (!nearest) return null;
+            }
+
+            if (!isWalkable(startNode)) return null;
+
+            const margin = 24;
+            const minX = Math.min(startNode.x, goalNode.x) - margin;
+            const maxX = Math.max(startNode.x, goalNode.x) + margin;
+            const minZ = Math.min(startNode.z, goalNode.z) - margin;
+            const maxZ = Math.max(startNode.z, goalNode.z) + margin;
+            const key = node => `${node.x},${node.z}`;
+            const heuristic = node => Math.hypot(goalNode.x - node.x, goalNode.z - node.z);
+            const open = [];
+            const bestCost = new Map([[key(startNode), 0]]);
+            const parents = new Map();
+
+            const push = item => {
+                let index = open.length;
+                open.push(item);
+                while (index > 0) {
+                    const parentIndex = Math.floor((index - 1) / 2);
+                    if (open[parentIndex].score <= item.score) break;
+                    open[index] = open[parentIndex];
+                    index = parentIndex;
+                }
+                open[index] = item;
+            };
+            const pop = () => {
+                const first = open[0];
+                const last = open.pop();
+                if (open.length) {
+                    let index = 0;
+                    while (true) {
+                        const left = index * 2 + 1;
+                        const right = left + 1;
+                        if (left >= open.length) break;
+                        const child = right < open.length && open[right].score < open[left].score ? right : left;
+                        if (open[child].score >= last.score) break;
+                        open[index] = open[child];
+                        index = child;
+                    }
+                    open[index] = last;
+                }
+                return first;
+            };
+
+            push({ node: startNode, score: heuristic(startNode) });
+            let expanded = 0;
+            while (open.length && expanded < 40000) {
+                const current = pop();
+                const currentKey = key(current.node);
+                const currentCost = bestCost.get(currentKey);
+                if (current.score > currentCost + heuristic(current.node) + 1e-8) continue;
+                expanded++;
+
+                if (current.node.x === goalNode.x && current.node.z === goalNode.z) {
+                    const path = [];
+                    let cursor = currentKey;
+                    while (cursor !== key(startNode)) {
+                        const [x, z] = cursor.split(',').map(Number);
+                        path.push(cellPosition({ x, z }));
+                        cursor = parents.get(cursor);
+                    }
+                    return path.reverse();
+                }
+
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dz = -1; dz <= 1; dz++) {
+                        if (!dx && !dz) continue;
+                        const next = { x: current.node.x + dx, z: current.node.z + dz };
+                        if (next.x < minX || next.x > maxX || next.z < minZ || next.z > maxZ || !isWalkable(next)) continue;
+                        if (dx && dz && (!isWalkable({ x: current.node.x + dx, z: current.node.z })
+                            || !isWalkable({ x: current.node.x, z: current.node.z + dz }))) continue;
+
+                        const nextKey = key(next);
+                        const nextCost = currentCost + (dx && dz ? Math.SQRT2 : 1);
+                        if (nextCost >= (bestCost.get(nextKey) ?? Infinity)) continue;
+                        bestCost.set(nextKey, nextCost);
+                        parents.set(nextKey, currentKey);
+                        push({ node: next, score: nextCost + heuristic(next) });
+                    }
+                }
+            }
+
+            return null;
+        }
+
         resolvePosition(currentPos, targetPos, playerRadius = this.playerRadius, pY = 0) {
-            let nextX = targetPos.x;
-            let nextZ = targetPos.z;
+            const dx = targetPos.x - currentPos.x;
+            const dz = targetPos.z - currentPos.z;
+            const distance = Math.hypot(dx, dz);
+            const stepLength = Math.max(0.15, playerRadius * 0.5);
+            const steps = Math.max(1, Math.ceil(distance / stepLength));
+            let x = currentPos.x;
+            let z = currentPos.z;
+            const stepX = dx / steps;
+            const stepZ = dz / steps;
 
-            // X Ekseni Kontrolü
-            for (let i = 0; i < this.colliders.length; i++) {
-                const c = this.colliders[i];
-                if (pY < c.minY || pY > c.maxY) continue;
+            for (let step = 0; step < steps; step++) {
+                const nextX = x + stepX;
+                const nextZ = z + stepZ;
+                if (!this.isPositionBlocked(nextX, nextZ, playerRadius, pY)) {
+                    x = nextX;
+                    z = nextZ;
+                    continue;
+                }
 
-                if (c.type === 'cylinder') {
-                    const dx = nextX - c.x;
-                    const dz = currentPos.z - c.z;
-                    const distSq = dx * dx + dz * dz;
-                    const minDist = c.radius + playerRadius;
-                    if (distSq < minDist * minDist) {
-                        const dist = Math.sqrt(distSq) || 0.001;
-                        nextX = c.x + (dx / dist) * minDist;
-                    }
-                } else if (c.type === 'box') {
-                    const expandedMinX = c.minX - playerRadius;
-                    const expandedMaxX = c.maxX + playerRadius;
-                    const expandedMinZ = c.minZ - playerRadius;
-                    const expandedMaxZ = c.maxZ + playerRadius;
-
-                    if (nextX >= expandedMinX && nextX <= expandedMaxX && currentPos.z >= expandedMinZ && currentPos.z <= expandedMaxZ) {
-                        if (currentPos.x <= c.minX) nextX = expandedMinX;
-                        else if (currentPos.x >= c.maxX) nextX = expandedMaxX;
-                    }
+                const canMoveX = !this.isPositionBlocked(nextX, z, playerRadius, pY);
+                const canMoveZ = !this.isPositionBlocked(x, nextZ, playerRadius, pY);
+                if (canMoveX && canMoveZ) {
+                    if (Math.abs(dx) >= Math.abs(dz)) x = nextX;
+                    else z = nextZ;
+                } else if (canMoveX) {
+                    x = nextX;
+                } else if (canMoveZ) {
+                    z = nextZ;
                 }
             }
 
-            // Z Ekseni Kontrolü
-            for (let i = 0; i < this.colliders.length; i++) {
-                const c = this.colliders[i];
-                if (pY < c.minY || pY > c.maxY) continue;
-
-                if (c.type === 'cylinder') {
-                    const dx = nextX - c.x;
-                    const dz = nextZ - c.z;
-                    const distSq = dx * dx + dz * dz;
-                    const minDist = c.radius + playerRadius;
-                    if (distSq < minDist * minDist) {
-                        const dist = Math.sqrt(distSq) || 0.001;
-                        nextZ = c.z + (dz / dist) * minDist;
-                    }
-                } else if (c.type === 'box') {
-                    const expandedMinX = c.minX - playerRadius;
-                    const expandedMaxX = c.maxX + playerRadius;
-                    const expandedMinZ = c.minZ - playerRadius;
-                    const expandedMaxZ = c.maxZ + playerRadius;
-
-                    if (nextX >= expandedMinX && nextX <= expandedMaxX && nextZ >= expandedMinZ && nextZ <= expandedMaxZ) {
-                        if (currentPos.z <= c.minZ) nextZ = expandedMinZ;
-                        else if (currentPos.z >= c.maxZ) nextZ = expandedMaxZ;
-                    }
-                }
-            }
-
-            return { x: nextX, z: nextZ };
+            return { x, z };
         }
 
         // Zemin ve Rampa Yüksekliği Hesaplama

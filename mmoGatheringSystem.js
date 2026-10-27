@@ -46,6 +46,7 @@
             this.castDuration = 0;
             this.isChanneling = false;
             this.channelNode = null;
+            this.wheatInteractionNode = null;
             this.domElements = {};
             this.waypointMarker = null;
 
@@ -59,7 +60,12 @@
                 remainingToGather: 0,
                 statusText: '',
                 stuckTimer: 0,
-                lastPos: null
+                lastPos: null,
+                path: null,
+                pathIndex: 0,
+                pathGoal: null,
+                crossingDirection: null,
+                crossingBridgeZ: null
             };
 
             this.init();
@@ -225,7 +231,7 @@
             if (!player || !player.root) return;
             if (this.waypointMarker) {
                 this.waypointMarker.rotation.y += delta * 0.8;
-                this.waypointMarker.children[1].position.y = 3.0 + Math.sin(elapsed * 2.4) * 0.25;
+                this.waypointMarker.children[0].position.y = 1.6 + Math.sin(elapsed * 2.4) * 0.15;
             }
             const px = player.root.position.x;
             const pz = player.root.position.z;
@@ -245,11 +251,39 @@
 
             for (let i = 0; i < this.nodes.length; i++) {
                 const n = this.nodes[i];
-                if (n.depleted) continue;
+                if (n.depleted || n.resource === 'wheat') continue;
                 const dist = Math.hypot(px - n.x, pz - n.z);
                 if (dist < minDist) {
                     minDist = dist;
                     closest = n;
+                }
+            }
+
+            if (typeof window.getNearestWheatStalk === 'function') {
+                const stalk = window.getNearestWheatStalk(px, pz, this.interactionDist);
+                if (stalk && stalk.distance < minDist) {
+                    if (!this.wheatInteractionNode) {
+                        this.wheatInteractionNode = {
+                            name: 'Nil Buğdayı',
+                            type: 'harvest',
+                            resource: 'wheat',
+                            yield: 4,
+                            exp: 15,
+                            castTime: 2.8,
+                            respawnSec: 12,
+                            icon: '🌾'
+                        };
+                    }
+                    Object.assign(this.wheatInteractionNode, {
+                        id: `wheat_stalk_${stalk.index}`,
+                        x: stalk.x,
+                        y: 0.1,
+                        z: stalk.z,
+                        wheatIndex: stalk.index,
+                        depleted: false
+                    });
+                    minDist = stalk.distance;
+                    closest = this.wheatInteractionNode;
                 }
             }
 
@@ -324,6 +358,21 @@
 
             const state = window.GameState ? window.GameState.state : null;
             if (!state) return;
+
+            if (node.resource === 'wheat' && !Number.isInteger(node.wheatIndex)) {
+                const stalk = typeof window.getNearestWheatStalk === 'function'
+                    ? window.getNearestWheatStalk(node.x, node.z, 3)
+                    : null;
+                if (!stalk) {
+                    if (window.GameHUD) window.GameHUD.showToast('Yakında hasat edilebilir bir buğday başağı yok.', 'system');
+                    return;
+                }
+                Object.assign(node, {
+                    x: stalk.x,
+                    z: stalk.z,
+                    wheatIndex: stalk.index
+                });
+            }
 
             // Obelisk İnşaatı Özel Kontrolü
             if (node.type === 'obelisk') {
@@ -409,25 +458,41 @@
 
             if (!node) return;
 
-            // Kaynak Noktasını Tüket ve Yeniden Doğma Süresi Koy
+            const collectResource = () => {
+                if (window.GameState) {
+                    window.GameState.addResource(node.resource, node.yield);
+                }
+                if (window.GameHUD) {
+                    window.GameHUD.showToast(`🎉 +${node.yield} ${resName} toplandı! (+${node.exp} XP)`, 'gold');
+                }
+            };
+
+            const resName = node.resource === 'wheat' ? 'Nil Buğdayı' : (node.resource === 'copper' ? 'Bakır Külçe' : (node.resource === 'stone' ? 'Taş Blok' : 'Papirüs'));
+            const hasWheatHarvestAnimation = node.resource === 'wheat'
+                && typeof window.harvestWheatStalk === 'function';
+            const animatedWheatHarvest = node.resource === 'wheat'
+                && hasWheatHarvestAnimation
+                && window.harvestWheatStalk(node.wheatIndex, collectResource, elapsed);
+            if (hasWheatHarvestAnimation && !animatedWheatHarvest) {
+                if (window.GameHUD) window.GameHUD.showToast('Buğday başağı artık hasat edilemiyor; yakındaki başka bir başağı dene.', 'system');
+                return;
+            }
+
+            // Kaynak noktasını tüket ve yeniden doğma süresi koy.
             node.depleted = true;
             node.depletedUntil = elapsed + node.respawnSec;
 
-            // Envantere Ekle & EXP Ver
+            // Envantere ekle ve animasyon tamamlanınca buğday hasadını kaydet.
+            if (!animatedWheatHarvest) {
+                collectResource();
+            }
             if (window.GameState) {
-                window.GameState.addResource(node.resource, node.yield);
                 window.GameState.gainExp(node.exp);
 
                 // Dayanıklılık Tüket (10 ST)
                 if (window.GameState.state && window.GameState.state.player) {
                     window.GameState.state.player.energy = Math.max(0, (window.GameState.state.player.energy || 100) - 10);
                 }
-            }
-
-            // Başarı Bildirimi & Toast
-            const resName = node.resource === 'wheat' ? 'Nil Buğdayı' : (node.resource === 'copper' ? 'Bakır Külçe' : (node.resource === 'stone' ? 'Taş Blok' : 'Papirüs'));
-            if (window.GameHUD) {
-                window.GameHUD.showToast(`🎉 +${node.yield} ${resName} toplandı! (+${node.exp} XP)`, 'gold');
             }
 
             // Eğer Otomatik Kasılma (Auto-Grind) Aktifse:
@@ -483,6 +548,11 @@
             this.autoState.remainingToGather = countNeeded;
             this.autoState.stuckTimer = 0;
             this.autoState.lastPos = null;
+            this.autoState.path = null;
+            this.autoState.pathIndex = 0;
+            this.autoState.pathGoal = null;
+            this.autoState.crossingDirection = null;
+            this.autoState.crossingBridgeZ = null;
 
             // Hedef Noktayı Belirle
             this.seekNextAutoNode();
@@ -502,25 +572,11 @@
 
             if (!this.waypointMarker) {
                 const marker = new THREE.Group();
-                const ring = new THREE.Mesh(
-                    new THREE.TorusGeometry(2.1, 0.12, 8, 32),
-                    new THREE.MeshBasicMaterial({ color: 0xfde047, transparent: true, opacity: 0.95 })
-                );
-                ring.rotation.x = Math.PI / 2;
-                marker.add(ring);
-
-                const beam = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.2, 0.85, 6, 12, 1, true),
-                    new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })
-                );
-                beam.position.y = 3;
-                marker.add(beam);
-
                 const arrow = new THREE.Mesh(
-                    new THREE.ConeGeometry(0.8, 1.5, 4),
+                    new THREE.ConeGeometry(0.32, 0.8, 4),
                     new THREE.MeshBasicMaterial({ color: 0xfff1a6 })
                 );
-                arrow.position.y = 6.2;
+                arrow.position.y = 1.6;
                 marker.add(arrow);
 
                 this.waypointMarker = marker;
@@ -553,6 +609,25 @@
             let minDist = Infinity;
 
             let candidates = this.nodes.filter(node => node.resource === targetRes && !node.depleted);
+            if (targetRes === 'wheat' && typeof window.getNearestWheatStalk === 'function') {
+                const stalk = window.getNearestWheatStalk(px, pz);
+                candidates = stalk ? [{
+                    id: `wheat_stalk_${stalk.index}`,
+                    name: 'Nil Buğdayı',
+                    type: 'harvest',
+                    resource: 'wheat',
+                    yield: 4,
+                    exp: 15,
+                    x: stalk.x,
+                    y: 0.1,
+                    z: stalk.z,
+                    castTime: 2.8,
+                    respawnSec: 12,
+                    icon: '🌾',
+                    wheatIndex: stalk.index,
+                    depleted: false
+                }] : [];
+            }
             if (this.autoState.type === 'hunt_croc' && window.EgyptCombatEngine) {
                 candidates = window.EgyptCombatEngine.targets
                     .filter(target => target.name === 'Nil Timsahı' && !target.isDead && target.mesh)
@@ -616,6 +691,11 @@
             if (bestNode) {
                 this.autoState.targetNode = bestNode;
                 this.autoState.targetPos = { x: bestNode.x, z: bestNode.z };
+                this.autoState.path = null;
+                this.autoState.pathIndex = 0;
+                this.autoState.pathGoal = null;
+                this.autoState.crossingDirection = null;
+                this.autoState.crossingBridgeZ = null;
                 this.setWaypoint(bestNode);
                 if (this.domElements && this.domElements.autoTitle) {
                     this.domElements.autoTitle.textContent = `🤖 OTO-KASILMA: ${bestNode.name}`;
@@ -698,55 +778,99 @@
                 return;
             }
 
-            // Karakteri Hedefe Doğru Çevir ve Yürüt
-            const targetYaw = Math.atan2(dx, dz);
+            let routeGoal = { x: tx, z: tz };
+            const playerWest = px <= 28;
+            const targetEast = tx >= 86;
+            const playerEast = px >= 86;
+            const targetWest = tx <= 28;
+            if (!this.autoState.crossingDirection && ((playerWest && targetEast) || (playerEast && targetWest))) {
+                this.autoState.crossingDirection = playerWest ? 'east' : 'west';
+                const bridges = [0, 75, -75];
+                this.autoState.crossingBridgeZ = bridges.reduce((best, bridgeZ) => {
+                    const cost = Math.abs(pz - bridgeZ) + Math.abs(tz - bridgeZ);
+                    return !best || cost < best.cost ? { z: bridgeZ, cost } : best;
+                }, null).z;
+            }
+            if (this.autoState.crossingDirection === 'east') {
+                const bridgeZ = this.autoState.crossingBridgeZ;
+                if (px < 28) {
+                    routeGoal = { x: 28, z: bridgeZ };
+                } else if (px < 86) {
+                    routeGoal = { x: 86, z: bridgeZ };
+                } else {
+                    this.autoState.crossingDirection = null;
+                    this.autoState.crossingBridgeZ = null;
+                }
+            } else if (this.autoState.crossingDirection === 'west') {
+                const bridgeZ = this.autoState.crossingBridgeZ;
+                if (px > 86) {
+                    routeGoal = { x: 86, z: bridgeZ };
+                } else if (px > 28) {
+                    routeGoal = { x: 28, z: bridgeZ };
+                } else {
+                    this.autoState.crossingDirection = null;
+                    this.autoState.crossingBridgeZ = null;
+                }
+            }
+
+            const collisionEngine = window.EgyptCollisionEngine;
+            if (collisionEngine && (!this.autoState.pathGoal
+                || Math.hypot(routeGoal.x - this.autoState.pathGoal.x, routeGoal.z - this.autoState.pathGoal.z) > 2.0)) {
+                this.autoState.path = collisionEngine.findPath(
+                    player.root.position,
+                    routeGoal,
+                    (player.scale || 1) * 0.45,
+                    player.root.position.y
+                );
+                this.autoState.pathIndex = 0;
+                this.autoState.pathGoal = routeGoal;
+                if (!this.autoState.path) {
+                    this.cancelAutoNavigation('Hedefe güvenli bir yol bulunamadı; görev otomatik hareketi durduruldu.');
+                    return;
+                }
+            }
+
+            let navTarget = { x: tx, z: tz };
+            if (this.autoState.path && this.autoState.pathIndex < this.autoState.path.length) {
+                let waypoint = this.autoState.path[this.autoState.pathIndex];
+                while (waypoint && Math.hypot(waypoint.x - px, waypoint.z - pz) < 0.55) {
+                    this.autoState.pathIndex++;
+                    waypoint = this.autoState.path[this.autoState.pathIndex];
+                }
+                if (waypoint) navTarget = waypoint;
+            }
+
+            const navDx = navTarget.x - px;
+            const navDz = navTarget.z - pz;
+            const navDist = Math.hypot(navDx, navDz);
+            if (navDist < 0.05) return;
+
+            // Karakteri rotanın bir sonraki görünür noktasına çevirip yürüt.
+            const targetYaw = Math.atan2(navDx, navDz);
             let diff = targetYaw - player.root.rotation.y;
             while (diff > Math.PI) diff -= Math.PI * 2;
             while (diff < -Math.PI) diff += Math.PI * 2;
             player.root.rotation.y += diff * Math.min(1.0, delta * 9.0);
 
-            // Nil Nehri İçinden Geçmemesi İçin Köprü Rotası Kontrolü
-            let moveDirX = dx / dist;
-            let moveDirZ = dz / dist;
-
-            // Eğer oyuncu batıda (x < 28) ve hedef doğuda (x > 86) ise en yakın köprüye (z=0, 75, -75) yönlendir
-            const playerWest = px < 28;
-            const targetEast = tx > 86;
-            const playerEast = px > 86;
-            const targetWest = tx < 28;
-
-            if ((playerWest && targetEast) || (playerEast && targetWest)) {
-                // En yakın köprü z koordinatını bul
-                const bridgeZs = [0, 75, -75];
-                let bestBridgeZ = 0;
-                let minBridgeDist = Infinity;
-                for (const bz of bridgeZs) {
-                    const bDist = Math.abs(pz - bz);
-                    if (bDist < minBridgeDist) {
-                        minBridgeDist = bDist;
-                        bestBridgeZ = bz;
-                    }
-                }
-                // Köprü girişine doğru yönel
-                if (Math.abs(pz - bestBridgeZ) > 3.0) {
-                    moveDirZ = pz < bestBridgeZ ? 1.0 : -1.0;
-                    moveDirX = 0;
-                }
-            }
-
             const walkSpeed = 8.2;
-            const nextX = px + moveDirX * walkSpeed * delta;
-            const nextZ = pz + moveDirZ * walkSpeed * delta;
+            const moveDistance = Math.min(walkSpeed * delta, navDist);
+            const nextX = px + (navDx / navDist) * moveDistance;
+            const nextZ = pz + (navDz / navDist) * moveDistance;
 
-            if (window.EgyptCollisionEngine) {
-                const resolved = window.EgyptCollisionEngine.resolvePosition(
+            if (collisionEngine) {
+                const resolved = collisionEngine.resolvePosition(
                     player.root.position,
                     { x: nextX, z: nextZ },
                     (player.scale || 1) * 0.45,
                     player.root.position.y
                 );
+                const moved = Math.hypot(resolved.x - px, resolved.z - pz);
                 player.root.position.x = resolved.x;
                 player.root.position.z = resolved.z;
+                if (moved < 0.01 && navDist > 0.55) {
+                    this.autoState.path = null;
+                    this.autoState.pathGoal = null;
+                }
             } else {
                 player.root.position.x = nextX;
                 player.root.position.z = nextZ;
@@ -762,6 +886,10 @@
             this.autoState.active = false;
             this.autoState.targetPos = null;
             this.autoState.targetNode = null;
+            this.autoState.path = null;
+            this.autoState.pathGoal = null;
+            this.autoState.crossingDirection = null;
+            this.autoState.crossingBridgeZ = null;
             this.clearWaypoint();
             if (this.domElements && this.domElements.autoBanner) {
                 this.domElements.autoBanner.classList.add('hidden');
@@ -775,6 +903,10 @@
             this.autoState.active = false;
             this.autoState.targetPos = null;
             this.autoState.targetNode = null;
+            this.autoState.path = null;
+            this.autoState.pathGoal = null;
+            this.autoState.crossingDirection = null;
+            this.autoState.crossingBridgeZ = null;
             this.clearWaypoint();
             if (this.domElements && this.domElements.autoBanner) {
                 this.domElements.autoBanner.classList.add('hidden');
