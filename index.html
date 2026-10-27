@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gods of Egypt - Yerel Mısır Mitolojisi Aksiyon Prototipi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="gameHud.css">
+    <style>
+        body {
+            margin: 0;
+            background: linear-gradient(135deg, #0b0603 0%, #1a0e08 50%, #0b0603 100%);
+            color: #fef3c7;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+        
+        .portal-card {
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .portal-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(253, 224, 71, 0.1), transparent);
+            transition: left 0.6s;
+        }
+        
+        .portal-card:hover::before {
+            left: 100%;
+        }
+        
+        .portal-card:hover {
+            transform: translateY(-8px) scale(1.03);
+            border-color: rgba(253, 224, 71, 0.9);
+            box-shadow: 
+                0 20px 45px rgba(245, 158, 11, 0.4),
+                0 0 30px rgba(245, 158, 11, 0.2),
+                inset 0 0 20px rgba(245, 158, 11, 0.1);
+        }
+        
+        .game-viewport-frame {
+            border: none;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        /* Premium status indicator */
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        
+        .status-online {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.1) 100%);
+            border: 1.5px solid rgba(16, 185, 129, 0.5);
+            color: #34d399;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+        }
+        
+        .status-online::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #34d399;
+            border-radius: 50%;
+            animation: pulse-green 2s infinite;
+        }
+        
+        @keyframes pulse-green {
+            0%, 100% { 
+                box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7);
+            }
+            50% { 
+                box-shadow: 0 0 0 8px rgba(52, 211, 153, 0);
+            }
+        }
+        
+        /* Premium badge styles */
+        .premium-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(245, 158, 11, 0.15) 100%);
+            border: 1px solid rgba(251, 191, 36, 0.6);
+            color: #fcd34d;
+            box-shadow: 0 0 12px rgba(251, 191, 36, 0.3);
+        }
+        
+        /* Enhanced resource display */
+        .resource-display {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(20, 12, 7, 0.8) 0%, rgba(10, 6, 3, 0.9) 100%);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            font-size: 12px;
+            font-weight: 700;
+            transition: all 0.2s ease;
+        }
+        
+        .resource-display:hover {
+            border-color: rgba(251, 191, 36, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+        }
+        
+        /* Premium hero section */
+        .hero-section {
+            background: linear-gradient(135deg, rgba(35, 20, 8, 0.95) 0%, rgba(18, 10, 4, 0.98) 100%);
+            border: 2px solid rgba(253, 224, 71, 0.7);
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.8),
+                0 0 40px rgba(245, 158, 11, 0.15),
+                inset 0 0 30px rgba(245, 158, 11, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, rgba(253, 224, 71, 0.9), transparent);
+        }
+        
+        .hero-section::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(253, 224, 71, 0.5), transparent);
+        }
+        
+        /* Logo container enhancement */
+        .logo-container {
+            background: linear-gradient(135deg, #f59e0b 0%, #fcd34d 50%, #fef3c7 100%);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 
+                0 8px 24px rgba(245, 158, 11, 0.5),
+                0 0 20px rgba(253, 224, 71, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            animation: logo-glow 3s ease-in-out infinite;
+        }
+        
+        @keyframes logo-glow {
+            0%, 100% { 
+                box-shadow: 
+                    0 8px 24px rgba(245, 158, 11, 0.5),
+                    0 0 20px rgba(253, 224, 71, 0.3);
+            }
+            50% { 
+                box-shadow: 
+                    0 8px 24px rgba(245, 158, 11, 0.7),
+                    0 0 30px rgba(253, 224, 71, 0.5);
+            }
+        }
+        
+        /* Card icon enhancement */
+        .card-icon {
+            font-size: 2.5rem;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+            transition: transform 0.3s ease;
+        }
+        
+        .portal-card:hover .card-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-amber-500 selection:text-black">
+
+    <!-- ARKA PLAN SİNEMATİK THREE.JS SAHNESİ -->
+    <canvas id="bg-canvas" class="fixed inset-0 w-full h-full pointer-events-none z-0 opacity-40"></canvas>
+
+    <!-- OYUN ÇERÇEVESİ (Entegre Mod Aktif Olduğunda Görünür) -->
+    <div id="game-frame-container" class="fixed inset-0 z-40 hidden bg-black">
+        <iframe id="game-iframe" class="game-viewport-frame" src=""></iframe>
+    </div>
+
+    <!-- ÜST NAVİGASYON BAŞLIĞI -->
+    <header class="relative z-10 p-4 sm:p-6 flex flex-wrap items-center justify-between gap-4 border-b border-amber-500/30 hud-glass">
+        <div class="flex items-center gap-3">
+            <div class="logo-container w-12 h-12 rounded-xl flex items-center justify-center text-2xl">
+                <span id="logo-icon"></span>
+            </div>
+            <div>
+                <h1 class="hud-font-title text-lg sm:text-xl font-black tracking-wider gold-gradient-text uppercase">
+                    Gods of Egypt
+                </h1>
+                <p class="text-[11px] text-amber-400/80 font-medium">Tek Oyunculu Mısır Mitolojisi Aksiyon Prototipi</p>
+            </div>
+        </div>
+
+        <!-- SAĞ ÜST: YEREL OYUN DURUMU -->
+        <div class="flex items-center gap-3 text-xs">
+            <div class="status-indicator hud-glass text-amber-200">
+                <span>TEK OYUNCU</span>
+            </div>
+            <div class="hud-glass px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-yellow-300">
+                <span id="day-night-icon"></span>
+                <span id="header-night-status">Gündüz Çağı</span>
+            </div>
+            <button onclick="launchDirectRealm('karaktertanrilar.html')" class="gold-btn px-4 py-1.5 rounded-xl text-xs font-black">
+                Tanrı Vitrini
+            </button>
+            <button onclick="launchDirectRealm('kiz.html')" class="action-pill-btn px-4 py-1.5 rounded-xl text-xs font-black">
+                Tanrıça Vitrini
+            </button>
+        </div>
+    </header>
+
+    <!-- ANA İÇERİK: BAŞLIK, HİKAYE VE DİYAR KARTLARI -->
+    <main class="relative z-10 max-w-7xl mx-auto px-4 py-8 sm:py-12 flex flex-col gap-10">
+
+        <!-- SİNEMATİK KARŞILAMA VE HİKAYE KUTUSU -->
+        <div class="hero-section rounded-3xl p-6 sm:p-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+            <div class="flex flex-col gap-4 max-w-2xl">
+                <div class="premium-badge">
+                    <span id="promo-icon"></span>
+                    <span>2.5x Devasa Tanrı Zırhları & Altın Kan Ekonomisi</span>
+                </div>
+                <h2 class="hud-font-title text-3xl sm:text-5xl font-black text-amber-100 leading-tight">
+                    Set'in Zalim Hükümdarlığına <span class="gold-gradient-text">Kafa Tut!</span>
+                </h2>
+                <p class="text-sm sm:text-base text-amber-200/90 leading-relaxed">
+                    Nil nehri kıyısında yerel prototip olarak oynanacak <strong>mitolojik akış</strong> içinde buğday ve papirüs topla, bakır ve taş çıkar, timsah avla ve dikilitaş inşa et. 
+                    Tapınağa sızıp <strong>Horus'un Gözü'nü</strong> alabilir veya <strong>Altın Şahin / Çakal Tanrı</strong> formuna yükselerek prototip savaş döngülerini deneyimleyebilirsin.
+                </p>
+                <div class="flex flex-wrap items-center gap-3 pt-2">
+                    <button onclick="launchRealmInFrame('mısır.html')" class="gold-btn px-7 py-3.5 rounded-2xl text-base font-black flex items-center gap-2.5 shadow-2xl">
+                        <span id="enter-world-icon"></span>
+                        <span>DÜNYAYA GİR (Nil Nehri Açık Dünya)</span>
+                    </button>
+                    <button onclick="launchRealmInFrame('horustapınak.html')" class="action-pill-btn px-5 py-3 rounded-2xl text-sm font-bold flex items-center gap-2">
+                        <span id="temple-icon"></span>
+                        <span>Tuzaklı Tapınak Soygunu</span>
+                    </button>
+                    <button onclick="launchRealmInFrame('raningemisi.html')" class="action-pill-btn px-5 py-3 rounded-2xl text-sm font-bold flex items-center gap-2">
+                        <span id="sun-icon"></span>
+                        <span>Ra vs Apophis Savaşı</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- SAĞ TARAF: OYUNCU DURUM KARTI -->
+            <div class="hud-glass w-full lg:w-80 rounded-2xl p-5 flex flex-col gap-3.5 border border-amber-500/50">
+                <div class="flex items-center justify-between border-b border-amber-500/30 pb-2">
+                    <div class="flex items-center gap-2">
+                        <span id="char-avatar" class="text-2xl icon-player"></span>
+                        <div>
+                            <div id="char-name" class="font-black text-sm text-amber-200">Bek (Ölümlü)</div>
+                            <div id="char-class" class="text-[11px] text-amber-400">Seviye 1 Hırsız</div>
+                        </div>
+                    </div>
+                    <span class="premium-badge">Kayıtlı</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="resource-display">
+                        <span id="gold-icon" class="icon-resource"></span>
+                        <span class="text-amber-400/80">Altın:</span>
+                        <span id="char-gold" class="font-extrabold text-yellow-300">120</span>
+                    </div>
+                    <div class="resource-display golden-blood-pulse">
+                        <span id="blood-icon" class="icon-resource"></span>
+                        <span class="text-amber-400/80">Altın Kan:</span>
+                        <span id="char-blood" class="font-extrabold text-amber-400">2</span>
+                    </div>
+                    <div class="resource-display">
+                        <span id="wheat-icon" class="icon-resource"></span>
+                        <span class="text-amber-400/80">Buğday:</span>
+                        <span id="char-wheat" class="font-extrabold text-lime-300">15</span>
+                    </div>
+                    <div class="resource-display">
+                        <span id="obelisk-icon" class="icon-resource"></span>
+                        <span class="text-amber-400/80">Obelisk:</span>
+                        <span id="char-obelisk" class="font-extrabold text-amber-300">%38</span>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-1 text-[11px] text-amber-300/80 pt-1 border-t border-amber-500/20">
+                    <div class="flex items-center justify-between">
+                        <span>Horus'un Gözü:</span>
+                        <span id="char-eye" class="font-bold text-red-400">Bulunmadı</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>İlahi Lütuf:</span>
+                        <span id="char-favor" class="font-bold text-amber-300">15 / 50</span>
+                    </div>
+                </div>
+
+                <button onclick="launchDirectRealm('karaktertanrilar.html')" class="gold-btn w-full py-2 rounded-xl text-xs font-black mt-1">
+                    Karakteri Değiştir / Yükselt
+                </button>
+            </div>
+        </div>
+
+        <!-- 5 TEMEL DİYAR VE MEKANİK KARTLARI -->
+        <div>
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="hud-font-title text-xl sm:text-2xl font-black text-amber-200">
+                        Oynanabilir 5 Sinematik Diyar & Zindanlar
+                    </h3>
+                    <p class="text-xs text-amber-400/70">Her diyar filmin kilit sahnelerine göre inşa edilmiş devasa Three.js 3B dünyalardan oluşur.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                
+                <!-- DİYAR 1: NİL NEHRİ VE BAŞKENT -->
+                <div class="portal-card hud-glass rounded-3xl p-5 flex flex-col justify-between gap-4 border border-amber-500/30">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                            <span id="realm1-icon" class="card-icon text-amber-300"></span>
+                            <span class="premium-badge">Diyar 1</span>
+                        </div>
+                        <h4 class="font-black text-base text-amber-100">Nil Nehri & Devasa Başkent</h4>
+                        <p class="text-xs text-amber-300/80 leading-relaxed">
+                            Tarım (papirüs, buğday), çöl madenciliği (altın, bakır), Nil timsahı avcılığı ve Tanrılar için yükselen devasa dikilitaş (obelisk) inşaatı!
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 pt-2">
+                        <button onclick="launchRealmInFrame('mısır.html')" class="gold-btn flex-1 py-2 rounded-xl text-xs font-black">
+                            Diyara Gir
+                        </button>
+                        <button onclick="launchDirectRealm('mısır.html')" class="action-pill-btn px-3 py-2 rounded-xl text-xs font-bold" title="Yeni sekmede tam ekran aç">
+                            <span id="external1-icon" class="icon-nav"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- DİYAR 2: KRALİYET SARAYI -->
+                <div class="portal-card hud-glass rounded-3xl p-5 flex flex-col justify-between gap-4 border border-amber-500/30">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                            <span id="realm2-icon" class="card-icon text-amber-300"></span>
+                            <span class="premium-badge">Diyar 2</span>
+                        </div>
+                        <h4 class="font-black text-base text-amber-100">Set'in Kraliyet Sarayı & Tahtı</h4>
+                        <p class="text-xs text-amber-300/80 leading-relaxed">
+                            Zalim Tanrı Set'in taht salonu, devasa altın Horus ve Set heykelleri, 1. Şahıs / 3. Şahıs kamera geçişi, saray muhafızları ve vergi odaları.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 pt-2">
+                        <button onclick="launchRealmInFrame('saray.html')" class="gold-btn flex-1 py-2 rounded-xl text-xs font-black">
+                            Diyara Gir
+                        </button>
+                        <button onclick="launchDirectRealm('saray.html')" class="action-pill-btn px-3 py-2 rounded-xl text-xs font-bold" title="Yeni sekmede tam ekran aç">
+                            <span id="external2-icon" class="icon-nav"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- DİYAR 3: TUZAKLI HAZİNE TAPINAĞI -->
+                <div class="portal-card hud-glass rounded-3xl p-5 flex flex-col justify-between gap-4 border border-amber-500/30">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                            <span id="realm3-icon" class="card-icon text-amber-300"></span>
+                            <span class="premium-badge">Diyar 3</span>
+                        </div>
+                        <h4 class="font-black text-base text-amber-100">Horus'un Gözü Tuzaklı Piramidi</h4>
+                        <p class="text-xs text-amber-300/80 leading-relaxed">
+                            Sallanan khopesh tırpanları, giyotinler, zemin mızrakları ve ezici bloklar! Bek gibi sızıp Horus'un Gözü'nü çalarak Set'i tahttan indir.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 pt-2">
+                        <button onclick="launchRealmInFrame('horustapınak.html')" class="gold-btn flex-1 py-2 rounded-xl text-xs font-black">
+                            Diyara Gir
+                        </button>
+                        <button onclick="launchDirectRealm('horustapınak.html')" class="action-pill-btn px-3 py-2 rounded-xl text-xs font-bold" title="Yeni sekmede tam ekran aç">
+                            <span id="external3-icon" class="icon-nav"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- DİYAR 4: RA'NIN GEMİSİ VE APOPHIS SAVAŞI -->
+                <div class="portal-card hud-glass rounded-3xl p-5 flex flex-col justify-between gap-4 border border-amber-500/30">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                            <span id="realm4-icon" class="card-icon text-amber-300"></span>
+                            <span class="premium-badge">Diyar 4</span>
+                        </div>
+                        <h4 class="font-black text-base text-amber-100">Ra'nın Gemisi & Apophis Kaos Savaşı</h4>
+                        <p class="text-xs text-amber-300/80 leading-relaxed">
+                            Uzayda zincirli minyatür güneşi çeken altın gemi! Dünya'dan gelen dua parçacıklarıyla Ra'nın devasa lazer ışınını güçlendirip Kaos Yılanı Apophis'i defet.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 pt-2">
+                        <button onclick="launchRealmInFrame('raningemisi.html')" class="gold-btn flex-1 py-2 rounded-xl text-xs font-black">
+                            Diyara Gir
+                        </button>
+                        <button onclick="launchDirectRealm('raningemisi.html')" class="action-pill-btn px-3 py-2 rounded-xl text-xs font-bold" title="Yeni sekmede tam ekran aç">
+                            <span id="external4-icon" class="icon-nav"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- DİYAR 5: AHİRET (DUAT) VE ANUBIS'İN TERAZİSİ -->
+                <div class="portal-card hud-glass rounded-3xl p-5 flex flex-col justify-between gap-4 border border-amber-500/30">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                            <span id="realm5-icon" class="card-icon text-amber-300"></span>
+                            <span class="premium-badge">Diyar 5</span>
+                        </div>
+                        <h4 class="font-black text-base text-amber-100">Ahiret (Duat) & Anubis'in Terazisi</h4>
+                        <p class="text-xs text-amber-300/80 leading-relaxed">
+                            Ölüm mekaniği: Canı tükenen oyuncular Anubis'in huzuruna gider. 50 Altın ödeyerek diril ya da yeraltı madeninde taş kırarak cezanı doldur!
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 pt-2">
+                        <button onclick="launchRealmInFrame('ahiret.html')" class="gold-btn flex-1 py-2 rounded-xl text-xs font-black">
+                            Diyara Gir
+                        </button>
+                        <button onclick="launchDirectRealm('ahiret.html')" class="action-pill-btn px-3 py-2 rounded-xl text-xs font-bold" title="Yeni sekmede tam ekran aç">
+                            <span id="external5-icon" class="icon-nav"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KARAKTER & TANRI ZIRHI MOTORU -->
+                <div class="portal-card hud-glass rounded-3xl p-5 flex flex-col justify-between gap-4 border border-amber-500/30">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                            <span id="realm6-icon" class="card-icon text-amber-300"></span>
+                            <span class="premium-badge">Zırh Atölyesi</span>
+                        </div>
+                        <h4 class="font-black text-base text-amber-100">Sinematik Karakter & Tanrı Zırhı Motoru</h4>
+                        <p class="text-xs text-amber-300/80 leading-relaxed">
+                            Bek, Köylü, İnsan Horus, 3.5m Horus Altın Şahin ve 3.6m Set Çakal modellerini 360° incele, savaş pozlarını ve kanat açışını kontrol et.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 pt-2">
+                        <button onclick="launchRealmInFrame('karaktertanrilar.html')" class="gold-btn flex-1 py-2 rounded-xl text-xs font-black">
+                            Vitrine Gir
+                        </button>
+                        <button onclick="launchDirectRealm('karaktertanrilar.html')" class="action-pill-btn px-3 py-2 rounded-xl text-xs font-bold" title="Yeni sekmede tam ekran aç">
+                            <span id="external6-icon" class="icon-nav"></span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ALT BİLGİ -->
+    <footer class="relative z-10 p-6 text-center text-xs text-amber-400/60 border-t border-amber-500/20 hud-glass mt-12">
+        <p>Özgün Mısır Mitolojisi Aksiyon Prototipi • Three.js WebGL • Mobil ve Masaüstü</p>
+    </footer>
+
+    <!-- SHARED JS SCRIPTS -->
+    <script src="errorHandler.js"></script>
+    <script src="loadingScreen.js"></script>
+    <script src="svg-icons.js"></script>
+    <script src="gameState.js"></script>
+    <script src="gameAudio.js"></script>
+    <script src="tutorialSystem.js"></script>
+    <script src="npcSystem.js"></script>
+
+    <script>
+        // Arka plan Three.js sinematik parçacık ve dönen piramit animasyonu
+        (function initBackgroundCanvas() {
+            const canvas = document.getElementById('bg-canvas');
+            if (!canvas) return;
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 7;
+
+            // Altın Piramit Tel Kafes
+            const pyramidGeo = new THREE.ConeGeometry(2.4, 3.2, 4);
+            const wireGeo = new THREE.WireframeGeometry(pyramidGeo);
+            const goldMat = new THREE.LineBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.35 });
+            const pyramidLine = new THREE.LineSegments(wireGeo, goldMat);
+            scene.add(pyramidLine);
+
+            // Altın Tozu Parçacıkları
+            const pCount = 500;
+            const pGeo = new THREE.BufferGeometry();
+            const pPos = new Float32Array(pCount * 3);
+            for (let i = 0; i < pCount * 3; i += 3) {
+                pPos[i] = (Math.random() - 0.5) * 16;
+                pPos[i + 1] = (Math.random() - 0.5) * 16;
+                pPos[i + 2] = (Math.random() - 0.5) * 10;
+            }
+            pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+            const pMat = new THREE.PointsMaterial({ color: 0xfde047, size: 0.05, transparent: true, opacity: 0.6 });
+            const particles = new THREE.Points(pGeo, pMat);
+            scene.add(particles);
+
+            function anim() {
+                requestAnimationFrame(anim);
+                pyramidLine.rotation.y += 0.005;
+                pyramidLine.rotation.x = Math.sin(Date.now() * 0.001) * 0.15;
+                particles.rotation.y += 0.001;
+                renderer.render(scene, camera);
+            }
+            anim();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        })();
+
+        // Oyuncu durumunu kartlara bağla
+        function syncPlayerProfile(state) {
+            const p = state.player;
+            const inv = state.inventory;
+
+            const nameEl = document.getElementById('char-name');
+            const classEl = document.getElementById('char-class');
+            const avatarEl = document.getElementById('char-avatar');
+            const goldEl = document.getElementById('char-gold');
+            const bloodEl = document.getElementById('char-blood');
+            const wheatEl = document.getElementById('char-wheat');
+            const obeliskEl = document.getElementById('char-obelisk');
+            const eyeEl = document.getElementById('char-eye');
+            const favorEl = document.getElementById('char-favor');
+
+            if (nameEl) nameEl.textContent = `${p.name}`;
+            if (classEl) {
+                if (p.role === 'god_horus' || p.role === 'horus_god' || p.role === 'horus') classEl.textContent = 'Horus (Altın Şahin 3.5m)';
+                else if (p.role === 'god_set' || p.role === 'set_god' || p.role === 'set') classEl.textContent = 'Set (Altın Çakal 3.6m)';
+                else if (p.role === 'horus_human') classEl.textContent = 'İnsan Horus (2.8m Prens)';
+                else if (p.role === 'villager') classEl.textContent = 'Mısırlı Köylü';
+                else classEl.textContent = 'Ölümlü Bek (Hırsız)';
+            }
+            if (avatarEl && typeof getIcon === 'function') {
+                let iconName = 'player';
+                if (p.role === 'god_horus' || p.role === 'horus_god' || p.role === 'horus') iconName = 'horus';
+                else if (p.role === 'god_set' || p.role === 'set_god' || p.role === 'set') iconName = 'set';
+                else if (p.role === 'horus_human') iconName = 'palace';
+                else if (p.role === 'villager') iconName = 'wheat';
+                avatarEl.innerHTML = getIcon(iconName, 'large');
+            }
+            if (goldEl) goldEl.textContent = inv.gold;
+            if (bloodEl) bloodEl.textContent = inv.golden_blood;
+            if (wheatEl) wheatEl.textContent = `${inv.wheat}B / ${inv.papyrus}P`;
+            if (obeliskEl) obeliskEl.textContent = `%${state.obelisk.progress}`;
+            if (eyeEl) {
+                eyeEl.textContent = p.hasEyeOfHorus ? 'Taşınıyor' : 'Bulunmadı';
+                eyeEl.className = p.hasEyeOfHorus ? 'font-bold text-emerald-400' : 'font-bold text-red-400';
+            }
+            if (favorEl) favorEl.textContent = `${p.divineFavor} / 50`;
+        }
+
+        if (window.GameState) {
+            window.GameState.subscribe(syncPlayerProfile);
+        }
+
+        // Oyun Diyarını Sayfa İçi Entegre Çerçevede Açma
+        function launchRealmInFrame(fileName) {
+            const frameContainer = document.getElementById('game-frame-container');
+            const iframe = document.getElementById('game-iframe');
+            if (frameContainer && iframe) {
+                iframe.src = fileName;
+                frameContainer.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function exitGameFrame() {
+            const frameContainer = document.getElementById('game-frame-container');
+            const iframe = document.getElementById('game-iframe');
+            if (frameContainer && iframe) {
+                iframe.src = '';
+                frameContainer.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+                if (window.GameState) {
+                    syncPlayerProfile(window.GameState.loadState());
+                }
+            }
+        }
+
+        // Doğrudan sayfaya yönlendirme
+        function launchDirectRealm(fileName) {
+            window.location.href = fileName;
+        }
+
+        // İframe içinden gelen teleport çağrıları
+        window.switchActiveRealm = function(fileName) {
+            const iframe = document.getElementById('game-iframe');
+            if (iframe) {
+                iframe.src = fileName;
+            } else {
+                window.location.href = fileName;
+            }
+        };
+
+        // Initialize SVG Icons
+        document.addEventListener('DOMContentLoaded', function() {
+            // Replace main icons
+            if (typeof getIcon === 'function') {
+                // Logo icon
+                const logoIcon = document.getElementById('logo-icon');
+                if (logoIcon) logoIcon.innerHTML = getIcon('ankh', 'large');
+                
+                // Day/Night icon
+                const dayNightIcon = document.getElementById('day-night-icon');
+                if (dayNightIcon) dayNightIcon.innerHTML = getIcon('sun', 'normal');
+                
+                // Promo icon
+                const promoIcon = document.getElementById('promo-icon');
+                if (promoIcon) promoIcon.innerHTML = getIcon('lightning', 'normal');
+                
+                // Enter world icon
+                const enterWorldIcon = document.getElementById('enter-world-icon');
+                if (enterWorldIcon) enterWorldIcon.innerHTML = getIcon('arrowRight', 'normal');
+                
+                // Temple icon
+                const templeIcon = document.getElementById('temple-icon');
+                if (templeIcon) templeIcon.innerHTML = getIcon('attack', 'normal');
+                
+                // Sun icon
+                const sunIcon = document.getElementById('sun-icon');
+                if (sunIcon) sunIcon.innerHTML = getIcon('sun', 'normal');
+                
+                // Resource icons
+                const goldIcon = document.getElementById('gold-icon');
+                if (goldIcon) goldIcon.innerHTML = getIcon('gold', 'normal');
+                
+                const bloodIcon = document.getElementById('blood-icon');
+                if (bloodIcon) bloodIcon.innerHTML = getIcon('goldenBlood', 'normal');
+                
+                const wheatIcon = document.getElementById('wheat-icon');
+                if (wheatIcon) wheatIcon.innerHTML = getIcon('wheat', 'normal');
+                
+                const obeliskIcon = document.getElementById('obelisk-icon');
+                if (obeliskIcon) obeliskIcon.innerHTML = getIcon('obelisk', 'normal');
+                
+                // Realm icons
+                const realm1Icon = document.getElementById('realm1-icon');
+                if (realm1Icon) realm1Icon.innerHTML = getIcon('obelisk', 'large');
+                
+                const realm2Icon = document.getElementById('realm2-icon');
+                if (realm2Icon) realm2Icon.innerHTML = getIcon('palace', 'large');
+                
+                const realm3Icon = document.getElementById('realm3-icon');
+                if (realm3Icon) realm3Icon.innerHTML = getIcon('temple', 'large');
+                
+                const realm4Icon = document.getElementById('realm4-icon');
+                if (realm4Icon) realm4Icon.innerHTML = getIcon('sun', 'large');
+                
+                const realm5Icon = document.getElementById('realm5-icon');
+                if (realm5Icon) realm5Icon.innerHTML = getIcon('anubis', 'large');
+                
+                const realm6Icon = document.getElementById('realm6-icon');
+                if (realm6Icon) realm6Icon.innerHTML = getIcon('horus', 'large');
+                
+                // External link icons
+                for (let i = 1; i <= 6; i++) {
+                    const extIcon = document.getElementById(`external${i}-icon`);
+                    if (extIcon) extIcon.innerHTML = getIcon('external', 'normal');
+                }
+                
+                // Character avatar
+                const charAvatar = document.getElementById('char-avatar');
+                if (charAvatar) charAvatar.innerHTML = getIcon('player', 'large');
+            }
+
+            // Show tutorial for new players
+            setTimeout(() => {
+                if (window.TutorialSystem && window.TutorialSystem.currentStep === 0) {
+                    window.TutorialSystem.showTutorialStep();
+                }
+            }, 1500);
+        });
+    </script>
+</body>
+</html>

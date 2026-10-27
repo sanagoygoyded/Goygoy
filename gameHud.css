@@ -1,0 +1,1168 @@
+/* Gods of Egypt MMORPG - Unified Cinematic HUD Styles */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --egypt-gold: #f59e0b;
+    --egypt-bright-gold: #fde047;
+    --egypt-dark-gold: #b45309;
+    --egypt-blood: #ef4444;
+    --egypt-golden-blood: #fbbf24;
+    --egypt-lapis: #1e3a8a;
+    --egypt-obsidian: #0b0704;
+    --egypt-gold-light: #fef3c7;
+    --egypt-gold-dark: #78350f;
+}
+
+/* Premium SVG Icon System */
+.svg-icon {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    vertical-align: middle;
+    fill: currentColor;
+    stroke: currentColor;
+    stroke-width: 0;
+}
+
+.svg-icon-lg {
+    width: 1.5em;
+    height: 1.5em;
+}
+
+.svg-icon-xl {
+    width: 2em;
+    height: 2em;
+}
+
+/* Icon-specific sizing */
+.icon-player { width: 24px; height: 24px; }
+.icon-realm { width: 28px; height: 28px; }
+.icon-resource { width: 20px; height: 20px; }
+.icon-action { width: 22px; height: 22px; }
+.icon-nav { width: 18px; height: 18px; }
+
+.mmo-hud {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #fef3c7;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.mmo-hud * {
+    pointer-events: auto;
+}
+
+.hud-font-title {
+    font-family: 'Cinzel', serif, Georgia;
+    letter-spacing: 0.05em;
+}
+
+.hud-glass {
+    background: linear-gradient(135deg, rgba(20, 12, 7, 0.88) 0%, rgba(10, 6, 3, 0.92) 100%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.9),
+        0 0 20px rgba(245, 158, 11, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    position: relative;
+}
+
+.hud-glass::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(253, 224, 71, 0.6), transparent);
+    opacity: 0.7;
+}
+
+.hud-glass-gold {
+    background: linear-gradient(135deg, rgba(45, 28, 12, 0.94) 0%, rgba(22, 13, 6, 0.97) 100%);
+    border: 2px solid rgba(253, 224, 71, 0.7);
+    box-shadow: 
+        0 12px 40px rgba(0, 0, 0, 0.9),
+        0 0 30px rgba(245, 158, 11, 0.2),
+        inset 0 0 20px rgba(245, 158, 11, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    position: relative;
+}
+
+.hud-glass-gold::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(253, 224, 71, 0.8), transparent);
+    opacity: 0.9;
+}
+
+.hud-glass-gold::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(253, 224, 71, 0.4), transparent);
+    opacity: 0.6;
+}
+
+.gold-gradient-text {
+    background: linear-gradient(135deg, #fffbeb 0%, #fde047 35%, #f59e0b 70%, #d97706 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.gold-btn {
+    background: linear-gradient(135deg, #fef3c7 0%, #fcd34d 20%, #f59e0b 50%, #d97706 80%, #b45309 100%);
+    color: #1a0c02;
+    font-weight: 800;
+    border: 1.5px solid rgba(254, 249, 195, 0.9);
+    box-shadow: 
+        0 4px 15px rgba(245, 158, 11, 0.5),
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.gold-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transition: left 0.5s;
+}
+
+.gold-btn:hover::before {
+    left: 100%;
+}
+
+.gold-btn:hover {
+    filter: brightness(1.08) saturate(1.1);
+    transform: translateY(-2px);
+    box-shadow: 
+        0 8px 25px rgba(245, 158, 11, 0.7),
+        0 4px 12px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.gold-btn:active {
+    transform: translateY(0) scale(0.98);
+    filter: brightness(0.95);
+    box-shadow: 
+        0 2px 8px rgba(245, 158, 11, 0.5),
+        inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.action-pill-btn {
+    background: linear-gradient(135deg, rgba(30, 18, 8, 0.9) 0%, rgba(20, 12, 6, 0.92) 100%);
+    border: 1.5px solid rgba(251, 191, 36, 0.4);
+    color: #fef3c7;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    position: relative;
+}
+
+.action-pill-btn:hover {
+    border-color: rgba(253, 224, 71, 0.9);
+    background: linear-gradient(135deg, rgba(50, 30, 12, 0.95) 0%, rgba(30, 18, 8, 0.97) 100%);
+    transform: translateY(-2px);
+    box-shadow: 
+        0 6px 20px rgba(245, 158, 11, 0.3),
+        0 4px 12px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.action-pill-btn:active {
+    transform: translateY(0) scale(0.95);
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.4),
+        inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Pulsing Golden Blood Animation */
+@keyframes goldPulse {
+    0% { 
+        box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7);
+        border-color: rgba(251, 191, 36, 0.8);
+    }
+    70% { 
+        box-shadow: 0 0 0 14px rgba(251, 191, 36, 0);
+        border-color: rgba(251, 191, 36, 0.5);
+    }
+    100% { 
+        box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+        border-color: rgba(251, 191, 36, 0.8);
+    }
+}
+
+.golden-blood-pulse {
+    animation: goldPulse 2s infinite;
+}
+
+/* Premium Shimmer Effect */
+@keyframes shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+}
+
+.premium-shimmer {
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(253, 224, 71, 0.1) 50%, 
+        transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 3s infinite;
+}
+
+/* Floating Particles Effect */
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+.float-animation {
+    animation: float 3s ease-in-out infinite;
+}
+
+/* Premium Glow Effect */
+.premium-glow {
+    box-shadow: 
+        0 0 20px rgba(245, 158, 11, 0.3),
+        0 0 40px rgba(245, 158, 11, 0.1),
+        0 0 60px rgba(245, 158, 11, 0.05);
+}
+
+/* Status Indicator Pulse */
+@keyframes statusPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+.status-pulse {
+    animation: statusPulse 2s ease-in-out infinite;
+}
+
+/* Modal Overlay */
+.mmo-modal-backdrop {
+    background: rgba(4, 2, 1, 0.82);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+/* Floating notification */
+@keyframes floatUpFade {
+    0% { opacity: 0; transform: translate(-50%, 20px) scale(0.9); }
+    15% { opacity: 1; transform: translate(-50%, 0) scale(1.05); }
+    85% { opacity: 1; transform: translate(-50%, -10px) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -30px) scale(0.95); }
+}
+
+.hud-floating-toast {
+    animation: floatUpFade 2.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom Scrollbars */
+.mmo-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.mmo-scroll::-webkit-scrollbar-track {
+    background: rgba(15, 10, 5, 0.6);
+}
+.mmo-scroll::-webkit-scrollbar-thumb {
+    background: rgba(245, 158, 11, 0.4);
+    border-radius: 4px;
+}
+.mmo-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(253, 224, 71, 0.8);
+}
+
+/* Tutorial and Quest Styles */
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Quest Tracker */
+#quest-tracker {
+    position: fixed;
+    top: 88px;
+    left: 16px;
+    z-index: 42;
+    width: min(310px, calc(100vw - 32px));
+    max-height: 190px;
+    overflow-y: auto;
+    pointer-events: auto;
+}
+
+#quest-tracker .quest-track-card {
+    padding: 10px 12px;
+    border: 1px solid rgba(251, 191, 36, 0.55);
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(28, 17, 8, 0.94), rgba(11, 7, 4, 0.95));
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(10px);
+}
+
+#quest-tracker .quest-track-action {
+    min-height: 34px;
+    padding: 6px 10px;
+    border: 1px solid rgba(253, 224, 71, 0.7);
+    border-radius: 8px;
+    background: rgba(245, 158, 11, 0.18);
+    color: #fde68a;
+    font-size: 10px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+#quest-tracker .quest-track-action:hover {
+    background: rgba(245, 158, 11, 0.35);
+}
+
+/* Objective Progress Animation */
+.objective-complete {
+    color: #34d399 !important;
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+/* Quest Category Badge */
+.quest-badge-main {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.3) 0%, rgba(217, 119, 6, 0.2) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.5);
+    color: #fcd34d;
+}
+
+.quest-badge-side {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(37, 99, 235, 0.2) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.5);
+    color: #93c5fd;
+}
+
+/* Progress Bar Animation */
+.progress-bar-animated {
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* NPC Dialog Box */
+.npc-dialog {
+    position: fixed;
+    bottom: 25%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 60;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.npc-dialog-content {
+    background: linear-gradient(135deg, rgba(20, 12, 7, 0.95) 0%, rgba(10, 6, 3, 0.98) 100%);
+    border: 2px solid rgba(253, 224, 71, 0.7);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    max-width: 500px;
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.9),
+        0 0 40px rgba(245, 158, 11, 0.2),
+        inset 0 0 20px rgba(245, 158, 11, 0.1);
+}
+
+.npc-dialog-portrait {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid rgba(253, 224, 71, 0.6);
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
+}
+
+.npc-dialog-typing {
+    overflow: hidden;
+    white-space: nowrap;
+    animation: typing 2s steps(40, end);
+}
+
+@keyframes typing {
+    from { width: 0; }
+    to { width: 100%; }
+}
+
+/* Waypoint Marker */
+.waypoint-marker {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(253, 224, 71, 0.8) 0%, rgba(245, 158, 11, 0.4) 50%, transparent 70%);
+    animation: pulse-waypoint 2s infinite;
+    pointer-events: none;
+}
+
+@keyframes pulse-waypoint {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+/* Tutorial Highlight */
+.tutorial-highlight {
+    position: relative;
+    z-index: 55;
+    box-shadow: 
+        0 0 0 4px rgba(253, 224, 71, 0.8),
+        0 0 20px rgba(253, 224, 71, 0.6),
+        0 0 40px rgba(253, 224, 71, 0.4);
+    animation: highlight-pulse 2s infinite;
+}
+
+@keyframes highlight-pulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(253, 224, 71, 0.8), 0 0 20px rgba(253, 224, 71, 0.6); }
+    50% { box-shadow: 0 0 0 8px rgba(253, 224, 71, 0.6), 0 0 30px rgba(253, 224, 71, 0.4); }
+}
+
+/* ==========================================================================
+   AAA PC MMORPG INTERFACE & RESPONSIVE LAYOUT
+   ========================================================================== */
+
+/* PC vs Mobile Responsive Visibility */
+@media (min-width: 1025px) {
+    #joystick-zone {
+        display: none !important;
+    }
+    #mmo-combat-buttons {
+        display: none !important;
+    }
+    .mmo-mobile-only {
+        display: none !important;
+    }
+    .mmo-pc-only {
+        display: flex !important;
+    }
+}
+
+@media (max-width: 1024px) {
+    .mmo-pc-only {
+        display: none !important;
+    }
+    .mmo-mobile-only {
+        display: flex !important;
+    }
+    #joystick-zone {
+        display: flex !important;
+    }
+}
+
+/* PC Unit Frame (Top-Left) */
+.mmo-pc-unitframe {
+    position: fixed;
+    top: 14px;
+    left: 16px;
+    z-index: 40;
+    pointer-events: auto;
+    background: linear-gradient(135deg, rgba(24, 14, 8, 0.94) 0%, rgba(12, 7, 4, 0.96) 100%);
+    border: 2px solid rgba(251, 191, 36, 0.65);
+    border-radius: 18px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    min-width: 290px;
+}
+
+/* PC Realm Cartouche Banner (Top-Center) */
+.mmo-pc-realmbanner {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 40;
+    pointer-events: auto;
+    background: linear-gradient(135deg, rgba(38, 22, 10, 0.95) 0%, rgba(18, 10, 5, 0.98) 100%);
+    border: 2px solid rgba(253, 224, 71, 0.75);
+    border-radius: 20px;
+    padding: 8px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 20px rgba(245, 158, 11, 0.25);
+    white-space: nowrap;
+}
+
+/* PC Top Right Treasury & System */
+.mmo-pc-topright {
+    position: fixed;
+    top: 14px;
+    right: 16px;
+    z-index: 40;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* PC Hotbar (Bottom-Center) */
+.mmo-pc-hotbar {
+    position: fixed;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 40;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(180deg, rgba(28, 16, 8, 0.95) 0%, rgba(14, 8, 4, 0.98) 100%);
+    border: 2px solid rgba(251, 191, 36, 0.7);
+    border-radius: 18px;
+    padding: 8px 12px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.9), 0 0 25px rgba(245, 158, 11, 0.2);
+}
+
+.mmo-hotbar-slot {
+    position: relative;
+    width: 58px;
+    height: 58px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(40, 24, 12, 0.9) 0%, rgba(18, 10, 5, 0.95) 100%);
+    border: 1.5px solid rgba(251, 191, 36, 0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.mmo-hotbar-slot:hover {
+    border-color: rgba(253, 224, 71, 0.95);
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45);
+}
+
+.mmo-hotbar-slot:active, .mmo-hotbar-slot.pressed {
+    transform: translateY(1px) scale(0.96);
+    border-color: #fef08a;
+    background: linear-gradient(135deg, rgba(70, 42, 16, 0.95) 0%, rgba(35, 18, 8, 0.98) 100%);
+    box-shadow: 0 0 25px rgba(253, 224, 71, 0.6);
+}
+
+.mmo-key-badge {
+    position: absolute;
+    top: 3px;
+    left: 4px;
+    font-size: 10px;
+    font-weight: 900;
+    color: #fde047;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    background: rgba(0, 0, 0, 0.6);
+    padding: 1px 4px;
+    border-radius: 4px;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.mmo-hotbar-label {
+    font-size: 9px;
+    font-weight: 800;
+    color: #fef3c7;
+    letter-spacing: 0.02em;
+    margin-top: 2px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 52px;
+}
+
+/* PC Micro Menu (Bottom-Right) */
+.mmo-pc-micromenu {
+    position: fixed;
+    bottom: 18px;
+    right: 18px;
+    z-index: 40;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, rgba(22, 13, 7, 0.92) 0%, rgba(10, 6, 3, 0.95) 100%);
+    border: 1.5px solid rgba(251, 191, 36, 0.45);
+    border-radius: 16px;
+    padding: 6px 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
+}
+
+/* PC Chat Box (Bottom-Left) */
+.mmo-pc-chat {
+    position: fixed;
+    bottom: 18px;
+    left: 18px;
+    z-index: 40;
+    pointer-events: auto;
+    width: 370px;
+    height: 200px;
+    background: linear-gradient(135deg, rgba(18, 11, 6, 0.92) 0%, rgba(8, 5, 2, 0.96) 100%);
+    border: 1.5px solid rgba(251, 191, 36, 0.5);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85);
+    transition: all 0.25s ease;
+    overflow: hidden;
+}
+
+.mmo-pc-chat.minimized {
+    height: 38px !important;
+}
+
+.mmo-chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    border-bottom: 1px solid rgba(251, 191, 36, 0.3);
+    background: rgba(0, 0, 0, 0.4);
+    font-size: 11px;
+    font-weight: 800;
+    color: #fde047;
+}
+
+.mmo-chat-tabs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.25);
+    border-bottom: 1px solid rgba(251, 191, 36, 0.15);
+}
+
+.mmo-chat-tab {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    color: rgba(254, 243, 199, 0.6);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.mmo-chat-tab.active, .mmo-chat-tab:hover {
+    color: #fde047;
+    background: rgba(251, 191, 36, 0.2);
+}
+
+.mmo-chat-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 11px;
+}
+
+.mmo-chat-input-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.5);
+    border-top: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+/* FPV Camera toggle adjustment on PC */
+#fpv-toggle-btn {
+    bottom: 5.25rem !important;
+    right: 1.25rem !important;
+    z-index: 35 !important;
+}
+
+/* Micro-menu buttons */
+.mmo-pc-micromenu .action-pill-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 800;
+    transition: all 0.15s ease;
+}
+
+.mmo-pc-micromenu .action-pill-btn:hover {
+    transform: translateY(-2px);
+    border-color: #fde047;
+    background: rgba(251, 191, 36, 0.25);
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+}
+
+/* ==========================================================================
+   MMORPG KAYNAK TOPLAMA, CAST BAR & OTO-GÖREV STILLERI
+   ========================================================================== */
+
+/* 1. Etkileşim İpucu (Prompter) */
+.mmo-harvest-prompt {
+    position: fixed;
+    bottom: 8.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 55;
+    pointer-events: auto;
+    animation: promptFloat 2s ease-in-out infinite;
+}
+
+@keyframes promptFloat {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-5px); }
+}
+
+.mmo-prompt-inner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, rgba(28, 18, 8, 0.94), rgba(12, 8, 4, 0.98));
+    border: 2px solid #fbbf24;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 20px rgba(251, 191, 36, 0.35);
+    padding: 8px 18px;
+    border-radius: 9999px;
+    backdrop-filter: blur(12px);
+}
+
+.mmo-prompt-icon {
+    font-size: 22px;
+    animation: pulseIcon 1.5s infinite;
+}
+
+@keyframes pulseIcon {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+.mmo-prompt-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.mmo-prompt-action-btn {
+    background: linear-gradient(to right, #f59e0b, #fbbf24);
+    color: #0b0704;
+    font-weight: 900;
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    border: 1px solid #fff;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+    transition: all 0.15s ease;
+}
+
+.mmo-prompt-action-btn:hover {
+    transform: scale(1.06);
+    background: #fde047;
+    box-shadow: 0 6px 18px rgba(251, 191, 36, 0.6);
+}
+
+/* 2. MMORPG Hasat / Madencilik İlerleme Barı (Cast Bar) */
+.mmo-cast-container {
+    position: fixed;
+    bottom: 8.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 60;
+    pointer-events: none;
+}
+
+.mmo-cast-box {
+    width: 320px;
+    max-width: 90vw;
+    background: linear-gradient(135deg, rgba(20, 12, 6, 0.96), rgba(8, 5, 2, 0.98));
+    border: 2px solid #f59e0b;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.9), 0 0 25px rgba(245, 158, 11, 0.45);
+    border-radius: 16px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(14px);
+}
+
+.mmo-cast-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.mmo-cast-title {
+    font-size: 12px;
+    font-weight: 900;
+    color: #fef3c7;
+    flex: 1;
+    margin-left: 6px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+.mmo-cast-time {
+    font-size: 10px;
+    font-weight: 800;
+    color: #fbbf24;
+}
+
+.mmo-cast-bar-bg {
+    position: relative;
+    width: 100%;
+    height: 14px;
+    background: rgba(0, 0, 0, 0.85);
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    border-radius: 9999px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.9);
+}
+
+.mmo-cast-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(to right, #b45309, #f59e0b, #fde047);
+    border-radius: 9999px;
+    transition: width 0.08s linear;
+    box-shadow: 0 0 12px rgba(253, 224, 71, 0.8);
+}
+
+.mmo-cast-shimmer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+    animation: shimmerCast 1.2s infinite;
+}
+
+@keyframes shimmerCast {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* 3. Otomatik Görev İlerleme Bannerı (Auto-Questing) */
+.mmo-auto-banner {
+    position: fixed;
+    top: 5.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 45;
+    pointer-events: auto;
+    animation: bannerPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes bannerPop {
+    0% { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+    100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+.mmo-auto-banner-inner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: linear-gradient(135deg, rgba(25, 14, 5, 0.95), rgba(12, 6, 2, 0.98));
+    border: 2px solid #38bdf8;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.85), 0 0 24px rgba(56, 189, 248, 0.35);
+    border-radius: 18px;
+    padding: 8px 18px;
+    backdrop-filter: blur(14px);
+}
+
+.mmo-auto-pulsing-radar {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #38bdf8;
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.8);
+    animation: autoRadar 1.4s infinite;
+}
+
+@keyframes autoRadar {
+    0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.8); }
+    70% { box-shadow: 0 0 0 14px rgba(56, 189, 248, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+}
+
+.mmo-auto-cancel-btn {
+    background: rgba(239, 68, 68, 0.25);
+    border: 1px solid #ef4444;
+    color: #fca5a5;
+    font-weight: 800;
+    font-size: 10px;
+    padding: 5px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.mmo-auto-cancel-btn:hover {
+    background: #ef4444;
+    color: #fff;
+    transform: scale(1.05);
+}
+
+/* 4. Görev Kartları İçin Oto-Git & Kas Butonu */
+.mmo-auto-quest-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(to right, #0284c7, #38bdf8);
+    color: #fff;
+    font-weight: 900;
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4);
+    transition: all 0.15s ease;
+}
+
+.mmo-auto-quest-btn:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(to right, #0369a1, #0ea5e9);
+    box-shadow: 0 6px 20px rgba(14, 165, 233, 0.6);
+}
+
+/* =========================================================================
+   CINEMATIC TIKTOK & REELS STUDIO STYLES
+   ========================================================================= */
+.cine-preset-card {
+    transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.cine-preset-card:hover {
+    transform: translateY(-2px) scale(1.01);
+    border-color: rgba(251, 191, 36, 0.85);
+    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25);
+}
+
+.cine-preset-card.active {
+    border-color: #fbbf24 !important;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(180, 83, 9, 0.20) 100%) !important;
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.4), inset 0 0 15px rgba(253, 224, 71, 0.15) !important;
+}
+
+.cine-preset-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(254, 240, 138, 0.15), transparent);
+    transition: left 0.5s;
+    pointer-events: none;
+}
+
+.cine-preset-card:hover::after {
+    left: 150%;
+}
+
+@media (max-width: 1024px) {
+    html, body {
+        width: 100vw;
+        max-width: 100vw;
+        overflow: hidden;
+    }
+
+    canvas {
+        touch-action: none;
+        width: 100vw;
+        height: 100dvh;
+        max-width: 100vw;
+        max-height: 100dvh;
+    }
+
+    body {
+        padding: 0;
+    }
+
+    .mmo-pc-unitframe {
+        top: max(8px, env(safe-area-inset-top));
+        left: 8px;
+        min-width: 0;
+        width: min(55vw, 225px);
+        padding: 6px;
+        gap: 7px;
+        border-width: 1px;
+        border-radius: 12px;
+    }
+
+    .mmo-pc-unitframe > div:last-child {
+        min-width: 0 !important;
+        flex: 1;
+    }
+
+    #hud-avatar-box {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        border-width: 1px;
+    }
+
+    .mmo-pc-realmbanner {
+        top: max(8px, env(safe-area-inset-top));
+        right: 8px;
+        left: auto;
+        transform: none;
+        max-width: 35vw;
+        padding: 5px;
+        gap: 4px;
+        border-width: 1px;
+        border-radius: 12px;
+    }
+
+    .mmo-pc-realmbanner > button:first-child > span:nth-child(n+2),
+    #hud-cam-btn > span:last-child,
+    #hud-studio-btn,
+    #hud-flight-btn {
+        display: none !important;
+    }
+
+    #hud-cam-btn {
+        width: 38px;
+        height: 38px;
+        justify-content: center;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .mmo-pc-topright {
+        top: calc(max(8px, env(safe-area-inset-top)) + 58px);
+        right: 8px;
+        left: 8px;
+        justify-content: flex-end;
+        gap: 4px;
+    }
+
+    .mmo-pc-topright > .hud-glass {
+        min-width: 0;
+        gap: 4px;
+        padding: 4px 6px;
+        border-radius: 10px;
+    }
+
+    .mmo-pc-topright > .hud-glass > div:nth-child(n+4) {
+        display: none;
+    }
+
+    .mmo-pc-topright > .hud-glass > div {
+        padding-left: 4px;
+        padding-right: 4px;
+    }
+
+    .mmo-pc-topright > button {
+        min-height: 36px;
+        padding: 6px 8px !important;
+        border-radius: 10px;
+    }
+
+    .mmo-pc-topright > button:last-child > span:last-child {
+        display: none;
+    }
+
+    #joystick-zone {
+        top: auto !important;
+        bottom: max(12px, env(safe-area-inset-bottom)) !important;
+        left: max(12px, env(safe-area-inset-left)) !important;
+        width: 104px !important;
+        height: 104px !important;
+        z-index: 35 !important;
+        border-radius: 50%;
+    }
+
+    #joystick-knob {
+        width: 42px;
+        height: 42px;
+    }
+
+    #hud-mobile-controls {
+        right: max(12px, env(safe-area-inset-right)) !important;
+        bottom: max(12px, env(safe-area-inset-bottom)) !important;
+        width: min(46vw, 210px);
+        gap: 6px !important;
+        max-width: calc(100vw - 24px);
+        transform: none;
+    }
+
+    #hud-context-action-btn {
+        min-height: 44px;
+        padding: 8px 12px !important;
+        border-radius: 14px !important;
+        font-size: 11px !important;
+        width: 100%;
+        justify-content: center;
+    }
+
+    #hud-toast-area {
+        top: max(18px, calc(env(safe-area-inset-top) + 12px)) !important;
+        left: 50% !important;
+        width: min(92vw, 380px);
+    }
+
+    #hud-mobile-controls > div {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 4px;
+        width: 100%;
+        max-width: none;
+    }
+
+    #hud-mobile-controls .action-pill-btn {
+        min-height: 34px;
+        justify-content: center;
+        padding: 5px 4px;
+        border-radius: 9px;
+        font-size: 10px;
+        white-space: nowrap;
+    }
+
+    #fpv-toggle-btn {
+        display: none !important;
+    }
+
+    #mmo-modal-container {
+        padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+    }
+
+    #mmo-modal-content {
+        max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 20px);
+        padding: 14px;
+        border-radius: 16px;
+    }
+
+    #quest-tracker {
+        top: 124px;
+        left: 8px;
+        width: min(250px, calc(100vw - 16px));
+        max-height: 130px;
+    }
+
+    #quest-tracker .quest-track-card {
+        padding: 8px;
+    }
+}
+
+

@@ -1,0 +1,2307 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gods of Egypt (2016) - Sinematik Karakter & Tanrı Zırhı Motoru</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="gameHud.css">
+    <script src="errorHandler.js"></script>
+    <script src="loadingScreen.js"></script>
+    <script src="svg-icons.js"></script>
+    <script src="gameState.js"></script>
+    <script src="gameAudio.js"></script>
+    <script src="tutorialSystem.js"></script>
+    <script src="npcSystem.js"></script>
+    <script src="gameHud.js"></script>
+    <script src="cameraSystem.js"></script>
+    <script src="cinematicStudio.js"></script>
+    <script src="flightSystem.js"></script>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #120c07;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        .ui-glass {
+            background: rgba(18, 12, 6, 0.84);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(251, 191, 36, 0.42);
+            box-shadow: 0 10px 36px rgba(0, 0, 0, 0.65);
+        }
+        .char-pill {
+            transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .char-pill.active {
+            background: linear-gradient(135deg, #fde047 0%, #f59e0b 55%, #b45309 100%);
+            color: #1c1004;
+            border-color: #fef9c3;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.75);
+            transform: translateY(-1px);
+        }
+        .action-btn:active { transform: scale(0.93); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="text-amber-100 overflow-hidden">
+
+    <!-- ÜST KARAKTER SEÇİM ÇUBUĞU -->
+    <div class="fixed top-3 left-1/2 -translate-x-1/2 z-20 ui-glass px-2.5 py-1.5 rounded-2xl flex items-center gap-1.5 max-w-[96vw] overflow-x-auto no-scrollbar">
+        <button onclick="selectCharacter(0)" id="pill-0" class="char-pill active px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 whitespace-nowrap">
+            Ölümlü (Bek)
+        </button>
+        <button onclick="selectCharacter(1)" id="pill-1" class="char-pill px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 text-amber-200/90 whitespace-nowrap">
+            Köylü
+        </button>
+        <button onclick="selectCharacter(2)" id="pill-2" class="char-pill px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 text-amber-200/90 whitespace-nowrap">
+            İnsan Horus (2.8m)
+        </button>
+        <button onclick="selectCharacter(3)" id="pill-3" class="char-pill px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 text-amber-200/90 whitespace-nowrap">
+            Horus Zırh (3.5m)
+        </button>
+        <button onclick="selectCharacter(4)" id="pill-4" class="char-pill px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 text-amber-200/90 whitespace-nowrap">
+            Set Zırh (3.6m)
+        </button>
+        <button onclick="window.GameState.teleportTo('mısır.html')" class="gold-btn px-4 py-1.5 rounded-xl text-xs font-black ml-2 shadow-lg whitespace-nowrap">
+            ▶ Bu Formla Dünyaya Gir
+        </button>
+        <button onclick="window.openCinematicStudio ? window.openCinematicStudio() : (window.EgyptCinematicStudio && window.EgyptCinematicStudio.openStudioModal())" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black bg-gradient-to-r from-red-600 via-amber-600 to-yellow-600 text-yellow-200 border border-amber-400/80 shadow-lg hover:from-red-500 hover:to-yellow-400 hover:text-black transition-all active:scale-95 whitespace-nowrap animate-pulse ml-1" title="TikTok, Reels & YouTube Sinematik Video Stüdyosu [K]">
+            <span>🎬</span>
+            <span>TİKTOK SİNEMATİK [K]</span>
+        </button>
+        <button onclick="window.EgyptFlightEngine && window.EgyptFlightEngine.toggleFlight()" id="hud-flight-btn" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black bg-gradient-to-r from-sky-600 via-cyan-600 to-amber-600 text-cyan-200 border border-cyan-400/80 shadow-lg hover:from-sky-500 hover:to-amber-400 hover:text-black transition-all active:scale-95 whitespace-nowrap ml-1" title="İlahi Tanrı Uçuşu [F]">
+            <span>🦅</span>
+            <span id="flight-label">İLAHİ UÇUŞ [F]</span>
+        </button>
+    </div>
+
+    <!-- SOL ALT: MOBİL YÜRÜME JOYSTICK -->
+    <div id="joystick-zone" class="fixed bottom-6 left-6 w-32 h-32 ui-glass rounded-full flex items-center justify-center z-20 touch-none">
+        <div class="w-20 h-20 rounded-full border border-amber-400/30 pointer-events-none"></div>
+        <div id="joystick-knob" class="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-700 via-amber-400 to-yellow-200 border-2 border-white/90 shadow-xl absolute pointer-events-none transition-transform duration-75"></div>
+    </div>
+
+    <!-- SAĞ ALT: KAMERA AÇISI VE KANAT / SAVAŞ POZU KONTROLLERİ -->
+    <div class="fixed bottom-6 right-6 z-20 flex flex-col items-end gap-2">
+        <div class="flex flex-wrap justify-end gap-1.5">
+            <button onclick="toggleWingsPose()" id="btn-wings" class="action-btn ui-glass px-3 py-1.5 rounded-xl text-xs font-bold text-amber-300 border border-amber-400/40">
+                Kanat / Savaş Pozu
+            </button>
+            <button onclick="focusFace()" class="action-btn ui-glass px-3 py-1.5 rounded-xl text-xs font-semibold text-amber-200">
+                Yüz / Miğfer
+            </button>
+            <button onclick="resetCameraView()" class="action-btn ui-glass px-3 py-1.5 rounded-xl text-xs font-semibold text-amber-200">
+                Tam Boy
+            </button>
+        </div>
+        <div class="ui-glass px-3 py-1.5 rounded-xl text-[11px] text-amber-200/90 pointer-events-none">
+            Ekranı kaydır: 360° Kamera • İki parmak: Yakınlaştır
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, clock;
+        let characters = [];
+        let activeIndex = 0;
+        let heroicPoseActive = false;
+        let frontKeyLight;
+        let divineParticles;
+
+        // Kontroller
+        let joyActive = false;
+        let joyPointerId = null;
+        let joyVec = { x: 0, y: 0 };
+        const keys = { w: false, a: false, s: false, d: false };
+
+        // 360° Kamera ve Yakınlaştırma
+        let camYaw = 0.08;
+        let camPitch = 0.03;
+        let camDist = 3.45;
+        let camTargetY = 1.05;
+        let desiredTargetY = 1.05;
+        let desiredDist = 3.45;
+        const activePointers = new Map();
+        let lastPinchDist = 0;
+
+        // ==========================================
+        // 1. PBR YANSIMA HARİTASI VE ANATOMİK DOKULAR
+        // ==========================================
+        function buildTextures(rendererInstance) {
+            // 1. Stüdyo & Mısır Tapınağı HDR Yansıma Haritası
+            const envC = document.createElement('canvas');
+            envC.width = 1024; envC.height = 512;
+            const eCtx = envC.getContext('2d');
+
+            const skyGrad = eCtx.createLinearGradient(0, 0, 0, 512);
+            skyGrad.addColorStop(0.0, '#090d16');
+            skyGrad.addColorStop(0.22, '#1e293b');
+            skyGrad.addColorStop(0.44, '#d97706');
+            skyGrad.addColorStop(0.50, '#fef08a');
+            skyGrad.addColorStop(0.56, '#92400e');
+            skyGrad.addColorStop(0.78, '#271206');
+            skyGrad.addColorStop(1.0, '#0c0603');
+            eCtx.fillStyle = skyGrad;
+            eCtx.fillRect(0, 0, 1024, 512);
+
+            const studioPanels = [
+                { x: 220, y: 150, r: 135, c: 'rgba(255, 250, 220, 0.95)' },
+                { x: 512, y: 175, r: 165, c: 'rgba(253, 224, 71, 0.88)' },
+                { x: 810, y: 150, r: 135, c: 'rgba(255, 237, 213, 0.90)' },
+                { x: 512, y: 370, r: 155, c: 'rgba(217, 119, 6, 0.55)' }
+            ];
+            studioPanels.forEach(p => {
+                const rg = eCtx.createRadialGradient(p.x, p.y, 5, p.x, p.y, p.r);
+                rg.addColorStop(0, p.c);
+                rg.addColorStop(0.45, 'rgba(245, 158, 11, 0.35)');
+                rg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                eCtx.fillStyle = rg;
+                eCtx.fillRect(0, 0, 1024, 512);
+            });
+
+            const rawEnvTex = new THREE.CanvasTexture(envC);
+            rawEnvTex.mapping = THREE.EquirectangularReflectionMapping;
+
+            const pmremGenerator = new THREE.PMREMGenerator(rendererInstance);
+            pmremGenerator.compileEquirectangularShader();
+            const envMap = pmremGenerator.fromEquirectangular(rawEnvTex).texture;
+            rawEnvTex.dispose();
+            pmremGenerator.dispose();
+
+            // 2. Doğal İnsan Gövde Dokusu (u = 0.5 TAM ÖN, u = 0/1 TAM SIRT)
+            function createTorsoTexture(baseRgb, darkRgb, highlightRgb) {
+                const c = document.createElement('canvas');
+                c.width = 1024; c.height = 1024;
+                const ctx = c.getContext('2d');
+
+                ctx.fillStyle = `rgb(${baseRgb[0]}, ${baseRgb[1]}, ${baseRgb[2]})`;
+                ctx.fillRect(0, 0, 1024, 1024);
+
+                function softBlob(cx, cy, rx, ry, colorStr) {
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.scale(rx, ry);
+                    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+                    g.addColorStop(0, colorStr);
+                    g.addColorStop(0.55, colorStr.replace(/[\d.]+\)$/, (m) => (parseFloat(m) * 0.42) + ')'));
+                    g.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = g;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 1, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                const shadow = (a) => `rgba(${darkRgb[0]}, ${darkRgb[1]}, ${darkRgb[2]}, ${a})`;
+                const light = (a) => `rgba(${highlightRgb[0]}, ${highlightRgb[1]}, ${highlightRgb[2]}, ${a})`;
+
+                // YAN GÖVDE
+                softBlob(265, 520, 82, 330, shadow(0.26));
+                softBlob(759, 520, 82, 330, shadow(0.26));
+
+                // ARKA SIRT ANATOMİSİ (x = 0 ve x = 1024)
+                softBlob(0, 500, 28, 330, shadow(0.38));
+                softBlob(1024, 500, 28, 330, shadow(0.38));
+                softBlob(95, 360, 72, 95, light(0.20));
+                softBlob(929, 360, 72, 95, light(0.20));
+
+                // ÖN MERKEZ (x = 512): Sternum ve Linea Alba
+                softBlob(512, 515, 13, 250, shadow(0.32));
+
+                // ÖN GÖĞÜS KASLARI (Pectoralis Major)
+                [-1, 1].forEach(dir => {
+                    const px = 512 + dir * 74;
+                    softBlob(px, 392, 66, 15, shadow(0.42));
+                    softBlob(px, 336, 62, 48, light(0.28));
+                    softBlob(512 + dir * 68, 232, 56, 10, light(0.26));
+                    softBlob(512 + dir * 68, 244, 56, 8, shadow(0.28));
+                });
+
+                // ÖN KARIN KASLARI (Abdominals)
+                const abRows = [465, 545, 625];
+                abRows.forEach((ry, idx) => {
+                    const w = 36 - idx * 3;
+                    [-1, 1].forEach(dir => {
+                        const ax = 512 + dir * 36;
+                        softBlob(ax, ry + 30, w, 8, shadow(0.28));
+                        softBlob(ax, ry, w * 0.85, 22, light(0.20));
+                    });
+                });
+
+                // Göbek deliği hafif gölgesi
+                softBlob(512, 682, 8, 10, shadow(0.45));
+
+                return new THREE.CanvasTexture(c);
+            }
+
+            // 3. Pürüzsüz Doğal İnsan Cilt Dokusu (Yüzde çöküntü yapan bumpMap olmadan temiz cilt tonu!)
+            function createCleanSkinTexture(baseRgb, darkRgb, highlightRgb) {
+                const c = document.createElement('canvas');
+                c.width = 512; c.height = 512;
+                const ctx = c.getContext('2d');
+
+                ctx.fillStyle = `rgb(${baseRgb[0]}, ${baseRgb[1]}, ${baseRgb[2]})`;
+                ctx.fillRect(0, 0, 512, 512);
+
+                // Yanak ve alın sıcak ton geçişi
+                const g = ctx.createRadialGradient(256, 230, 10, 256, 256, 190);
+                g.addColorStop(0, `rgba(${highlightRgb[0]}, ${highlightRgb[1]}, ${highlightRgb[2]}, 0.25)`);
+                g.addColorStop(0.65, `rgba(${baseRgb[0]}, ${baseRgb[1]}, ${baseRgb[2]}, 0.0)`);
+                g.addColorStop(1, `rgba(${darkRgb[0]}, ${darkRgb[1]}, ${darkRgb[2]}, 0.22)`);
+                ctx.fillStyle = g;
+                ctx.fillRect(0, 0, 512, 512);
+
+                return new THREE.CanvasTexture(c);
+            }
+
+            // 4. Pilili Mısır Keteni (Shendyt) Dokusu
+            const linenC = document.createElement('canvas');
+            linenC.width = 512; linenC.height = 512;
+            const lCtx = linenC.getContext('2d');
+            lCtx.fillStyle = '#eee3cf';
+            lCtx.fillRect(0, 0, 512, 512);
+            for (let x = 0; x < 512; x += 8) {
+                lCtx.fillStyle = x % 16 === 0 ? 'rgba(115, 86, 54, 0.28)' : 'rgba(255, 250, 240, 0.55)';
+                lCtx.fillRect(x, 0, 4, 512);
+            }
+            lCtx.fillStyle = '#b45309';
+            lCtx.fillRect(0, 468, 512, 16);
+            lCtx.fillStyle = '#1d4ed8';
+            lCtx.fillRect(0, 484, 512, 10);
+            const linenTex = new THREE.CanvasTexture(linenC);
+
+            // 5. 2016 Filmi Biyomekanik Altın Zırh Pul/Tüy Dokusu
+            const goldC = document.createElement('canvas');
+            goldC.width = 512; goldC.height = 512;
+            const gCtx = goldC.getContext('2d');
+            const gGrad = gCtx.createLinearGradient(0, 0, 512, 512);
+            gGrad.addColorStop(0, '#f59e0b');
+            gGrad.addColorStop(0.5, '#fbbf24');
+            gGrad.addColorStop(1, '#b45309');
+            gCtx.fillStyle = gGrad;
+            gCtx.fillRect(0, 0, 512, 512);
+
+            gCtx.strokeStyle = 'rgba(92, 45, 6, 0.34)';
+            gCtx.lineWidth = 2;
+            for (let y = 0; y < 512; y += 24) {
+                for (let x = 0; x < 512; x += 28) {
+                    gCtx.beginPath();
+                    gCtx.moveTo(x, y);
+                    gCtx.lineTo(x + 14, y + 12);
+                    gCtx.lineTo(x + 28, y);
+                    gCtx.stroke();
+                }
+            }
+            const goldTex = new THREE.CanvasTexture(goldC);
+
+            // 6. Tapınak Kumtaşı Zemin Dokusu
+            const floorC = document.createElement('canvas');
+            floorC.width = 512; floorC.height = 512;
+            const fCtx = floorC.getContext('2d');
+            fCtx.fillStyle = '#c29b6c';
+            fCtx.fillRect(0, 0, 512, 512);
+            for (let i = 0; i < 9000; i++) {
+                fCtx.fillStyle = i % 2 === 0 ? 'rgba(255,240,215,0.05)' : 'rgba(75,42,15,0.06)';
+                fCtx.fillRect(Math.random() * 512, Math.random() * 512, 3, 3);
+            }
+            fCtx.strokeStyle = 'rgba(85, 48, 18, 0.35)';
+            fCtx.lineWidth = 3;
+            for (let p = 0; p <= 512; p += 128) {
+                fCtx.beginPath(); fCtx.moveTo(p, 0); fCtx.lineTo(p, 512); fCtx.stroke();
+                fCtx.beginPath(); fCtx.moveTo(0, p); fCtx.lineTo(512, p); fCtx.stroke();
+            }
+            const floorTex = new THREE.CanvasTexture(floorC);
+            floorTex.wrapS = THREE.RepeatWrapping;
+            floorTex.wrapT = THREE.RepeatWrapping;
+            floorTex.repeat.set(60, 60);
+
+            return {
+                envMap,
+                linenTex,
+                goldTex,
+                floorTex,
+                torsoBek: createTorsoTexture([198, 130, 90], [96, 46, 22], [238, 182, 144]),
+                torsoVillager: createTorsoTexture([180, 112, 74], [82, 38, 16], [218, 156, 116]),
+                torsoHorus: createTorsoTexture([210, 144, 102], [106, 52, 24], [246, 196, 158]),
+                faceBek: createCleanSkinTexture([198, 130, 90], [110, 55, 28], [238, 182, 144]),
+                faceVillager: createCleanSkinTexture([180, 112, 74], [94, 45, 20], [218, 156, 116]),
+                faceHorus: createCleanSkinTexture([210, 144, 102], [116, 60, 30], [246, 196, 158])
+            };
+        }
+
+        // ==========================================
+        // 2. KESİNTİSİZ CANLI KAS UZUV MOTORU
+        // ==========================================
+        function createContinuousSkinnedLimb(totalLength, jointRatio, profile, material, isArm = false) {
+            const radialSegs = 28;
+            const heightSegs = 32;
+            const geom = new THREE.CylinderGeometry(1, 1, totalLength, radialSegs, heightSegs, true);
+
+            const pos = geom.attributes.position;
+            const restData = [];
+
+            for (let i = 0; i < pos.count; i++) {
+                const vx = pos.getX(i);
+                const vy = pos.getY(i);
+                const vz = pos.getZ(i);
+
+                const t = Math.max(0.0, Math.min(1.0, (totalLength / 2 - vy) / totalLength));
+                const radialLen = Math.hypot(vx, vz);
+                const nx = radialLen > 0.0001 ? vx / radialLen : 0;
+                const nz = radialLen > 0.0001 ? vz / radialLen : 0;
+
+                let rx = profile[profile.length - 1][1];
+                let rz = profile[profile.length - 1][2];
+                let offZ = profile[profile.length - 1][3] || 0;
+
+                for (let j = 0; j < profile.length - 1; j++) {
+                    const p0 = profile[j];
+                    const p1 = profile[j + 1];
+                    if (t >= p0[0] && t <= p1[0] + 0.0001) {
+                        const span = Math.max(0.0001, p1[0] - p0[0]);
+                        const lt = Math.max(0.0, Math.min(1.0, (t - p0[0]) / span));
+                        const s = lt * lt * (3 - 2 * lt);
+                        rx = p0[1] + (p1[1] - p0[1]) * s;
+                        rz = p0[2] + (p1[2] - p0[2]) * s;
+                        offZ = (p0[3] || 0) + ((p1[3] || 0) - (p0[3] || 0)) * s;
+                        break;
+                    }
+                }
+
+                // Omuz ve kalça kökünü gövdeyle pürüzsüz birleştirme
+                let capScale = 1.0;
+                let yLocal = -t * totalLength;
+                if (t < 0.08) {
+                    const kt = t / 0.08;
+                    capScale = Math.sin(kt * Math.PI * 0.5);
+                    yLocal = (1.0 - kt) * (rx * 0.55);
+                }
+
+                const lx = nx * rx * capScale;
+                const lz = nz * rz * capScale + offZ;
+
+                restData.push({ t, lx, ly: yLocal, lz });
+                pos.setXYZ(i, lx, yLocal, lz);
+            }
+
+            geom.computeVertexNormals();
+            const mesh = new THREE.Mesh(geom, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+
+            const jointY = -jointRatio * totalLength;
+
+            const upperGroup = new THREE.Group();
+            upperGroup.position.set(0, -totalLength * 0.25, 0);
+            mesh.add(upperGroup);
+
+            const lowerGroup = new THREE.Group();
+            lowerGroup.position.set(0, jointY, 0);
+            mesh.add(lowerGroup);
+
+            const endGroup = new THREE.Group();
+            endGroup.position.set(0, -totalLength, 0);
+            mesh.add(endGroup);
+
+            function updateBend(jointAngleX) {
+                const sinA = Math.sin(jointAngleX);
+                const cosA = Math.cos(jointAngleX);
+
+                for (let i = 0; i < restData.length; i++) {
+                    const v = restData[i];
+                    if (v.t <= jointRatio - 0.09) {
+                        pos.setXYZ(i, v.lx, v.ly, v.lz);
+                    } else {
+                        let weight = 1.0;
+                        if (v.t < jointRatio + 0.09) {
+                            const kt = (v.t - (jointRatio - 0.09)) / 0.18;
+                            weight = kt * kt * (3 - 2 * kt);
+                        }
+                        const a = jointAngleX * weight;
+                        const s = Math.sin(a);
+                        const c = Math.cos(a);
+
+                        const dy = v.ly - jointY;
+                        const dz = v.lz;
+
+                        const ny = jointY + dy * c - dz * s;
+                        const nz = dy * s + dz * c;
+                        pos.setXYZ(i, v.lx, ny, nz);
+                    }
+                }
+                pos.needsUpdate = true;
+
+                lowerGroup.position.set(0, jointY, 0);
+                lowerGroup.rotation.x = jointAngleX;
+
+                const lowerLen = totalLength * (1 - jointRatio);
+                endGroup.position.set(0, jointY - lowerLen * cosA, -lowerLen * sinA);
+                endGroup.rotation.x = jointAngleX;
+            }
+
+            updateBend(isArm ? -0.18 : 0.04);
+            return { mesh, upperGroup, lowerGroup, endGroup, updateBend };
+        }
+
+        // ==========================================
+        // 3. BEL KEMERİYLE SIFIR OTURAN 3B İNSAN GÖVDESİ
+        // ==========================================
+        function createAnatomicalTorso(muscleScale, torsoMat) {
+            const torsoGroup = new THREE.Group();
+
+            const totalH = 0.78;
+            const geom = new THREE.CylinderGeometry(1, 1, totalH, 64, 52, false);
+            const pos = geom.attributes.position;
+            const uv = geom.attributes.uv;
+
+            for (let i = 0; i < pos.count; i++) {
+                const vx = pos.getX(i);
+                const vy = pos.getY(i);
+                const vz = pos.getZ(i);
+
+                const radial = Math.hypot(vx, vz);
+                const t = Math.max(0.0, Math.min(1.0, (vy + totalH / 2) / totalH));
+
+                if (radial < 0.001) {
+                    pos.setXYZ(i, 0, vy + totalH / 2 - 0.02, 0);
+                    uv.setXY(i, 0.5, t);
+                    continue;
+                }
+
+                const nx = vx / radial;
+                const nz = vz / radial;
+
+                // Ön göğüs u = 0.5, arka sırt u = 0/1
+                const lockedU = (Math.atan2(nx, nz) / (Math.PI * 2)) + 0.5;
+                uv.setXY(i, lockedU, t);
+
+                let rx = 0.145;
+                let rz = 0.102;
+                let centerZ = 0;
+
+                if (t < 0.22) {
+                    // Alt kalça/bel kemerinin içine tam sıfır oturur (Simit/boşluk oluşmasını %100 engeller)
+                    const k = t / 0.22;
+                    rx = (0.148 * (1 - k) + 0.132 * k) * muscleScale;
+                    rz = (0.112 * (1 - k) + 0.094 * k) * muscleScale;
+                } else if (t < 0.75) {
+                    // Belden genişleyen atletik göğüs kafesi ve V-Sırt
+                    const k = (t - 0.22) / 0.53;
+                    const curve = Math.sin(k * Math.PI * 0.60);
+                    rx = (0.132 + curve * 0.056) * muscleScale;
+                    rz = (0.094 + curve * 0.030) * muscleScale;
+                    centerZ = Math.sin(k * Math.PI) * 0.007;
+                } else if (t < 0.88) {
+                    // Omuz/Trapez eğimi
+                    const k = (t - 0.75) / 0.13;
+                    const sk = k * k * (3 - 2 * k);
+                    rx = (0.182 * (1 - sk) + 0.060 * sk) * muscleScale;
+                    rz = (0.118 * (1 - sk) + 0.058 * sk) * muscleScale;
+                } else {
+                    // Güçlü anatomik boyun
+                    const k = (t - 0.88) / 0.12;
+                    rx = (0.060 - Math.sin(k * Math.PI) * 0.003) * muscleScale;
+                    rz = (0.058 - Math.sin(k * Math.PI) * 0.003) * muscleScale;
+                    centerZ = 0.004;
+                }
+
+                let xOut = nx * rx;
+                let zOut = nz * rz + centerZ;
+
+                const absX = Math.abs(nx);
+                if (nz > 0.15 && t > 0.18 && t < 0.75) {
+                    const frontWeight = (nz - 0.15) / 0.85;
+                    // Göğüs Kasları (Pectoralis Major)
+                    if (t >= 0.50 && t <= 0.74 && absX > 0.06 && absX < 0.84) {
+                        const py = (t - 0.50) / 0.24;
+                        const pecProfileY = Math.sin(py * Math.PI);
+                        const sternumGap = Math.min(1, (absX - 0.06) / 0.18);
+                        const outerFade = Math.sin(((absX - 0.06) / 0.78) * Math.PI);
+                        zOut += pecProfileY * sternumGap * outerFade * 0.018 * muscleScale * frontWeight;
+                    }
+                    // Karın Kasları (Rectus Abdominis)
+                    if (t >= 0.22 && t < 0.49 && absX > 0.05 && absX < 0.46) {
+                        const ay = (t - 0.22) / 0.27;
+                        const rowWave = Math.pow(Math.abs(Math.sin(ay * Math.PI * 3)), 0.85);
+                        const colWave = Math.sin(((absX - 0.05) / 0.41) * Math.PI);
+                        zOut += rowWave * colWave * 0.006 * muscleScale * frontWeight;
+                    }
+                    // Sternum ve Linea Alba orta oluğu
+                    if (absX < 0.14 && t > 0.24 && t < 0.72) {
+                        zOut -= (1.0 - absX / 0.14) * 0.005 * frontWeight;
+                    }
+                } else if (nz < -0.20 && t > 0.24 && t < 0.80) {
+                    // Arka sırt omurga oluğu
+                    const backWeight = (-nz - 0.20) / 0.80;
+                    if (absX < 0.18) {
+                        zOut += (1.0 - absX / 0.18) * 0.008 * backWeight;
+                    }
+                }
+
+                pos.setXYZ(i, xOut, vy + totalH / 2 - 0.02, zOut);
+            }
+
+            geom.computeVertexNormals();
+            const torsoMesh = new THREE.Mesh(geom, torsoMat);
+            torsoMesh.castShadow = true;
+            torsoMesh.receiveShadow = true;
+            torsoGroup.add(torsoMesh);
+
+            return torsoGroup;
+        }
+
+        // ==========================================
+        // 4. CANLI BAKIŞLI PÜRÜZSÜZ 3B İNSAN YÜZÜ & AERODİNAMİK HORUS/SET MİĞFERLERİ
+        // ==========================================
+        function createHeadAndHelmet(role, faceMat, skinMat, goldMat, darkGoldMat, lapisMat, obsidianMat, crimsonMat, glowBlueMat, glowRedMat) {
+            const headRoot = new THREE.Group();
+
+            // ----------------------------------------------------
+            // A) HORUS SAVAŞ FORMU: AERODİNAMİK ALTIN ŞAHİN BAŞI (Kutu bloklar yerine organik keskin kavisler!)
+            // ----------------------------------------------------
+            if (role === 'horus_god') {
+                const skullGeom = new THREE.SphereGeometry(0.116, 40, 32);
+                const sPos = skullGeom.attributes.position;
+                for (let i = 0; i < sPos.count; i++) {
+                    let x = sPos.getX(i), y = sPos.getY(i), z = sPos.getZ(i);
+                    const ny = y / 0.116;
+                    const nz = z / 0.116;
+                    x *= 0.82;
+                    y *= 0.98;
+                    z *= 1.25;
+                    // Şahin yüzü ön daralması ve kaş kemeri
+                    if (nz > 0.15) {
+                        x *= (1.0 - nz * 0.35);
+                        if (ny > 0.05 && ny < 0.35) {
+                            z += Math.sin(((ny - 0.05) / 0.30) * Math.PI) * 0.026;
+                        }
+                    }
+                    // Arka ense zırhı uzantısı
+                    if (nz < -0.1 && ny < 0.2) {
+                        z -= (1.0 - Math.abs(x) / 0.10) * 0.045;
+                    }
+                    sPos.setXYZ(i, x, y, z);
+                }
+                skullGeom.computeVertexNormals();
+                const helmCore = new THREE.Mesh(skullGeom, goldMat);
+                helmCore.castShadow = true;
+                headRoot.add(helmCore);
+
+                // Kancalı Yırtıcı Şahin Gagası (Üst Gaga - Kavisli ve Sivri)
+                const beakShape = new THREE.Shape();
+                beakShape.moveTo(0, 0.036);
+                beakShape.quadraticCurveTo(0.088, 0.030, 0.118, -0.044);
+                beakShape.quadraticCurveTo(0.062, -0.014, 0, -0.015);
+                beakShape.closePath();
+
+                const beakGeom = new THREE.ExtrudeGeometry(beakShape, {
+                    depth: 0.024,
+                    bevelEnabled: true,
+                    bevelSegments: 4,
+                    steps: 1,
+                    bevelSize: 0.008,
+                    bevelThickness: 0.008
+                });
+                beakGeom.center();
+                const upperBeak = new THREE.Mesh(beakGeom, darkGoldMat);
+                upperBeak.rotation.y = -Math.PI / 2;
+                upperBeak.position.set(0, -0.008, 0.146);
+                headRoot.add(upperBeak);
+
+                // Alt Çene Zırhı
+                const chinPlate = new THREE.Mesh(new THREE.ConeGeometry(0.042, 0.13, 4), goldMat);
+                chinPlate.rotation.x = Math.PI * 0.48;
+                chinPlate.rotation.y = Math.PI / 4;
+                chinPlate.scale.set(0.75, 1.0, 0.78);
+                chinPlate.position.set(0, -0.044, 0.102);
+                headRoot.add(chinPlate);
+
+                // Kavisli Şahin Sorguç Tacı
+                const crestShape = new THREE.Shape();
+                crestShape.moveTo(-0.17, 0.02);
+                crestShape.quadraticCurveTo(-0.02, 0.125, 0.10, 0.04);
+                crestShape.lineTo(0.07, 0.01);
+                crestShape.quadraticCurveTo(-0.03, 0.075, -0.19, 0.0);
+                crestShape.closePath();
+                const crestGeom = new THREE.ExtrudeGeometry(crestShape, { depth: 0.012, bevelEnabled: true, bevelSize: 0.004, bevelThickness: 0.004 });
+                crestGeom.center();
+                const centerCrest = new THREE.Mesh(crestGeom, goldMat);
+                centerCrest.rotation.y = -Math.PI / 2;
+                centerCrest.position.set(0, 0.088, -0.016);
+                headRoot.add(centerCrest);
+
+                // Yan Şahin Tüyü Kanatçık Şablonu (Kutu yerine kavisli bıçak!)
+                const finShape = new THREE.Shape();
+                finShape.moveTo(0, 0.014);
+                finShape.quadraticCurveTo(0.10, 0.022, 0.21, -0.008);
+                finShape.quadraticCurveTo(0.10, -0.014, 0, -0.012);
+                finShape.closePath();
+                const finGeom = new THREE.ExtrudeGeometry(finShape, { depth: 0.007, bevelEnabled: true, bevelSize: 0.002, bevelThickness: 0.002 });
+
+                [-1, 1].forEach(dir => {
+                    // Parlayan Safir İlahi Gözler (Yüzeye tam gömülü badem göz)
+                    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 14, 12), glowBlueMat);
+                    eye.scale.set(1.35, 0.42, 0.55);
+                    eye.position.set(dir * 0.040, 0.018, 0.118);
+                    eye.rotation.z = -dir * 0.28;
+                    eye.rotation.y = dir * 0.42;
+                    headRoot.add(eye);
+
+                    // Geriye Uzanan Aerodinamik Şahin Sorguç Kanatçıkları
+                    for (let k = 0; k < 6; k++) {
+                        const fin = new THREE.Mesh(finGeom, k % 2 === 0 ? goldMat : lapisMat);
+                        fin.scale.set(1.0 - k * 0.09, 1.0, 1.0);
+                        fin.rotation.y = Math.PI / 2 + dir * (0.18 + k * 0.04);
+                        fin.rotation.x = 0.22 - k * 0.06;
+                        fin.position.set(
+                            dir * (0.068 + k * 0.005),
+                            0.052 - k * 0.019,
+                            0.025 - k * 0.012
+                        );
+                        headRoot.add(fin);
+                    }
+                });
+
+                return headRoot;
+            }
+
+            // ----------------------------------------------------
+            // B) SET SAVAŞ FORMU: AERODİNAMİK OBSİDYEN & ALTIN ÇAKAL MİĞFERİ
+            // ----------------------------------------------------
+            if (role === 'set_god') {
+                const skullGeom = new THREE.SphereGeometry(0.114, 40, 32);
+                const sPos = skullGeom.attributes.position;
+                for (let i = 0; i < sPos.count; i++) {
+                    let x = sPos.getX(i), y = sPos.getY(i), z = sPos.getZ(i);
+                    const ny = y / 0.114;
+                    const nz = z / 0.114;
+                    x *= 0.80;
+                    y *= 0.98;
+                    z *= 1.28;
+                    // Uzun yırtıcı çakal/tazı burun yapısı
+                    if (nz > 0.15 && ny < 0.25 && ny > -0.45) {
+                        const snoutFactor = (nz - 0.15) / 0.85;
+                        x *= (1.0 - snoutFactor * 0.48);
+                        z += snoutFactor * 0.072;
+                        y -= snoutFactor * 0.016;
+                    }
+                    sPos.setXYZ(i, x, y, z);
+                }
+                skullGeom.computeVertexNormals();
+                const cranium = new THREE.Mesh(skullGeom, obsidianMat);
+                cranium.castShadow = true;
+                headRoot.add(cranium);
+
+                // Çakal Burun Sırtı Altın Omurgası
+                const snoutSpine = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.19, 4), goldMat);
+                snoutSpine.rotation.x = Math.PI * 0.56;
+                snoutSpine.rotation.y = Math.PI / 4;
+                snoutSpine.position.set(0, 0.014, 0.128);
+                headRoot.add(snoutSpine);
+
+                // Alt Çene Zırhı
+                const jaw = new THREE.Mesh(new THREE.ConeGeometry(0.040, 0.17, 4), darkGoldMat);
+                jaw.rotation.x = Math.PI * 0.47;
+                jaw.rotation.y = Math.PI / 4;
+                jaw.scale.set(0.72, 1.0, 0.82);
+                jaw.position.set(0, -0.042, 0.122);
+                headRoot.add(jaw);
+
+                // Kavisli Uzun Set Kulak Şablonu
+                const earShape = new THREE.Shape();
+                earShape.moveTo(-0.018, 0);
+                earShape.quadraticCurveTo(-0.022, 0.15, -0.008, 0.29);
+                earShape.lineTo(0.012, 0.27);
+                earShape.quadraticCurveTo(0.020, 0.14, 0.016, 0);
+                earShape.closePath();
+                const earGeom = new THREE.ExtrudeGeometry(earShape, { depth: 0.012, bevelEnabled: true, bevelSize: 0.003, bevelThickness: 0.003 });
+
+                const finShape = new THREE.Shape();
+                finShape.moveTo(0, 0.014);
+                finShape.quadraticCurveTo(0.09, 0.020, 0.19, -0.010);
+                finShape.quadraticCurveTo(0.09, -0.014, 0, -0.012);
+                finShape.closePath();
+                const finGeom = new THREE.ExtrudeGeometry(finShape, { depth: 0.007, bevelEnabled: true, bevelSize: 0.002, bevelThickness: 0.002 });
+
+                [-1, 1].forEach(dir => {
+                    // Kor Ateş Gözleri
+                    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 14, 12), glowRedMat);
+                    eye.scale.set(1.35, 0.42, 0.55);
+                    eye.position.set(dir * 0.039, 0.022, 0.116);
+                    eye.rotation.z = -dir * 0.32;
+                    eye.rotation.y = dir * 0.40;
+                    headRoot.add(eye);
+
+                    // Uzun Geriye Yatan Kavisli Set Kulakları
+                    const earGroup = new THREE.Group();
+                    earGroup.position.set(dir * 0.046, 0.078, -0.018);
+                    earGroup.rotation.x = -0.48;
+                    earGroup.rotation.z = -dir * 0.14;
+                    earGroup.rotation.y = dir * 0.15;
+                    headRoot.add(earGroup);
+
+                    const earBlade = new THREE.Mesh(earGeom, obsidianMat);
+                    earGroup.add(earBlade);
+
+                    const earTrim = new THREE.Mesh(earGeom, goldMat);
+                    earTrim.scale.set(0.55, 0.96, 1.18);
+                    earTrim.position.set(0, 0.004, -0.001);
+                    earGroup.add(earTrim);
+
+                    // Yan Nemes Zırh Kanatları
+                    for (let s = 0; s < 5; s++) {
+                        const fin = new THREE.Mesh(finGeom, s % 2 === 0 ? goldMat : obsidianMat);
+                        fin.scale.set(1.0 - s * 0.09, 1.0, 1.0);
+                        fin.rotation.y = Math.PI / 2 + dir * (0.18 + s * 0.04);
+                        fin.rotation.x = 0.16 - s * 0.06;
+                        fin.position.set(dir * (0.068 + s * 0.006), 0.036 - s * 0.020, 0.018 - s * 0.010);
+                        headRoot.add(fin);
+                    }
+                });
+
+                return headRoot;
+            }
+
+            // ----------------------------------------------------
+            // C) PÜRÜZSÜZ, CANLI BAKIŞLI 3B İNSAN YÜZÜ (Bek, Köylü ve İnsan Horus)
+            // ----------------------------------------------------
+            const headGeom = new THREE.SphereGeometry(0.106, 64, 48);
+            const pos = headGeom.attributes.position;
+            const uv = headGeom.attributes.uv;
+
+            for (let i = 0; i < pos.count; i++) {
+                let x = pos.getX(i);
+                let y = pos.getY(i);
+                let z = pos.getZ(i);
+
+                const r = Math.hypot(x, y, z) || 0.106;
+                const nx = x / r;
+                const ny = y / r;
+                const nz = z / r;
+
+                const lockedU = (Math.atan2(nx, nz) / (Math.PI * 2)) + 0.5;
+                const lockedV = Math.max(0.0, Math.min(1.0, (ny + 1.0) * 0.5));
+                uv.setXY(i, lockedU, lockedV);
+
+                // Doğal insan kafatası oranı
+                x *= 0.84;
+                y *= 1.12;
+                z *= 0.95;
+
+                // Erkeksi çene hattı ve çene ucu (Yüzde çöküntü yapmadan pürüzsüz geçiş)
+                if (ny < 0) {
+                    const jawTaper = 1.0 + ny * 0.32;
+                    x *= Math.max(0.54, jawTaper);
+                    if (nz > 0.25 && ny < -0.52 && ny > -0.88) {
+                        const chinCurve = Math.sin(((ny + 0.88) / 0.36) * Math.PI);
+                        z += (1.0 - Math.min(1, Math.abs(nx) / 0.45)) * chinCurve * 0.012;
+                    }
+                }
+
+                if (nz > 0.25) {
+                    const absX = Math.abs(nx);
+                    // 1. Kaş Kemeri (Brow Ridge)
+                    if (ny > 0.18 && ny < 0.36 && absX < 0.60) {
+                        const brow = Math.sin(((ny - 0.18) / 0.18) * Math.PI) * Math.cos((absX / 0.60) * Math.PI * 0.5);
+                        z += brow * 0.009;
+                    }
+                    // 2. Hafif Göz Çukuru
+                    if (ny > 0.02 && ny < 0.20 && absX > 0.16 && absX < 0.54) {
+                        const socketY = Math.sin(((ny - 0.02) / 0.18) * Math.PI);
+                        const socketX = Math.sin(((absX - 0.16) / 0.38) * Math.PI);
+                        z -= socketY * socketX * 0.006;
+                    }
+                    // 3. Elmacık Kemikleri
+                    if (ny > -0.16 && ny < 0.06 && absX > 0.30 && absX < 0.76) {
+                        const cheek = Math.sin(((ny + 0.16) / 0.22) * Math.PI) * Math.sin(((absX - 0.30) / 0.46) * Math.PI);
+                        z += cheek * 0.007;
+                    }
+                }
+
+                pos.setXYZ(i, x, y, z);
+            }
+
+            headGeom.computeVertexNormals();
+            const headMesh = new THREE.Mesh(headGeom, faceMat);
+            headMesh.castShadow = true;
+            headMesh.receiveShadow = true;
+            headRoot.add(headMesh);
+
+            // 1. PÜRÜZSÜZ 3B BURUN HEYKELİ (Yüzün ortasında ayrı ve net 3B burun köprüsü, ucu ve kanatları)
+            const noseGroup = new THREE.Group();
+            noseGroup.position.set(0, 0.002, 0.095);
+            headRoot.add(noseGroup);
+
+            const noseBridge = new THREE.Mesh(new THREE.CylinderGeometry(0.0065, 0.0115, 0.036, 14), skinMat);
+            noseBridge.scale.set(0.82, 1.0, 0.95);
+            noseBridge.rotation.x = -0.26;
+            noseBridge.position.set(0, 0.004, 0.004);
+            noseGroup.add(noseBridge);
+
+            const noseTip = new THREE.Mesh(new THREE.SphereGeometry(0.0105, 16, 14), skinMat);
+            noseTip.scale.set(1.05, 0.85, 1.10);
+            noseTip.position.set(0, -0.012, 0.010);
+            noseGroup.add(noseTip);
+
+            [-1, 1].forEach(dir => {
+                const nostrilWing = new THREE.Mesh(new THREE.SphereGeometry(0.0072, 12, 10), skinMat);
+                nostrilWing.scale.set(1.1, 0.78, 0.95);
+                nostrilWing.position.set(dir * 0.0085, -0.014, 0.005);
+                noseGroup.add(nostrilWing);
+            });
+
+            // 2. DOĞAL 3B DUDAKLAR (Burunun çok altında, doğru anatomik konumda!)
+            const upperLipMat = new THREE.MeshStandardMaterial({ color: 0x9e503c, roughness: 0.55 });
+            const lowerLipMat = new THREE.MeshStandardMaterial({ color: 0xb05c46, roughness: 0.48 });
+
+            const upperLip = new THREE.Mesh(new THREE.SphereGeometry(0.016, 16, 12), upperLipMat);
+            upperLip.scale.set(1.45, 0.34, 0.55);
+            upperLip.position.set(0, -0.036, 0.095);
+            headRoot.add(upperLip);
+
+            const lowerLip = new THREE.Mesh(new THREE.SphereGeometry(0.015, 16, 12), lowerLipMat);
+            lowerLip.scale.set(1.32, 0.40, 0.62);
+            lowerLip.position.set(0, -0.044, 0.094);
+            headRoot.add(lowerLip);
+
+            // 3. CANLI GÖZLER (Badem göz akı, net görünen büyük iris, göz bebeği, canlı ışık yansıması ve Mısır sürmesi!)
+            const scleraMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
+            const irisMat = new THREE.MeshBasicMaterial({
+                color: role === 'horus_human' ? 0x38bdf8 : 0x4a2810
+            });
+            const pupilMat = new THREE.MeshBasicMaterial({ color: 0x050505 });
+            const catchlightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const browHairColor = role === 'horus_human' ? 0x3d2514 : 0x1e1108;
+            const browMat = new THREE.MeshStandardMaterial({ color: browHairColor, roughness: 0.8 });
+
+            [-1, 1].forEach(dir => {
+                const eyeGroup = new THREE.Group();
+                eyeGroup.position.set(dir * 0.032, 0.016, 0.092);
+                eyeGroup.rotation.y = dir * 0.15;
+                headRoot.add(eyeGroup);
+
+                // Badem Göz Akı (Sclera)
+                const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.013, 18, 14), scleraMat);
+                sclera.scale.set(1.25, 0.72, 0.42);
+                eyeGroup.add(sclera);
+
+                // Net Görünen İris (Kapağın altında kaybolmaz!)
+                const iris = new THREE.Mesh(new THREE.CircleGeometry(0.0068, 18), irisMat);
+                iris.position.set(0, 0, 0.0056);
+                eyeGroup.add(iris);
+
+                // Göz Bebeği (Pupil)
+                const pupil = new THREE.Mesh(new THREE.CircleGeometry(0.0034, 16), pupilMat);
+                pupil.position.set(0, 0, 0.0058);
+                eyeGroup.add(pupil);
+
+                // Canlı Göz Parıltısı (Catchlight)
+                const catchlight = new THREE.Mesh(new THREE.CircleGeometry(0.0014, 10), catchlightMat);
+                catchlight.position.set(0.0022, 0.0022, 0.0060);
+                eyeGroup.add(catchlight);
+
+                // Üst Kirpik / Mısır Sürmesi Kemeri (İrisi kapatmadan gözün üst sınırını çerçeveler)
+                const upperLiner = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.0128, 0.0018, 8, 20, Math.PI),
+                    browMat
+                );
+                upperLiner.scale.set(1.25, 0.68, 0.70);
+                upperLiner.position.set(0, 0.0008, 0.0042);
+                eyeGroup.add(upperLiner);
+
+                // Alt Göz Çizgisi
+                const lowerLiner = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.0125, 0.0011, 8, 20, Math.PI),
+                    browMat
+                );
+                lowerLiner.rotation.z = Math.PI;
+                lowerLiner.scale.set(1.22, 0.62, 0.70);
+                lowerLiner.position.set(0, -0.0008, 0.0040);
+                eyeGroup.add(lowerLiner);
+
+                // 3B Erkeksi Kavisli Kaşlar
+                const brow = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.019, 0.0032, 8, 16, Math.PI * 0.68),
+                    browMat
+                );
+                brow.rotation.z = Math.PI * 0.16 - dir * 0.08;
+                brow.scale.set(1.15, 0.55, 0.75);
+                brow.position.set(-dir * 0.002, 0.006, 0.004);
+                eyeGroup.add(brow);
+
+                // Kulaklar
+                const ear = new THREE.Mesh(new THREE.SphereGeometry(0.020, 12, 12), skinMat);
+                ear.scale.set(0.35, 1.15, 0.62);
+                ear.position.set(dir * 0.088, 0.004, -0.006);
+                headRoot.add(ear);
+            });
+
+            // 4. DOĞAL 3B SAKAL & BIYIK (Bek ve İnsan Horus için çene hattını saran düzgün 3B sakal)
+            if (role === 'bek' || role === 'horus_human') {
+                const isRoyal = role === 'horus_human';
+                const hairMat = new THREE.MeshStandardMaterial({
+                    color: isRoyal ? 0x3b2312 : 0x221309,
+                    roughness: 0.78
+                });
+
+                // Çene ve yanak altını saran düzgün 3B kısa sakal
+                const beardGeom = new THREE.SphereGeometry(0.1075, 36, 28);
+                const bPos = beardGeom.attributes.position;
+                for (let i = 0; i < bPos.count; i++) {
+                    let bx = bPos.getX(i), by = bPos.getY(i), bz = bPos.getZ(i);
+                    const ny = by / 0.1075;
+                    const nz = bz / 0.1075;
+                    const absX = Math.abs(bx) / 0.1075;
+
+                    bx *= 0.85;
+                    by *= 1.13;
+                    bz *= 0.96;
+                    if (ny < 0) {
+                        bx *= Math.max(0.55, 1.0 + ny * 0.32);
+                    }
+
+                    // Sadece alt çene ve favori bölgesinde dışarıda kalsın, ağız ve üst yüz bölgesinde içe çekilsin
+                    const isJawBeard = (nz > -0.05 && ny < -0.14 && !(ny > -0.46 && absX < 0.25));
+                    if (!isJawBeard) {
+                        bx *= 0.75;
+                        by *= 0.75;
+                        bz *= 0.75;
+                    } else if (nz > 0.25 && ny < -0.50 && ny > -0.88) {
+                        const chinCurve = Math.sin(((ny + 0.88) / 0.38) * Math.PI);
+                        bz += (1.0 - Math.min(1, absX / 0.45)) * chinCurve * 0.013;
+                    }
+                    bPos.setXYZ(i, bx, by, bz);
+                }
+                beardGeom.computeVertexNormals();
+                const beardMesh = new THREE.Mesh(beardGeom, hairMat);
+                headRoot.add(beardMesh);
+
+                // Doğal Bıyık Kemeri (Burunun altında, üst dudağın hemen üstünde!)
+                const mustache = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.016, 0.0028, 8, 16, Math.PI * 0.82),
+                    hairMat
+                );
+                mustache.rotation.z = Math.PI * 0.09;
+                mustache.scale.set(1.25, 0.55, 0.65);
+                mustache.position.set(0, -0.033, 0.094);
+                headRoot.add(mustache);
+
+                // Kafatasını ve enseyi doğal saran tek parça dalgalı saç modeli
+                const hairGeom = new THREE.SphereGeometry(0.111, 36, 28);
+                const hPos = hairGeom.attributes.position;
+                for (let i = 0; i < hPos.count; i++) {
+                    let hx = hPos.getX(i), hy = hPos.getY(i), hz = hPos.getZ(i);
+                    const ny = hy / 0.111;
+                    const nz = hz / 0.111;
+
+                    if (nz > 0.16 && ny < 0.38) {
+                        hx *= 0.65;
+                        hy *= 0.75;
+                        hz *= 0.65;
+                    } else {
+                        hx *= 0.89;
+                        hy *= 1.14;
+                        hz *= 1.03;
+                        const wave = Math.sin(hy * 52) * 0.0025 + Math.cos(hx * 44) * 0.0025;
+                        hx += (hx > 0 ? 1 : -1) * wave;
+                        if (nz < 0.12 && ny < 0) {
+                            hz -= (1.0 - ny) * 0.012;
+                        }
+                    }
+                    hPos.setXYZ(i, hx, hy, hz);
+                }
+                hairGeom.computeVertexNormals();
+                const hairMesh = new THREE.Mesh(hairGeom, hairMat);
+                hairMesh.position.set(0, 0.006, -0.006);
+                headRoot.add(hairMesh);
+
+                if (isRoyal) {
+                    const crown = new THREE.Mesh(new THREE.TorusGeometry(0.094, 0.0085, 12, 32), goldMat);
+                    crown.rotation.x = Math.PI / 2 - 0.12;
+                    crown.position.set(0, 0.056, 0.002);
+                    headRoot.add(crown);
+
+                    const sunGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.017, 1), lapisMat);
+                    sunGem.position.set(0, 0.064, 0.098);
+                    headRoot.add(sunGem);
+                }
+            } else if (role === 'villager') {
+                const clothMat = new THREE.MeshStandardMaterial({
+                    map: window.textures.linenTex,
+                    color: 0xe7d8c0,
+                    roughness: 0.85
+                });
+                const khat = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.111, 28, 22, 0, Math.PI * 2, 0, Math.PI * 0.56),
+                    clothMat
+                );
+                khat.scale.set(0.88, 1.14, 1.05);
+                khat.position.set(0, 0.016, -0.012);
+                khat.rotation.x = -0.28;
+                headRoot.add(khat);
+
+                [-1, 1].forEach(dir => {
+                    const drape = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.025, 0.15, 10), clothMat);
+                    drape.scale.set(0.65, 1.0, 1.35);
+                    drape.position.set(dir * 0.084, -0.052, -0.024);
+                    drape.rotation.z = dir * 0.10;
+                    headRoot.add(drape);
+                });
+
+                const cord = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.094, 0.0065, 10, 28),
+                    new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 })
+                );
+                cord.rotation.x = Math.PI / 2 - 0.14;
+                cord.position.set(0, 0.048, 0.002);
+                headRoot.add(cord);
+            }
+
+            return headRoot;
+        }
+
+        // ==========================================
+        // 5. YELPAZE KAVİSLİ BİYOMEKANİK ŞAHİN KANATLARI
+        // ==========================================
+        function createBiomechanicalWings(isSet, goldMat, darkGoldMat, accentMat, glowMat) {
+            const wingsGroup = new THREE.Group();
+            wingsGroup.position.set(0, 0.53, -0.105);
+
+            const featherShape = new THREE.Shape();
+            featherShape.moveTo(0, 0);
+            featherShape.quadraticCurveTo(0.032, -0.35, 0.018, -0.82);
+            featherShape.lineTo(0, -1.0);
+            featherShape.lineTo(-0.016, -0.85);
+            featherShape.quadraticCurveTo(-0.024, -0.40, 0, 0);
+            featherShape.closePath();
+
+            const featherGeom = new THREE.ExtrudeGeometry(featherShape, {
+                depth: 0.008,
+                bevelEnabled: true,
+                bevelSegments: 2,
+                steps: 1,
+                bevelSize: 0.003,
+                bevelThickness: 0.003
+            });
+
+            ['left', 'right'].forEach(side => {
+                const dir = side === 'left' ? -1 : 1;
+
+                const innerWing = new THREE.Group();
+                innerWing.position.set(dir * 0.07, 0, 0);
+                wingsGroup.add(innerWing);
+
+                const outerWing = new THREE.Group();
+                outerWing.position.set(dir * 0.48, 0.24, -0.02);
+                innerWing.add(outerWing);
+
+                for (let s = 0; s < 5; s++) {
+                    const seg = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.026 - s * 0.002, 0.030 - s * 0.002, 0.14, 12),
+                        s % 2 === 0 ? goldMat : darkGoldMat
+                    );
+                    seg.position.set(dir * (0.06 + s * 0.095), 0.03 + s * 0.048, 0);
+                    seg.rotation.z = -dir * (1.08 + s * 0.04);
+                    innerWing.add(seg);
+                }
+
+                const jointGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.034, 1), glowMat);
+                jointGem.position.set(0, 0.02, 0.012);
+                outerWing.add(jointGem);
+
+                for (let s = 0; s < 5; s++) {
+                    const seg = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.018 - s * 0.002, 0.022 - s * 0.002, 0.15, 10),
+                        goldMat
+                    );
+                    seg.position.set(dir * (0.06 + s * 0.11), 0.02 - s * 0.01, 0);
+                    seg.rotation.z = -dir * (1.45 + s * 0.05);
+                    outerWing.add(seg);
+                }
+
+                for (let i = 0; i < 10; i++) {
+                    const t = i / 9;
+                    const fx = dir * (0.04 + i * 0.046);
+                    const fy = 0.02 + t * 0.22;
+                    const fanAngle = dir * (0.12 + t * 0.36);
+
+                    const cov = new THREE.Mesh(featherGeom, goldMat);
+                    cov.scale.set(dir * 0.85, 0.26, 1.1);
+                    cov.position.set(fx, fy, 0.014);
+                    cov.rotation.z = fanAngle;
+                    innerWing.add(cov);
+
+                    const mid = new THREE.Mesh(featherGeom, accentMat);
+                    mid.scale.set(dir * 0.92, 0.44 + Math.sin(t * Math.PI) * 0.08, 1.0);
+                    mid.position.set(fx, fy, 0.004);
+                    mid.rotation.z = fanAngle * 1.05;
+                    innerWing.add(mid);
+
+                    const sec = new THREE.Mesh(featherGeom, i % 2 === 0 ? goldMat : darkGoldMat);
+                    sec.scale.set(dir * 1.0, 0.64 + Math.sin(t * Math.PI) * 0.14, 1.0);
+                    sec.position.set(fx, fy, -0.006);
+                    sec.rotation.z = fanAngle * 1.10;
+                    sec.castShadow = true;
+                    innerWing.add(sec);
+                }
+
+                for (let j = 0; j < 14; j++) {
+                    const t = j / 13;
+                    const bx = dir * (j * 0.042);
+                    const by = (1.0 - t) * 0.02;
+                    const sweepZ = dir * (0.34 + t * 1.12);
+
+                    const cov = new THREE.Mesh(featherGeom, j % 2 === 0 ? darkGoldMat : accentMat);
+                    cov.scale.set(dir * 0.9, 0.34 - t * 0.08, 1.1);
+                    cov.position.set(bx, by, 0.012);
+                    cov.rotation.z = sweepZ * 0.95;
+                    outerWing.add(cov);
+
+                    const priLen = 0.86 + Math.sin(t * Math.PI * 0.7) * 0.32 - t * 0.18;
+                    const pri = new THREE.Mesh(featherGeom, j % 3 === 1 ? accentMat : goldMat);
+                    pri.scale.set(dir * 1.05, priLen, 1.0);
+                    pri.position.set(bx, by, -0.004);
+                    pri.rotation.z = sweepZ;
+                    pri.castShadow = true;
+                    outerWing.add(pri);
+                }
+
+                if (side === 'left') {
+                    wingsGroup.leftInner = innerWing;
+                    wingsGroup.leftOuter = outerWing;
+                } else {
+                    wingsGroup.rightInner = innerWing;
+                    wingsGroup.rightOuter = outerWing;
+                }
+            });
+
+            return wingsGroup;
+        }
+
+        // ==========================================
+        // 6. EFSANEVİ MISIR SİLAHLARI
+        // ==========================================
+        function createCharacterWeapon(role, goldMat, darkGoldMat, obsidianMat, lapisMat, glowBlueMat, glowRedMat) {
+            const wGroup = new THREE.Group();
+
+            if (role === 'bek') {
+                const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.014, 0.15, 10), darkGoldMat);
+                hilt.rotation.x = Math.PI / 2;
+                wGroup.add(hilt);
+
+                const guard = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.018, 0.022), goldMat);
+                guard.position.z = 0.075;
+                wGroup.add(guard);
+
+                const khopeshShape = new THREE.Shape();
+                khopeshShape.moveTo(0, 0);
+                khopeshShape.lineTo(0, 0.14);
+                khopeshShape.quadraticCurveTo(0.09, 0.24, 0.02, 0.38);
+                khopeshShape.lineTo(-0.01, 0.42);
+                khopeshShape.quadraticCurveTo(0.05, 0.24, -0.018, 0.13);
+                khopeshShape.lineTo(-0.018, 0);
+                khopeshShape.closePath();
+
+                const bladeGeom = new THREE.ExtrudeGeometry(khopeshShape, {
+                    depth: 0.006,
+                    bevelEnabled: true,
+                    bevelSize: 0.002,
+                    bevelThickness: 0.002
+                });
+                const blade = new THREE.Mesh(bladeGeom, goldMat);
+                blade.rotation.x = Math.PI / 2;
+                blade.rotation.y = Math.PI / 2;
+                blade.position.set(0.003, 0, 0.08);
+                wGroup.add(blade);
+            } else if (role === 'villager') {
+                const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c3416, roughness: 0.85 });
+                const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.014, 0.22, 10), woodMat);
+                handle.rotation.x = Math.PI / 2;
+                handle.position.z = 0.04;
+                wGroup.add(handle);
+
+                const sickle = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.085, 0.010, 8, 18, Math.PI * 1.1),
+                    darkGoldMat
+                );
+                sickle.rotation.y = Math.PI / 2;
+                sickle.scale.set(1.0, 0.75, 0.35);
+                sickle.position.set(0, -0.02, 0.20);
+                wGroup.add(sickle);
+            } else if (role === 'horus_human' || role === 'horus_god') {
+                const spearHolder = new THREE.Group();
+                spearHolder.rotation.x = 0.14;
+                spearHolder.rotation.z = -0.04;
+                wGroup.add(spearHolder);
+
+                const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.015, 1.75, 14), goldMat);
+                shaft.position.y = 0.25;
+                spearHolder.add(shaft);
+
+                const wingsGuard = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.026, 0.036), lapisMat);
+                wingsGuard.position.y = 1.12;
+                spearHolder.add(wingsGuard);
+
+                const spearTip = new THREE.Mesh(new THREE.ConeGeometry(0.036, 0.30, 4), goldMat);
+                spearTip.rotation.y = Math.PI / 4;
+                spearTip.scale.set(0.45, 1.0, 1.0);
+                spearTip.position.y = 1.28;
+                spearHolder.add(spearTip);
+
+                const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.024, 1), glowBlueMat);
+                core.position.y = 1.13;
+                spearHolder.add(core);
+            } else if (role === 'set_god') {
+                const staffHolder = new THREE.Group();
+                staffHolder.rotation.x = 0.14;
+                staffHolder.rotation.z = -0.04;
+                wGroup.add(staffHolder);
+
+                const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.017, 1.85, 14), obsidianMat);
+                shaft.position.y = 0.28;
+                staffHolder.add(shaft);
+
+                for (let k = 0; k < 4; k++) {
+                    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.005, 8, 16), goldMat);
+                    ring.rotation.x = Math.PI / 2;
+                    ring.position.y = -0.1 + k * 0.34;
+                    staffHolder.add(ring);
+                }
+
+                const headFork = new THREE.Mesh(new THREE.ConeGeometry(0.058, 0.34, 4), goldMat);
+                headFork.rotation.y = Math.PI / 4;
+                headFork.scale.set(0.45, 1.0, 1.1);
+                headFork.position.y = 1.35;
+                staffHolder.add(headFork);
+
+                const chaosOrb = new THREE.Mesh(new THREE.OctahedronGeometry(0.034, 1), glowRedMat);
+                chaosOrb.position.y = 1.18;
+                staffHolder.add(chaosOrb);
+            }
+
+            return wGroup;
+        }
+
+        // ==========================================
+        // 7. TAM KARAKTER ANATOMİSİ VE 2016 FİLMİ TANRI ZIRHLARI
+        // ==========================================
+        function createCharacter(config) {
+            const { name, role = 'bek', scale = 1.0 } = config;
+
+            const root = new THREE.Group();
+            root.scale.set(scale, scale, scale);
+
+            const isHorusGod = role === 'horus_god';
+            const isSetGod = role === 'set_god';
+            const isHorusHuman = role === 'horus_human';
+            const isArmoredGod = isHorusGod || isSetGod;
+            const isDivine = isHorusGod || isSetGod || isHorusHuman;
+
+            // 1. PBR MATERYALLER
+            const goldMat = new THREE.MeshStandardMaterial({
+                map: window.textures.goldTex,
+                envMap: window.textures.envMap,
+                envMapIntensity: 1.85,
+                color: 0xffc72c,
+                emissive: 0x241200,
+                emissiveIntensity: 0.12,
+                metalness: 0.86,
+                roughness: 0.22
+            });
+
+            const darkGoldMat = new THREE.MeshStandardMaterial({
+                map: window.textures.goldTex,
+                envMap: window.textures.envMap,
+                envMapIntensity: 1.65,
+                color: 0xc27815,
+                emissive: 0x1a0b00,
+                emissiveIntensity: 0.10,
+                metalness: 0.88,
+                roughness: 0.28
+            });
+
+            const lapisMat = new THREE.MeshStandardMaterial({
+                envMap: window.textures.envMap,
+                envMapIntensity: 1.4,
+                color: 0x1d4ed8,
+                emissive: 0x071330,
+                emissiveIntensity: 0.15,
+                metalness: 0.55,
+                roughness: 0.26
+            });
+
+            const obsidianMat = new THREE.MeshStandardMaterial({
+                envMap: window.textures.envMap,
+                envMapIntensity: 1.75,
+                color: 0x26232b,
+                emissive: 0x0c080a,
+                emissiveIntensity: 0.10,
+                metalness: 0.84,
+                roughness: 0.24
+            });
+
+            const crimsonMat = new THREE.MeshStandardMaterial({
+                color: 0x7f1d1d,
+                roughness: 0.68,
+                metalness: 0.12
+            });
+
+            const glowBlueMat = new THREE.MeshBasicMaterial({ color: 0x7dd3fc });
+            const glowRedMat = new THREE.MeshBasicMaterial({ color: 0xf97316 });
+
+            const torsoTex = role === 'villager' ? window.textures.torsoVillager : (isHorusHuman ? window.textures.torsoHorus : window.textures.torsoBek);
+            const faceTex = role === 'villager' ? window.textures.faceVillager : (isHorusHuman ? window.textures.faceHorus : window.textures.faceBek);
+            const baseSkinColor = role === 'villager' ? 0xb4704a : (isHorusHuman ? 0xd29066 : 0xc6825a);
+
+            const torsoMat = isHorusGod ? darkGoldMat : (isSetGod ? obsidianMat : new THREE.MeshStandardMaterial({
+                map: torsoTex,
+                bumpMap: torsoTex,
+                bumpScale: 0.004,
+                color: 0xffffff,
+                roughness: isHorusHuman ? 0.44 : 0.54,
+                metalness: isHorusHuman ? 0.05 : 0.02,
+                envMap: window.textures.envMap,
+                envMapIntensity: 0.26
+            }));
+
+            // Yüz materyalinde bumpMap kullanmıyoruz; böylece sakal/ağız gölgesi yüzde çöküntü yapmaz!
+            const faceMat = isHorusGod ? goldMat : (isSetGod ? obsidianMat : new THREE.MeshStandardMaterial({
+                map: faceTex,
+                color: 0xffffff,
+                roughness: 0.46,
+                metalness: 0.02,
+                envMap: window.textures.envMap,
+                envMapIntensity: 0.24
+            }));
+
+            const limbSkinMat = isHorusGod ? goldMat : (isSetGod ? obsidianMat : new THREE.MeshStandardMaterial({
+                color: baseSkinColor,
+                roughness: isHorusHuman ? 0.44 : 0.54,
+                metalness: isHorusHuman ? 0.05 : 0.02,
+                envMap: window.textures.envMap,
+                envMapIntensity: 0.26
+            }));
+
+            const linenMat = new THREE.MeshStandardMaterial({
+                map: window.textures.linenTex,
+                bumpMap: window.textures.linenTex,
+                bumpScale: 0.004,
+                color: role === 'villager' ? 0xe2d3ba : 0xffffff,
+                roughness: 0.80
+            });
+
+            const leatherMat = new THREE.MeshStandardMaterial({
+                color: 0x4a2811,
+                roughness: 0.62,
+                metalness: 0.10
+            });
+
+            const muscleScale = isArmoredGod ? 1.14 : (isHorusHuman ? 1.07 : 1.0);
+
+            // 2. PELVIS (BELE SIFIR OTURAN SHENDYT ETEK VE ZIRHLI KRALİYET KEMERİ)
+            const pelvis = new THREE.Group();
+            pelvis.position.y = 0.94;
+            root.add(pelvis);
+
+            // Etek üst çapı (0.136) bel çapıyla birebir eşleştirildi -> Yukarıdan bakınca asla simit boşluğu görünmez!
+            const kiltGeom = new THREE.CylinderGeometry(0.136 * muscleScale, 0.188 * muscleScale, 0.34, 48, 8, false);
+            const kPos = kiltGeom.attributes.position;
+            for (let i = 0; i < kPos.count; i++) {
+                let kx = kPos.getX(i), ky = kPos.getY(i), kz = kPos.getZ(i);
+                const angle = Math.atan2(kx, kz);
+                const pleat = 1.0 + Math.sin(angle * 28) * 0.015;
+                kx *= 1.04 * pleat;
+                kz *= 0.78 * pleat;
+                kPos.setXYZ(i, kx, ky, kz);
+            }
+            kiltGeom.computeVertexNormals();
+
+            const kiltMat = isHorusGod ? darkGoldMat : (isSetGod ? obsidianMat : linenMat);
+            const kilt = new THREE.Mesh(kiltGeom, kiltMat);
+            kilt.position.y = -0.11;
+            kilt.castShadow = true;
+            kilt.receiveShadow = true;
+            pelvis.add(kilt);
+
+            // Gövdeye sıfır oturan Kraliyet Kemeri
+            const belt = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.139 * muscleScale, 0.143 * muscleScale, 0.056, 40),
+                isDivine ? goldMat : leatherMat
+            );
+            belt.scale.set(1.04, 1.0, 0.79);
+            belt.position.y = 0.036;
+            pelvis.add(belt);
+
+            if (role !== 'villager') {
+                const sashShape = new THREE.Shape();
+                sashShape.moveTo(-0.044, 0);
+                sashShape.lineTo(0.044, 0);
+                sashShape.lineTo(0.034, -0.31);
+                sashShape.lineTo(0, -0.36);
+                sashShape.lineTo(-0.034, -0.31);
+                sashShape.closePath();
+
+                const sashGeom = new THREE.ExtrudeGeometry(sashShape, { depth: 0.012, bevelEnabled: true, bevelSize: 0.003, bevelThickness: 0.003 });
+                const sash = new THREE.Mesh(sashGeom, isDivine ? goldMat : leatherMat);
+                sash.position.set(0, 0.04, 0.108 * muscleScale);
+                sash.rotation.x = 0.09;
+                pelvis.add(sash);
+
+                const buckleGem = new THREE.Mesh(
+                    new THREE.OctahedronGeometry(0.024, 1),
+                    isSetGod ? glowRedMat : glowBlueMat
+                );
+                buckleGem.position.set(0, 0.038, 0.120 * muscleScale);
+                pelvis.add(buckleGem);
+            }
+
+            // Tanrılar İçin Eteğe Tam Oturan Katmanlı Savaş Eteği Plakaları (Tassets)
+            if (isDivine) {
+                const bladeShape = new THREE.Shape();
+                bladeShape.moveTo(-0.036, 0);
+                bladeShape.lineTo(0.036, 0);
+                bladeShape.lineTo(0.025, -0.27);
+                bladeShape.lineTo(0, -0.32);
+                bladeShape.lineTo(-0.025, -0.27);
+                bladeShape.closePath();
+                const bladeGeom = new THREE.ExtrudeGeometry(bladeShape, { depth: 0.009, bevelEnabled: true, bevelSize: 0.002, bevelThickness: 0.002 });
+
+                [-1, 1].forEach(dir => {
+                    for (let p = 0; p < 5; p++) {
+                        const angle = dir * (0.34 + p * 0.38);
+                        const plate = new THREE.Mesh(
+                            bladeGeom,
+                            p % 2 === 0 ? goldMat : (isSetGod ? obsidianMat : lapisMat)
+                        );
+                        plate.position.set(
+                            Math.sin(angle) * 0.146 * muscleScale,
+                            0.025,
+                            Math.cos(angle) * 0.114 * muscleScale
+                        );
+                        plate.rotation.y = angle;
+                        plate.rotation.x = 0.14;
+                        pelvis.add(plate);
+                    }
+                });
+            }
+
+            // 3. OMURGA, ANATOMİK GÖVDE VE GÖĞSE OTURAN MISIR YAKALIĞI / ZIRHI
+            const spine = new THREE.Group();
+            spine.position.y = 0.03;
+            pelvis.add(spine);
+
+            const anatomicalTorso = createAnatomicalTorso(muscleScale, torsoMat);
+            spine.add(anatomicalTorso);
+
+            // Omuz ve Göğüs Üstüne Doğal Oturan Usekh Kraliyet Yakalığı (Havada duran düz tepsi yerine omuzları saran kavisli yaka!)
+            if (isHorusHuman || isArmoredGod) {
+                const collarRings = isArmoredGod ? 4 : 3;
+                for (let c = 0; c < collarRings; c++) {
+                    const rScale = 1.0 + c * 0.16;
+                    const collarRing = new THREE.Mesh(
+                        new THREE.TorusGeometry(0.082 * rScale * muscleScale, 0.012, 12, 36),
+                        c % 2 === 0 ? goldMat : (isSetGod ? obsidianMat : lapisMat)
+                    );
+                    collarRing.rotation.x = Math.PI / 2 + 0.24;
+                    collarRing.scale.set(1.12, 0.78, 1.0);
+                    collarRing.position.set(0, 0.605 - c * 0.022, 0.010 + c * 0.005);
+                    spine.add(collarRing);
+                }
+
+                if (isHorusHuman || isSetGod) {
+                    const cape = new THREE.Mesh(new THREE.BoxGeometry(0.42 * muscleScale, 0.86, 0.012), crimsonMat);
+                    cape.position.set(0, 0.18, -0.118 * muscleScale);
+                    cape.rotation.x = 0.09;
+                    spine.add(cape);
+                }
+            }
+
+            // HORUS ZIRH & SET ZIRH: VÜCUDA YAPIŞIK BİYOMEKANİK GÖĞÜS VE KARIN ZIRHI
+            if (isArmoredGod) {
+                const chevronShape = new THREE.Shape();
+                chevronShape.moveTo(0, 0.048);
+                chevronShape.lineTo(0.135 * muscleScale, 0.082);
+                chevronShape.lineTo(0.118 * muscleScale, -0.022);
+                chevronShape.lineTo(0, -0.055);
+                chevronShape.closePath();
+                const chevronGeom = new THREE.ExtrudeGeometry(chevronShape, {
+                    depth: 0.018,
+                    bevelEnabled: true,
+                    bevelSize: 0.004,
+                    bevelThickness: 0.004
+                });
+
+                [-1, 1].forEach(dir => {
+                    const pecArmor = new THREE.Mesh(chevronGeom, goldMat);
+                    pecArmor.scale.x = dir;
+                    pecArmor.position.set(dir * 0.010, 0.445, 0.104 * muscleScale);
+                    pecArmor.rotation.y = dir * 0.30;
+                    pecArmor.rotation.x = -0.08;
+                    spine.add(pecArmor);
+
+                    for (let r = 0; r < 4; r++) {
+                        const scaleW = 0.94 - r * 0.12;
+                        const ribChevron = new THREE.Mesh(
+                            chevronGeom,
+                            r % 2 === 0 ? (isSetGod ? obsidianMat : lapisMat) : darkGoldMat
+                        );
+                        ribChevron.scale.set(dir * scaleW * 0.78, 0.48, 0.70);
+                        ribChevron.position.set(
+                            dir * 0.008,
+                            0.348 - r * 0.062,
+                            (0.098 - r * 0.004) * muscleScale
+                        );
+                        ribChevron.rotation.y = dir * 0.26;
+                        spine.add(ribChevron);
+                    }
+                });
+
+                const sternumSpine = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.32, 0.024), goldMat);
+                sternumSpine.position.set(0, 0.315, 0.106 * muscleScale);
+                spine.add(sternumSpine);
+
+                const chestFrame = new THREE.Mesh(new THREE.OctahedronGeometry(0.048, 1), goldMat);
+                chestFrame.scale.set(1.15, 1.15, 0.42);
+                chestFrame.position.set(0, 0.455, 0.122 * muscleScale);
+                spine.add(chestFrame);
+
+                const chestCore = new THREE.Mesh(
+                    new THREE.OctahedronGeometry(0.030, 1),
+                    isSetGod ? glowRedMat : glowBlueMat
+                );
+                chestCore.position.set(0, 0.455, 0.130 * muscleScale);
+                spine.add(chestCore);
+            }
+
+            // 4. KAFA / MİĞFER
+            const head = createHeadAndHelmet(
+                role,
+                faceMat,
+                limbSkinMat,
+                goldMat,
+                darkGoldMat,
+                lapisMat,
+                obsidianMat,
+                crimsonMat,
+                glowBlueMat,
+                glowRedMat
+            );
+            head.position.y = 0.77;
+            spine.add(head);
+
+            // 5. GÖVDEYLE PÜRÜZSÜZ BİRLEŞEN OMUZLAR, KOLLAR VE GERÇEKÇİ ELLER
+            const arms = {};
+            const armProfile = [
+                [0.00, 0.064 * muscleScale, 0.060 * muscleScale, 0.00],
+                [0.18, 0.058 * muscleScale, 0.056 * muscleScale, 0.00],
+                [0.36, 0.048 * muscleScale, 0.054 * muscleScale, 0.005],
+                [0.52, 0.042 * muscleScale, 0.040 * muscleScale, 0.00],
+                [0.66, 0.045 * muscleScale, 0.043 * muscleScale, 0.004],
+                [0.92, 0.034, 0.030, 0.00],
+                [1.00, 0.032, 0.028, 0.00]
+            ];
+
+            const pauldronShape = new THREE.Shape();
+            pauldronShape.moveTo(0, 0.042);
+            pauldronShape.quadraticCurveTo(0.080, 0.060, 0.125, 0.012);
+            pauldronShape.lineTo(0.098, -0.042);
+            pauldronShape.quadraticCurveTo(0.042, -0.022, 0, -0.032);
+            pauldronShape.closePath();
+            const pauldronGeom = new THREE.ExtrudeGeometry(pauldronShape, {
+                depth: 0.110 * muscleScale,
+                bevelEnabled: true,
+                bevelSize: 0.005,
+                bevelThickness: 0.005
+            });
+            pauldronGeom.center();
+
+            ['left', 'right'].forEach(side => {
+                const dir = side === 'left' ? -1 : 1;
+                const shoulder = new THREE.Group();
+                // Omuz kökü gövdeye biraz daha yakınlaştırılarak koltuk altı keskinliği tamamen giderildi
+                shoulder.position.set(dir * (0.152 * muscleScale), 0.555, 0);
+                spine.add(shoulder);
+
+                // Omuz Kası (Deltoid) Yumuşak Geçiş Kubbesi
+                const deltoidCap = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.062 * muscleScale, 18, 14),
+                    limbSkinMat
+                );
+                deltoidCap.scale.set(1.05, 0.92, 0.95);
+                deltoidCap.position.set(-dir * 0.012, -0.015, 0);
+                shoulder.add(deltoidCap);
+
+                const continuousArm = createContinuousSkinnedLimb(0.54, 0.52, armProfile, limbSkinMat, true);
+                shoulder.add(continuousArm.mesh);
+
+                if (isDivine) {
+                    const pauldronGroup = new THREE.Group();
+                    shoulder.add(pauldronGroup);
+
+                    const tiers = isArmoredGod ? 3 : 2;
+                    for (let p = 0; p < tiers; p++) {
+                        const wingPlate = new THREE.Mesh(
+                            pauldronGeom,
+                            p % 2 === 0 ? goldMat : (isSetGod ? obsidianMat : lapisMat)
+                        );
+                        wingPlate.scale.set(dir * (1.0 - p * 0.12), 1.0 - p * 0.10, 1.0 - p * 0.08);
+                        wingPlate.position.set(dir * (0.024 + p * 0.010), 0.014 - p * 0.026, 0);
+                        wingPlate.rotation.z = -dir * (0.18 + p * 0.14);
+                        pauldronGroup.add(wingPlate);
+                    }
+                }
+
+                if (role !== 'villager') {
+                    const bracer = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.044 * muscleScale, 0.035, 0.135, 18),
+                        isDivine ? goldMat : leatherMat
+                    );
+                    bracer.position.y = -0.15;
+                    continuousArm.lowerGroup.add(bracer);
+                }
+
+                // Doğal Oranlı El, Avuç İçi, Başparmak ve Kıvrımlı Parmaklar
+                const hand = continuousArm.endGroup;
+                const handMat = isArmoredGod ? goldMat : limbSkinMat;
+
+                const palm = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.052, 0.044), handMat);
+                palm.position.set(0, -0.026, 0.002);
+                hand.add(palm);
+
+                const thumb = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.006, 0.034, 8), handMat);
+                thumb.position.set(-dir * 0.014, -0.024, 0.022);
+                thumb.rotation.x = 0.45;
+                thumb.rotation.z = dir * 0.35;
+                hand.add(thumb);
+
+                for (let f = 0; f < 4; f++) {
+                    const finger = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.0062, 0.0052, 0.038, 8),
+                        isArmoredGod ? darkGoldMat : limbSkinMat
+                    );
+                    finger.position.set(0, -0.058, -0.014 + f * 0.010);
+                    finger.rotation.z = dir * 0.18;
+                    hand.add(finger);
+                }
+
+                if (side === 'right') {
+                    const weapon = createCharacterWeapon(role, goldMat, darkGoldMat, obsidianMat, lapisMat, glowBlueMat, glowRedMat);
+                    weapon.position.set(0, -0.040, 0.012);
+                    hand.add(weapon);
+                }
+
+                arms[side] = { shoulder, continuousArm };
+            });
+
+            // 6. KESİNTİSİZ BACAKLAR, DİZLİKLER VE SANDALETLER
+            const legs = {};
+            const legProfile = [
+                [0.00, 0.084 * muscleScale, 0.086 * muscleScale, 0.00],
+                [0.26, 0.076 * muscleScale, 0.080 * muscleScale, 0.008],
+                [0.48, 0.054 * muscleScale, 0.054 * muscleScale, 0.004],
+                [0.64, 0.060 * muscleScale, 0.064 * muscleScale, -0.008],
+                [0.92, 0.036, 0.038, 0.00],
+                [1.00, 0.033, 0.034, 0.00]
+            ];
+
+            ['left', 'right'].forEach(side => {
+                const dir = side === 'left' ? -1 : 1;
+                const hip = new THREE.Group();
+                hip.position.set(dir * 0.086 * muscleScale, -0.04, 0);
+                pelvis.add(hip);
+
+                const continuousLeg = createContinuousSkinnedLimb(0.84, 0.50, legProfile, limbSkinMat, false);
+                hip.add(continuousLeg.mesh);
+
+                if (isDivine || role === 'bek') {
+                    const greave = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.061 * muscleScale, 0.038, 0.27, 18),
+                        isDivine ? goldMat : leatherMat
+                    );
+                    greave.position.set(0, -0.20, 0.004);
+                    continuousLeg.lowerGroup.add(greave);
+
+                    if (isDivine) {
+                        const kneeGuard = new THREE.Mesh(new THREE.OctahedronGeometry(0.046 * muscleScale, 1), darkGoldMat);
+                        kneeGuard.scale.set(0.78, 1.38, 0.52);
+                        kneeGuard.position.set(0, -0.02, 0.052 * muscleScale);
+                        continuousLeg.lowerGroup.add(kneeGuard);
+                    }
+                }
+
+                const ankle = continuousLeg.endGroup;
+                const foot = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.048, 14, 12),
+                    isDivine ? goldMat : limbSkinMat
+                );
+                foot.scale.set(0.74, 0.45, 1.75);
+                foot.position.set(0, -0.024, 0.038);
+                foot.castShadow = true;
+                ankle.add(foot);
+
+                const sole = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.072, 0.012, 0.18),
+                    isDivine ? darkGoldMat : leatherMat
+                );
+                sole.position.set(0, -0.046, 0.038);
+                ankle.add(sole);
+
+                legs[side] = { hip, continuousLeg, ankle };
+            });
+
+            // 7. YELPAZE KAVİSLİ BİYOMEKANİK ŞAHİN KANATLARI
+            let wings = null;
+            if (isArmoredGod) {
+                wings = createBiomechanicalWings(
+                    isSetGod,
+                    goldMat,
+                    darkGoldMat,
+                    isSetGod ? obsidianMat : lapisMat,
+                    isSetGod ? glowRedMat : glowBlueMat
+                );
+                spine.add(wings);
+            }
+
+            return {
+                name,
+                role,
+                scale,
+                root,
+                pelvis,
+                spine,
+                head,
+                arms,
+                legs,
+                wings,
+                elbowL: -0.18,
+                elbowR: -0.22,
+                kneeL: 0.04,
+                kneeR: 0.04,
+                phase: Math.random() * Math.PI * 2,
+                aiTarget: new THREE.Vector3(),
+                aiTimer: Math.random() * 3
+            };
+        }
+
+        // ==========================================
+        // 8. DOĞAL YÜRÜME (GAIT), NEFES ALMA VE SAVAŞ/KANAT POZU ANİMASYONU
+        // ==========================================
+        function animateCharacter(char, isWalking, speedRatio, delta, elapsed, isSelected) {
+            const { pelvis, spine, head, arms, legs, wings } = char;
+            const poseBoost = isSelected && heroicPoseActive;
+
+            if (isWalking) {
+                char.phase += delta * 7.2 * Math.max(0.55, speedRatio);
+                const p = char.phase;
+
+                pelvis.position.y = 0.94 - Math.abs(Math.cos(p)) * 0.026;
+                pelvis.rotation.z = Math.sin(p) * 0.04;
+                pelvis.rotation.y = -Math.sin(p) * 0.08;
+
+                spine.rotation.y = Math.sin(p) * 0.10;
+                spine.rotation.x = 0.045 * speedRatio;
+                spine.rotation.z = -Math.sin(p) * 0.028;
+
+                head.rotation.y = -spine.rotation.y * 0.75;
+                head.rotation.x = -0.02 + Math.cos(p * 2) * 0.015;
+
+                const lHip = Math.sin(p) * 0.52 * speedRatio;
+                const rHip = Math.sin(p + Math.PI) * 0.52 * speedRatio;
+                legs.left.hip.rotation.x = lHip;
+                legs.right.hip.rotation.x = rHip;
+
+                char.kneeL = Math.max(0.03, -Math.cos(p - 0.3) * 0.78 * speedRatio + 0.05);
+                char.kneeR = Math.max(0.03, -Math.cos(p + Math.PI - 0.3) * 0.78 * speedRatio + 0.05);
+                legs.left.continuousLeg.updateBend(char.kneeL);
+                legs.right.continuousLeg.updateBend(char.kneeR);
+
+                const lArm = Math.sin(p + Math.PI) * 0.42 * speedRatio;
+                const rArm = Math.sin(p) * 0.42 * speedRatio;
+
+                arms.left.shoulder.rotation.x = lArm;
+                arms.left.shoulder.rotation.z = -0.09;
+                char.elbowL = -0.22 - Math.max(0, -lArm) * 0.42;
+                arms.left.continuousArm.updateBend(char.elbowL);
+
+                arms.right.shoulder.rotation.x = rArm;
+                arms.right.shoulder.rotation.z = 0.09;
+                char.elbowR = -0.26 - Math.max(0, -rArm) * 0.42;
+                arms.right.continuousArm.updateBend(char.elbowR);
+            } else {
+                const breath = Math.sin(elapsed * 2.1 + char.phase);
+                const sway = Math.sin(elapsed * 0.65 + char.phase);
+
+                pelvis.position.y = THREE.MathUtils.lerp(pelvis.position.y, 0.94 + breath * 0.005, 0.12);
+                pelvis.rotation.z = THREE.MathUtils.lerp(pelvis.rotation.z, sway * 0.016, 0.08);
+                pelvis.rotation.y = THREE.MathUtils.lerp(pelvis.rotation.y, sway * 0.03, 0.08);
+
+                spine.rotation.x = THREE.MathUtils.lerp(spine.rotation.x, (poseBoost ? -0.06 : 0) + breath * 0.02, 0.1);
+                spine.rotation.y = THREE.MathUtils.lerp(spine.rotation.y, -sway * 0.035, 0.08);
+                spine.rotation.z = THREE.MathUtils.lerp(spine.rotation.z, 0, 0.1);
+
+                head.rotation.y = THREE.MathUtils.lerp(head.rotation.y, sway * 0.10, 0.08);
+                head.rotation.x = THREE.MathUtils.lerp(head.rotation.x, -breath * 0.015, 0.08);
+
+                legs.left.hip.rotation.x = THREE.MathUtils.lerp(legs.left.hip.rotation.x, -0.03, 0.12);
+                legs.right.hip.rotation.x = THREE.MathUtils.lerp(legs.right.hip.rotation.x, 0.03, 0.12);
+
+                char.kneeL = THREE.MathUtils.lerp(char.kneeL, 0.05, 0.12);
+                char.kneeR = THREE.MathUtils.lerp(char.kneeR, 0.05, 0.12);
+                legs.left.continuousLeg.updateBend(char.kneeL);
+                legs.right.continuousLeg.updateBend(char.kneeR);
+
+                const targetRightArmX = poseBoost ? -0.68 : -0.06;
+                const targetRightArmZ = poseBoost ? 0.36 : 0.09 + breath * 0.015;
+                const targetRightElbow = poseBoost ? -0.62 : -0.26;
+
+                const targetLeftArmX = poseBoost ? -0.28 : 0.02;
+                const targetLeftArmZ = poseBoost ? -0.32 : -0.09 - breath * 0.015;
+
+                arms.left.shoulder.rotation.x = THREE.MathUtils.lerp(arms.left.shoulder.rotation.x, targetLeftArmX, 0.12);
+                arms.left.shoulder.rotation.z = THREE.MathUtils.lerp(arms.left.shoulder.rotation.z, targetLeftArmZ, 0.12);
+                char.elbowL = THREE.MathUtils.lerp(char.elbowL, -0.20, 0.12);
+                arms.left.continuousArm.updateBend(char.elbowL);
+
+                arms.right.shoulder.rotation.x = THREE.MathUtils.lerp(arms.right.shoulder.rotation.x, targetRightArmX, 0.12);
+                arms.right.shoulder.rotation.z = THREE.MathUtils.lerp(arms.right.shoulder.rotation.z, targetRightArmZ, 0.12);
+                char.elbowR = THREE.MathUtils.lerp(char.elbowR, targetRightElbow, 0.12);
+                arms.right.continuousArm.updateBend(char.elbowR);
+            }
+
+            if (wings) {
+                const flapSpeed = isWalking ? 3.8 : (poseBoost ? 2.8 : 1.5);
+                const flap = Math.sin(elapsed * flapSpeed) * (poseBoost ? 0.22 : 0.09);
+                const spreadZ = poseBoost ? 0.34 : 0.06;
+                const outerSpreadZ = poseBoost ? 0.28 : -0.08;
+
+                wings.leftInner.rotation.y = THREE.MathUtils.lerp(wings.leftInner.rotation.y, -0.16 - flap, 0.1);
+                wings.rightInner.rotation.y = THREE.MathUtils.lerp(wings.rightInner.rotation.y, 0.16 + flap, 0.1);
+
+                wings.leftInner.rotation.z = THREE.MathUtils.lerp(wings.leftInner.rotation.z, -spreadZ, 0.1);
+                wings.rightInner.rotation.z = THREE.MathUtils.lerp(wings.rightInner.rotation.z, spreadZ, 0.1);
+
+                wings.leftOuter.rotation.z = THREE.MathUtils.lerp(wings.leftOuter.rotation.z, -outerSpreadZ, 0.1);
+                wings.rightOuter.rotation.z = THREE.MathUtils.lerp(wings.rightOuter.rotation.z, outerSpreadZ, 0.1);
+            }
+        }
+
+        // ==========================================
+        // 9. SAHNE, SİNEMATİK IŞIKLANDIRMA VE ALTIN PARÇACIKLAR
+        // ==========================================
+        function init() {
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.00;
+            document.body.appendChild(renderer.domElement);
+
+            window.textures = buildTextures(renderer);
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x241509);
+            scene.environment = window.textures.envMap;
+            scene.fog = new THREE.FogExp2(0x241509, 0.0035);
+
+            camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.15, 1400);
+            clock = new THREE.Clock();
+
+            const skyGeo = new THREE.SphereGeometry(900, 32, 24);
+            const skyMat = new THREE.MeshBasicMaterial({
+                map: (() => {
+                    const c = document.createElement('canvas');
+                    c.width = 512; c.height = 256;
+                    const ctx = c.getContext('2d');
+                    const g = ctx.createLinearGradient(0, 0, 0, 256);
+                    g.addColorStop(0.0, '#0f172a');
+                    g.addColorStop(0.45, '#92400e');
+                    g.addColorStop(0.75, '#d97706');
+                    g.addColorStop(1.0, '#271104');
+                    ctx.fillStyle = g;
+                    ctx.fillRect(0, 0, 512, 256);
+                    return new THREE.CanvasTexture(c);
+                })(),
+                side: THREE.BackSide,
+                depthWrite: false
+            });
+            scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+            const hemi = new THREE.HemisphereLight(0xffedd5, 0x451a03, 0.72);
+            scene.add(hemi);
+
+            const sun = new THREE.DirectionalLight(0xfff7ed, 1.42);
+            sun.position.set(14, 28, 22);
+            sun.castShadow = true;
+            sun.shadow.mapSize.set(2048, 2048);
+            const d = 22;
+            sun.shadow.camera.left = -d;
+            sun.shadow.camera.right = d;
+            sun.shadow.camera.top = d;
+            sun.shadow.camera.bottom = -d;
+            sun.shadow.bias = -0.0005;
+            scene.add(sun);
+
+            const rimLight = new THREE.DirectionalLight(0xfbbf24, 1.0);
+            rimLight.position.set(-16, 15, -18);
+            scene.add(rimLight);
+
+            frontKeyLight = new THREE.PointLight(0xffedd5, 0.50, 22);
+            scene.add(frontKeyLight);
+
+            const ground = new THREE.Mesh(
+                new THREE.PlaneGeometry(240, 240),
+                new THREE.MeshStandardMaterial({
+                    map: window.textures.floorTex,
+                    roughness: 0.72,
+                    metalness: 0.08
+                })
+            );
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            const partCount = 160;
+            const partGeo = new THREE.BufferGeometry();
+            const partPos = new Float32Array(partCount * 3);
+            for (let i = 0; i < partCount; i++) {
+                partPos[i * 3] = (Math.random() - 0.5) * 28;
+                partPos[i * 3 + 1] = Math.random() * 8 + 0.3;
+                partPos[i * 3 + 2] = (Math.random() - 0.5) * 28;
+            }
+            partGeo.setAttribute('position', new THREE.BufferAttribute(partPos, 3));
+            divineParticles = new THREE.Points(
+                partGeo,
+                new THREE.PointsMaterial({ color: 0xfde047, size: 0.09, transparent: true, opacity: 0.75 })
+            );
+            scene.add(divineParticles);
+
+            const roster = [
+                { name: 'Ölümlü Bek', role: 'bek', scale: 1.0, pos: [0, 0] },
+                { name: 'Mısırlı Köylü', role: 'villager', scale: 0.97, pos: [-5.5, -2.5] },
+                { name: 'İnsan Horus', role: 'horus_human', scale: 1.55, pos: [5.5, -2.5] },
+                { name: 'Horus (Altın Şahin)', role: 'horus_god', scale: 1.95, pos: [-11.5, -6.0] },
+                { name: 'Set (Kaos Zırhı)', role: 'set_god', scale: 2.02, pos: [11.5, -6.0] }
+            ];
+
+            roster.forEach(cfg => {
+                const c = createCharacter(cfg);
+                c.root.position.set(cfg.pos[0], 0, cfg.pos[1]);
+                scene.add(c.root);
+                characters.push(c);
+            });
+
+            for (let i = 0; i < 4; i++) {
+                const ang = (i / 4) * Math.PI * 2 + 0.6;
+                const rad = 16.5;
+                const npc = createCharacter({
+                    name: `Köylü #${i + 2}`,
+                    role: 'villager',
+                    scale: 0.96 + (i % 2) * 0.03
+                });
+                npc.root.position.set(Math.cos(ang) * rad, 0, Math.sin(ang) * rad);
+                npc.aiTarget.set(Math.cos(ang + 1.3) * rad, 0, Math.sin(ang + 1.3) * rad);
+                scene.add(npc.root);
+                characters.push(npc);
+            }
+
+            bindInputEvents();
+            window.addEventListener('resize', onResize);
+
+            window.scene = scene;
+            window.camera = camera;
+            window.characters = characters;
+            window.activeIndex = activeIndex;
+            window.player = characters[activeIndex];
+
+            if (window.EgyptFlightEngine) {
+                window.EgyptFlightEngine.spawnRaSolarBarque(scene);
+                window.EgyptFlightEngine.initTrailParticles(scene);
+            }
+
+            // Kayıtlı Karakter Rolünü Seç ve Aktif Yap
+            if (window.GameState && window.GameState.state) {
+                const curRole = window.GameState.state.player.role;
+                if (curRole === 'god_set' || curRole === 'set_god' || curRole === 'set') selectCharacter(4);
+                else if (curRole === 'god_horus' || curRole === 'horus_god' || curRole === 'horus') selectCharacter(3);
+                else if (curRole === 'horus_human') selectCharacter(2);
+                else if (curRole === 'villager') selectCharacter(1);
+                else selectCharacter(0);
+            }
+
+            animate();
+        }
+
+        // ==========================================
+        // 10. MOBİL JOYSTICK, 360° KAMERA VE POZ KONTROLLERİ
+        // ==========================================
+        function bindInputEvents() {
+            const zone = document.getElementById('joystick-zone');
+            const knob = document.getElementById('joystick-knob');
+            const maxR = 40;
+
+            function moveJoy(cx, cy) {
+                const rect = zone.getBoundingClientRect();
+                let dx = cx - (rect.left + rect.width / 2);
+                let dy = cy - (rect.top + rect.height / 2);
+                const d = Math.hypot(dx, dy);
+                if (d > maxR) {
+                    dx = (dx / d) * maxR;
+                    dy = (dy / d) * maxR;
+                }
+                knob.style.transform = `translate(${dx}px, ${dy}px)`;
+                joyVec.x = dx / maxR;
+                joyVec.y = dy / maxR;
+            }
+
+            zone.addEventListener('pointerdown', (e) => {
+                e.stopPropagation();
+                joyActive = true;
+                joyPointerId = e.pointerId;
+                moveJoy(e.clientX, e.clientY);
+            });
+
+            const canvas = renderer.domElement;
+            canvas.style.touchAction = 'none';
+            canvas.addEventListener('pointerdown', (e) => {
+                canvas.setPointerCapture(e.pointerId);
+                activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                if (activePointers.size === 2) {
+                    const pts = Array.from(activePointers.values());
+                    lastPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+                }
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (joyActive && e.pointerId === joyPointerId) {
+                    moveJoy(e.clientX, e.clientY);
+                    return;
+                }
+                if (!activePointers.has(e.pointerId)) return;
+
+                const prev = activePointers.get(e.pointerId);
+                activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+                if (activePointers.size === 1) {
+                    const dx = e.clientX - prev.x;
+                    const dy = e.clientY - prev.y;
+                    camYaw -= dx * 0.0085;
+                    camPitch = Math.max(-1.35, Math.min(1.35, camPitch + dy * 0.0065));
+                } else if (activePointers.size === 2) {
+                    const pts = Array.from(activePointers.values());
+                    const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+                    if (lastPinchDist > 0) {
+                        const diff = lastPinchDist - dist;
+                        desiredDist = Math.max(1.1, Math.min(14.0, desiredDist + diff * 0.018));
+                    }
+                    lastPinchDist = dist;
+                }
+            });
+
+            function clearPointer(e) {
+                if (joyActive && e.pointerId === joyPointerId) {
+                    joyActive = false;
+                    joyPointerId = null;
+                    joyVec.x = 0;
+                    joyVec.y = 0;
+                    knob.style.transform = 'translate(0px, 0px)';
+                }
+                activePointers.delete(e.pointerId);
+                if (activePointers.size < 2) lastPinchDist = 0;
+            }
+
+            window.addEventListener('pointerup', clearPointer);
+            window.addEventListener('pointercancel', clearPointer);
+
+            window.addEventListener('wheel', (e) => {
+                desiredDist = Math.max(1.1, Math.min(14.0, desiredDist + e.deltaY * 0.004));
+            });
+
+            window.addEventListener('keydown', (e) => {
+                const k = e.key.toLowerCase();
+                if (k === 'w' || e.key === 'ArrowUp') keys.w = true;
+                if (k === 's' || e.key === 'ArrowDown') keys.s = true;
+                if (k === 'a' || e.key === 'ArrowLeft') keys.a = true;
+                if (k === 'd' || e.key === 'ArrowRight') keys.d = true;
+            });
+            window.addEventListener('keyup', (e) => {
+                const k = e.key.toLowerCase();
+                if (k === 'w' || e.key === 'ArrowUp') keys.w = false;
+                if (k === 's' || e.key === 'ArrowDown') keys.s = false;
+                if (k === 'a' || e.key === 'ArrowLeft') keys.a = false;
+                if (k === 'd' || e.key === 'ArrowRight') keys.d = false;
+            });
+        }
+
+        function selectCharacter(idx) {
+            activeIndex = idx;
+            window.activeIndex = idx;
+            if (characters[idx]) window.player = characters[idx];
+            for (let i = 0; i < 5; i++) {
+                const el = document.getElementById(`pill-${i}`);
+                if (el) el.classList.toggle('active', i === idx);
+            }
+            if (window.GameState) {
+                const roleMap = ['bek', 'villager', 'horus_human', 'horus_god', 'set_god'];
+                window.GameState.setCharacterRole(roleMap[idx]);
+                if (window.GameHUD && characters[idx]) {
+                    window.GameHUD.showToast(`Form Seçildi: ${characters[idx].name}!`, 'gold');
+                }
+            }
+            resetCameraView();
+        }
+
+        function toggleWingsPose() {
+            heroicPoseActive = !heroicPoseActive;
+            const btn = document.getElementById('btn-wings');
+            if (btn) {
+                btn.classList.toggle('bg-amber-500/30', heroicPoseActive);
+                btn.classList.toggle('border-yellow-300', heroicPoseActive);
+            }
+        }
+
+        function resetCameraView() {
+            const c = characters[activeIndex];
+            desiredTargetY = 1.05 * c.scale;
+            desiredDist = 3.45 * c.scale;
+            camPitch = 0.03;
+        }
+
+        function focusFace() {
+            const c = characters[activeIndex];
+            desiredTargetY = 1.62 * c.scale;
+            desiredDist = 1.25 * c.scale;
+            camYaw = c.root.rotation.y + 0.06;
+            camPitch = 0.01;
+        }
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // ==========================================
+        // 11. ANA OYUN VE ANİMASYON DÖNGÜSÜ
+        // ==========================================
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1);
+            const elapsed = clock.getElapsedTime();
+
+            const player = characters[activeIndex];
+
+            let ix = joyVec.x;
+            let iy = joyVec.y;
+            if (keys.w) iy = -1;
+            if (keys.s) iy = 1;
+            if (keys.a) ix = -1;
+            if (keys.d) ix = 1;
+
+            const mag = Math.min(1, Math.hypot(ix, iy));
+            const isFlying = window.EgyptFlightEngine && window.EgyptFlightEngine.isFlying;
+
+            if (!isFlying) {
+                if (moving) {
+                    const fwdX = -Math.sin(camYaw);
+                    const fwdZ = -Math.cos(camYaw);
+                    const rightX = Math.cos(camYaw);
+                    const rightZ = -Math.sin(camYaw);
+
+                    const dirX = rightX * ix + fwdX * (-iy);
+                    const dirZ = rightZ * ix + fwdZ * (-iy);
+
+                    const speed = (2.4 + player.scale * 0.65) * mag;
+                    player.root.position.x += dirX * speed * delta;
+                    player.root.position.z += dirZ * speed * delta;
+
+                    const targetRot = Math.atan2(dirX, dirZ);
+                    let diff = targetRot - player.root.rotation.y;
+                    while (diff > Math.PI) diff -= Math.PI * 2;
+                    while (diff < -Math.PI) diff += Math.PI * 2;
+                    player.root.rotation.y += diff * 0.18;
+                }
+
+                animateCharacter(player, moving, mag, delta, elapsed, true);
+            }
+
+            characters.forEach((c, idx) => {
+                if (idx === activeIndex) return;
+
+                if (idx >= 5) {
+                    if (c.aiTimer > 0) {
+                        c.aiTimer -= delta;
+                        animateCharacter(c, false, 0, delta, elapsed, false);
+                    } else {
+                        const dx = c.aiTarget.x - c.root.position.x;
+                        const dz = c.aiTarget.z - c.root.position.z;
+                        const dist = Math.hypot(dx, dz);
+
+                        if (dist < 0.35) {
+                            c.aiTimer = 2.5 + Math.random() * 3.5;
+                            const a = Math.random() * Math.PI * 2;
+                            const r = 14.0 + Math.random() * 5.0;
+                            c.aiTarget.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+                            animateCharacter(c, false, 0, delta, elapsed, false);
+                        } else {
+                            const spd = 1.65;
+                            c.root.position.x += (dx / dist) * spd * delta;
+                            c.root.position.z += (dz / dist) * spd * delta;
+
+                            const tRot = Math.atan2(dx, dz);
+                            let dRot = tRot - c.root.rotation.y;
+                            while (dRot > Math.PI) dRot -= Math.PI * 2;
+                            while (dRot < -Math.PI) dRot += Math.PI * 2;
+                            c.root.rotation.y += dRot * 0.12;
+
+                            animateCharacter(c, true, 0.72, delta, elapsed, false);
+                        }
+                    }
+                } else {
+                    animateCharacter(c, false, 0, delta, elapsed, false);
+                }
+            });
+
+            if (divineParticles) {
+                divineParticles.rotation.y = elapsed * 0.05;
+                divineParticles.position.y = Math.sin(elapsed * 0.8) * 0.25;
+            }
+
+            if (window.EgyptFlightEngine && player) {
+                window.EgyptFlightEngine.update(player, delta, elapsed, camera);
+            }
+
+            if (window.EgyptCinematicStudio && window.EgyptCinematicStudio.isActive()) {
+                window.EgyptCinematicStudio.update(camera, player, delta, elapsed);
+            } else {
+                camTargetY = THREE.MathUtils.lerp(camTargetY, desiredTargetY, 0.12);
+                camDist = THREE.MathUtils.lerp(camDist, desiredDist, 0.12);
+
+                const cx = player.root.position.x + Math.sin(camYaw) * Math.cos(camPitch) * camDist;
+                const cz = player.root.position.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist;
+                const cy = player.root.position.y + camTargetY + Math.sin(camPitch) * camDist * 0.85;
+
+                camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.24);
+                camera.lookAt(player.root.position.x, player.root.position.y + camTargetY, player.root.position.z);
+            }
+
+            if (frontKeyLight) {
+                frontKeyLight.position.set(camera.position.x, camera.position.y + 0.8, camera.position.z);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

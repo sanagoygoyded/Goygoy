@@ -1,0 +1,2908 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gods of Egypt (2016) - Gerçekçi 3B İnsan, Tanrıça & Tanrı Anatomisi Motoru</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="gameHud.css">
+    <script src="errorHandler.js"></script>
+    <script src="loadingScreen.js"></script>
+    <script src="svg-icons.js"></script>
+    <script src="gameState.js"></script>
+    <script src="gameAudio.js"></script>
+    <script src="tutorialSystem.js"></script>
+    <script src="npcSystem.js"></script>
+    <script src="gameHud.js"></script>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #110a06;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            width: 100vw;
+            min-height: 100dvh;
+            max-width: 100vw;
+            overscroll-behavior: none;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100dvh;
+            max-width: 100vw;
+            max-height: 100dvh;
+        }
+        .ui-glass {
+            background: rgba(18, 10, 6, 0.86);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(251, 191, 36, 0.42);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.72);
+        }
+        .char-pill {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .char-pill.active {
+            background: linear-gradient(135deg, #fde047 0%, #f59e0b 55%, #b45309 100%);
+            color: #1c1004;
+            border-color: #fef9c3;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.75);
+            transform: translateY(-1px);
+        }
+        .gold-btn {
+            background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #d97706 100%);
+            color: #1c1004;
+            border: 1px solid #fef08a;
+        }
+        .action-btn:active { transform: scale(0.93); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="text-amber-100 overflow-hidden">
+
+    <!-- ÜST KARAKTER SEÇİM ÇUBUĞU (TANRIÇALAR, KADIN KÖYLÜLER VE TANRILAR) -->
+    <div class="fixed top-3 left-1/2 -translate-x-1/2 z-20 ui-glass px-2.5 py-1.5 rounded-2xl flex items-center gap-1.5 max-w-[96vw] overflow-x-auto no-scrollbar">
+        <button onclick="selectCharacter(0)" id="pill-0" class="char-pill active px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 whitespace-nowrap">
+            Zaya (Ölümlü Güzeli)
+        </button>
+        <button onclick="selectCharacter(1)" id="pill-1" class="char-pill px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 text-amber-200/90 whitespace-nowrap">
+            Hathor (Aşk Tanrıçası)
+        </button>
+        <button onclick="selectCharacter(2)" id="pill-2" class="char-pill px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 text-amber-200/90 whitespace-nowrap">
+            Nephthys (Kanatlı Tanrıça)
+        </button>
+        <button onclick="selectCharacter(3)" id="pill-3" class="char-pill px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 text-amber-200/90 whitespace-nowrap">
+            İsis (Büyü Kraliçesi)
+        </button>
+        <button onclick="selectCharacter(4)" id="pill-4" class="char-pill px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 text-amber-200/90 whitespace-nowrap">
+            Astarte (Savaş Tanrıçası)
+        </button>
+        <button onclick="selectCharacter(5)" id="pill-5" class="char-pill px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 text-amber-200/90 whitespace-nowrap">
+            Anat (Av Tanrıçası)
+        </button>
+        <button onclick="selectCharacter(6)" id="pill-6" class="char-pill px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 text-amber-200/90 whitespace-nowrap">
+            Bastet (Kedi & Dans Tanrıçası)
+        </button>
+        <button onclick="selectCharacter(7)" id="pill-7" class="char-pill px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 text-amber-200/90 whitespace-nowrap">
+            Nil Köylü Güzeli
+        </button>
+        <button onclick="selectCharacter(8)" id="pill-8" class="char-pill px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 text-amber-200/90 whitespace-nowrap">
+            Tapınak Dansçısı
+        </button>
+        <button onclick="selectCharacter(9)" id="pill-9" class="char-pill px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 text-amber-200/90 whitespace-nowrap">
+            İnsan Horus (2.8m)
+        </button>
+        <button onclick="selectCharacter(10)" id="pill-10" class="char-pill px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 text-amber-200/90 whitespace-nowrap">
+            Horus Zırh (3.5m)
+        </button>
+        <button onclick="selectCharacter(11)" id="pill-11" class="char-pill px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 text-amber-200/90 whitespace-nowrap">
+            Set Zırh (3.6m)
+        </button>
+        <button onclick="selectCharacter(12)" id="pill-12" class="char-pill px-3.5 py-1.5 rounded-xl text-xs font-extrabold border border-amber-500/30 text-amber-200/90 whitespace-nowrap">
+            Ölümlü Bek
+        </button>
+        <button onclick="enterWorldWithCharacter()" class="gold-btn px-4 py-1.5 rounded-xl text-xs font-black ml-1.5 shadow-lg whitespace-nowrap">
+            ▶ Bu Formla Dünyaya Gir
+        </button>
+    </div>
+
+    <!-- SEÇİLİ KARAKTER BİLGİ ETİKETİ -->
+    <div class="fixed top-16 left-1/2 -translate-x-1/2 z-20 ui-glass px-4 py-1 rounded-full flex items-center gap-2 pointer-events-none whitespace-nowrap">
+        <span id="char-badge-title" class="text-xs font-black text-amber-300 tracking-wide">Zaya (Ölümlü Baş Güzeli)</span>
+        <span class="text-amber-500/60">•</span>
+        <span id="char-badge-desc" class="text-[11px] text-amber-100/90">Dinamik Kumaş Fiziği • Çarpışmasız (Zero-Clipping) 3B Mücevherli Büstiyer & Etek</span>
+    </div>
+
+    <!-- SOL ALT: MOBİL YÜRÜME JOYSTICK -->
+    <div id="joystick-zone" class="fixed bottom-6 left-6 w-32 h-32 ui-glass rounded-full flex items-center justify-center z-20 touch-none">
+        <div class="w-20 h-20 rounded-full border border-amber-400/30 pointer-events-none"></div>
+        <div id="joystick-knob" class="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-700 via-amber-400 to-yellow-200 border-2 border-white/90 shadow-xl absolute pointer-events-none transition-transform duration-75"></div>
+    </div>
+
+    <!-- SAĞ ALT: KAMERA AÇISI VE POZ KONTROLLERİ -->
+    <div class="fixed bottom-6 right-6 z-20 flex flex-col items-end gap-2">
+        <div class="flex flex-wrap justify-end gap-1.5">
+            <button onclick="toggleActionPose()" id="btn-wings" class="action-btn ui-glass px-3 py-1.5 rounded-xl text-xs font-bold text-amber-300 border border-amber-400/40">
+                Cazibe / Kanat Pozu
+            </button>
+            <button onclick="focusBodySculpt()" class="action-btn ui-glass px-3 py-1.5 rounded-xl text-xs font-semibold text-amber-200">
+                Vücut / Sütyen & Kalça
+            </button>
+            <button onclick="focusFace()" class="action-btn ui-glass px-3 py-1.5 rounded-xl text-xs font-semibold text-amber-200">
+                Yüz & Saç Detayı
+            </button>
+            <button onclick="resetCameraView()" class="action-btn ui-glass px-3 py-1.5 rounded-xl text-xs font-semibold text-amber-200">
+                Tam Boy
+            </button>
+        </div>
+        <div class="ui-glass px-3 py-1.5 rounded-xl text-[11px] text-amber-200/90 pointer-events-none">
+            Ekranı kaydır: 360° Kamera • İki parmak / Tekerlek: Yakınlaştır
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, clock;
+        let characters = [];
+        let activeIndex = 0;
+        let actionPoseActive = false;
+        let frontKeyLight, warmFillLight;
+        let divineParticles;
+
+        // Kontroller
+        let joyActive = false;
+        let joyPointerId = null;
+        let joyVec = { x: 0, y: 0 };
+        const keys = { w: false, a: false, s: false, d: false };
+
+        // 360° Kamera
+        let camYaw = 0.16;
+        let camPitch = 0.03;
+        let camDist = 3.05;
+        let camTargetY = 1.00;
+        let desiredTargetY = 1.00;
+        let desiredDist = 3.05;
+        const activePointers = new Map();
+        let lastPinchDist = 0;
+
+        // ==========================================
+        // 1. PBR YANSIMA HARİTASI VE GERÇEKÇİ TEN / KUMAŞ DOKULARI
+        // ==========================================
+        function buildTextures(rendererInstance) {
+            const envC = document.createElement('canvas');
+            envC.width = 1024; envC.height = 512;
+            const eCtx = envC.getContext('2d');
+
+            const skyGrad = eCtx.createLinearGradient(0, 0, 0, 512);
+            skyGrad.addColorStop(0.0, '#090d16');
+            skyGrad.addColorStop(0.24, '#241822');
+            skyGrad.addColorStop(0.45, '#d97706');
+            skyGrad.addColorStop(0.50, '#fef08a');
+            skyGrad.addColorStop(0.56, '#9a3412');
+            skyGrad.addColorStop(0.78, '#281207');
+            skyGrad.addColorStop(1.0, '#0a0502');
+            eCtx.fillStyle = skyGrad;
+            eCtx.fillRect(0, 0, 1024, 512);
+
+            const studioPanels = [
+                { x: 220, y: 150, r: 145, c: 'rgba(255, 248, 228, 0.92)' },
+                { x: 512, y: 170, r: 175, c: 'rgba(253, 224, 71, 0.88)' },
+                { x: 810, y: 150, r: 145, c: 'rgba(255, 232, 212, 0.90)' },
+                { x: 512, y: 365, r: 160, c: 'rgba(217, 119, 6, 0.52)' }
+            ];
+            studioPanels.forEach(p => {
+                const rg = eCtx.createRadialGradient(p.x, p.y, 4, p.x, p.y, p.r);
+                rg.addColorStop(0, p.c);
+                rg.addColorStop(0.45, 'rgba(245, 158, 11, 0.32)');
+                rg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                eCtx.fillStyle = rg;
+                eCtx.fillRect(0, 0, 1024, 512);
+            });
+
+            const rawEnvTex = new THREE.CanvasTexture(envC);
+            rawEnvTex.mapping = THREE.EquirectangularReflectionMapping;
+
+            const pmremGenerator = new THREE.PMREMGenerator(rendererInstance);
+            pmremGenerator.compileEquirectangularShader();
+            const envMap = pmremGenerator.fromEquirectangular(rawEnvTex).texture;
+            rawEnvTex.dispose();
+            pmremGenerator.dispose();
+
+            // 2. Doğal Kadın Vücut Ten Dokusu (Köprücük kemiği, yumuşak göğüs dekoltesi gölgesi, ince bel konturu ve göbek deliği)
+            function createFemaleBodySkinTexture(baseRgb, shadowRgb, highlightRgb) {
+                const c = document.createElement('canvas');
+                c.width = 1024; c.height = 1024;
+                const ctx = c.getContext('2d');
+
+                ctx.fillStyle = `rgb(${baseRgb[0]}, ${baseRgb[1]}, ${baseRgb[2]})`;
+                ctx.fillRect(0, 0, 1024, 1024);
+
+                function softShade(cx, cy, rx, ry, colorStr) {
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.scale(rx, ry);
+                    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+                    g.addColorStop(0, colorStr);
+                    g.addColorStop(0.55, colorStr.replace(/[\d.]+\)$/, (m) => (parseFloat(m) * 0.45) + ')'));
+                    g.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = g;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 1, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                const sh = (a) => `rgba(${shadowRgb[0]}, ${shadowRgb[1]}, ${shadowRgb[2]}, ${a})`;
+                const hi = (a) => `rgba(${highlightRgb[0]}, ${highlightRgb[1]}, ${highlightRgb[2]}, ${a})`;
+
+                // Yan bel ve kaburga konturları
+                softShade(270, 480, 75, 290, sh(0.22));
+                softShade(754, 480, 75, 290, sh(0.22));
+
+                // Sırt omurga oluğu (x = 0 ve x = 1024)
+                softShade(0, 460, 22, 310, sh(0.32));
+                softShade(1024, 460, 22, 310, sh(0.32));
+
+                // Köprücük kemiği (Clavicle)
+                [-1, 1].forEach(dir => {
+                    softShade(512 + dir * 66, 200, 52, 7, hi(0.30));
+                    softShade(512 + dir * 66, 210, 52, 6, sh(0.22));
+                });
+
+                // Göğüs dekolte arası yumuşak gölge ve üst göğüs ışıltısı
+                softShade(512, 315, 14, 78, sh(0.38));
+                [-1, 1].forEach(dir => {
+                    const bx = 512 + dir * 58;
+                    softShade(bx, 295, 52, 48, hi(0.30));
+                    softShade(bx, 358, 52, 16, sh(0.35));
+                });
+
+                // İnce kadın karnı ışıltısı ve göbek deliği
+                softShade(512, 495, 48, 105, hi(0.18));
+                softShade(462, 495, 9, 95, sh(0.16));
+                softShade(562, 495, 9, 95, sh(0.16));
+                softShade(512, 565, 6, 9, sh(0.50));
+
+                // Arka kalça (Glutes) üst/alt doğal gölge ve ışıltısı
+                softShade(85, 690, 65, 65, hi(0.22));
+                softShade(939, 690, 65, 65, hi(0.22));
+                softShade(0, 695, 16, 85, sh(0.42));
+                softShade(1024, 695, 16, 85, sh(0.42));
+
+                return new THREE.CanvasTexture(c);
+            }
+
+            // 3. Doğal İnsan & Tanrıça Yüz Dokusu (Yumuşak allık, elmacık kemiği ışıltısı ve pürüzsüz cilt tonu)
+            function createHumanFaceTexture(baseRgb, shadowRgb, highlightRgb, blushRgba = null) {
+                const c = document.createElement('canvas');
+                c.width = 512; c.height = 512;
+                const ctx = c.getContext('2d');
+
+                ctx.fillStyle = `rgb(${baseRgb[0]}, ${baseRgb[1]}, ${baseRgb[2]})`;
+                ctx.fillRect(0, 0, 512, 512);
+
+                const g = ctx.createRadialGradient(256, 235, 12, 256, 256, 210);
+                g.addColorStop(0, `rgba(${highlightRgb[0]}, ${highlightRgb[1]}, ${highlightRgb[2]}, 0.28)`);
+                g.addColorStop(0.62, `rgba(${baseRgb[0]}, ${baseRgb[1]}, ${baseRgb[2]}, 0.0)`);
+                g.addColorStop(1, `rgba(${shadowRgb[0]}, ${shadowRgb[1]}, ${shadowRgb[2]}, 0.24)`);
+                ctx.fillStyle = g;
+                ctx.fillRect(0, 0, 512, 512);
+
+                if (blushRgba) {
+                    [-1, 1].forEach(dir => {
+                        const bx = 256 + dir * 56;
+                        const by = 278;
+                        const bg = ctx.createRadialGradient(bx, by, 2, bx, by, 38);
+                        bg.addColorStop(0, blushRgba);
+                        bg.addColorStop(1, 'rgba(0,0,0,0)');
+                        ctx.fillStyle = bg;
+                        ctx.fillRect(0, 0, 512, 512);
+                    });
+                }
+
+                return new THREE.CanvasTexture(c);
+            }
+
+            // 4. Erkek Tanrı & Kahraman Gövde Dokusu
+            function createMaleTorsoTexture(baseRgb, darkRgb, highlightRgb) {
+                const c = document.createElement('canvas');
+                c.width = 1024; c.height = 1024;
+                const ctx = c.getContext('2d');
+
+                ctx.fillStyle = `rgb(${baseRgb[0]}, ${baseRgb[1]}, ${baseRgb[2]})`;
+                ctx.fillRect(0, 0, 1024, 1024);
+
+                function softBlob(cx, cy, rx, ry, colorStr) {
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.scale(rx, ry);
+                    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+                    g.addColorStop(0, colorStr);
+                    g.addColorStop(0.55, colorStr.replace(/[\d.]+\)$/, (m) => (parseFloat(m) * 0.42) + ')'));
+                    g.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = g;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 1, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                const shadow = (a) => `rgba(${darkRgb[0]}, ${darkRgb[1]}, ${darkRgb[2]}, ${a})`;
+                const light = (a) => `rgba(${highlightRgb[0]}, ${highlightRgb[1]}, ${highlightRgb[2]}, ${a})`;
+
+                softBlob(265, 520, 82, 330, shadow(0.26));
+                softBlob(759, 520, 82, 330, shadow(0.26));
+                softBlob(0, 500, 28, 330, shadow(0.36));
+                softBlob(1024, 500, 28, 330, shadow(0.36));
+                softBlob(512, 515, 13, 250, shadow(0.30));
+
+                [-1, 1].forEach(dir => {
+                    const px = 512 + dir * 74;
+                    softBlob(px, 392, 66, 15, shadow(0.38));
+                    softBlob(px, 336, 62, 48, light(0.26));
+                });
+
+                const abRows = [465, 545, 625];
+                abRows.forEach((ry, idx) => {
+                    const w = 36 - idx * 3;
+                    [-1, 1].forEach(dir => {
+                        const ax = 512 + dir * 36;
+                        softBlob(ax, ry + 30, w, 8, shadow(0.25));
+                        softBlob(ax, ry, w * 0.85, 22, light(0.18));
+                    });
+                });
+
+                softBlob(512, 682, 8, 10, shadow(0.45));
+                return new THREE.CanvasTexture(c);
+            }
+
+            // 5. İnce Pilili İpek Kalasiris & İşlemeli Büstiyer Kumaş Dokusu
+            function createSilkFabricTexture(bgHex, pleatRgba, goldHex, accentHex) {
+                const c = document.createElement('canvas');
+                c.width = 512; c.height = 512;
+                const ctx = c.getContext('2d');
+                ctx.fillStyle = bgHex;
+                ctx.fillRect(0, 0, 512, 512);
+
+                // İnce dikey ipek pilileri ve dokuma ışıltısı
+                for (let x = 0; x < 512; x += 4) {
+                    ctx.fillStyle = x % 8 === 0 ? pleatRgba : 'rgba(255, 255, 255, 0.14)';
+                    ctx.fillRect(x, 0, 2, 512);
+                }
+
+                // Altın nakış bordürleri ve Mısır lotus/geometrik desen şeridi
+                ctx.fillStyle = goldHex;
+                ctx.fillRect(0, 0, 512, 18);
+                ctx.fillRect(0, 462, 512, 22);
+                ctx.fillStyle = accentHex;
+                ctx.fillRect(0, 484, 512, 14);
+                ctx.fillStyle = goldHex;
+                ctx.fillRect(0, 498, 512, 14);
+
+                ctx.strokeStyle = goldHex;
+                ctx.lineWidth = 2;
+                for (let x = 0; x < 512; x += 16) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 462);
+                    ctx.lineTo(x + 8, 446);
+                    ctx.lineTo(x + 16, 462);
+                    ctx.stroke();
+                }
+
+                return new THREE.CanvasTexture(c);
+            }
+
+            // 6. Altın Zırh & Mücevher Dokusu
+            const goldC = document.createElement('canvas');
+            goldC.width = 512; goldC.height = 512;
+            const gCtx = goldC.getContext('2d');
+            const gGrad = gCtx.createLinearGradient(0, 0, 512, 512);
+            gGrad.addColorStop(0, '#fde047');
+            gGrad.addColorStop(0.5, '#f59e0b');
+            gGrad.addColorStop(1, '#b45309');
+            gCtx.fillStyle = gGrad;
+            gCtx.fillRect(0, 0, 512, 512);
+            gCtx.strokeStyle = 'rgba(92, 42, 6, 0.32)';
+            gCtx.lineWidth = 2;
+            for (let y = 0; y < 512; y += 22) {
+                for (let x = 0; x < 512; x += 26) {
+                    gCtx.beginPath();
+                    gCtx.moveTo(x, y);
+                    gCtx.lineTo(x + 13, y + 11);
+                    gCtx.lineTo(x + 26, y);
+                    gCtx.stroke();
+                }
+            }
+            const goldTex = new THREE.CanvasTexture(goldC);
+
+            // 7. Tapınak Zemin Dokusu
+            const floorC = document.createElement('canvas');
+            floorC.width = 512; floorC.height = 512;
+            const fCtx = floorC.getContext('2d');
+            fCtx.fillStyle = '#c29b6c';
+            fCtx.fillRect(0, 0, 512, 512);
+            for (let i = 0; i < 8500; i++) {
+                fCtx.fillStyle = i % 2 === 0 ? 'rgba(255,240,215,0.05)' : 'rgba(75,42,15,0.06)';
+                fCtx.fillRect(Math.random() * 512, Math.random() * 512, 3, 3);
+            }
+            fCtx.strokeStyle = 'rgba(85, 48, 18, 0.35)';
+            fCtx.lineWidth = 3;
+            for (let p = 0; p <= 512; p += 128) {
+                fCtx.beginPath(); fCtx.moveTo(p, 0); fCtx.lineTo(p, 512); fCtx.stroke();
+                fCtx.beginPath(); fCtx.moveTo(0, p); fCtx.lineTo(512, p); fCtx.stroke();
+            }
+            const floorTex = new THREE.CanvasTexture(floorC);
+            floorTex.wrapS = THREE.RepeatWrapping;
+            floorTex.wrapT = THREE.RepeatWrapping;
+            floorTex.repeat.set(60, 60);
+
+            return {
+                envMap,
+                goldTex,
+                floorTex,
+                // Kadın Cilt Tonları (Sıcak Buğday/İnci, Altın Bronz, Güneş Esmeri)
+                femBodyPearl: createFemaleBodySkinTexture([218, 158, 122], [124, 68, 40], [248, 204, 174]),
+                femBodyGolden: createFemaleBodySkinTexture([202, 136, 94], [108, 54, 26], [238, 184, 146]),
+                femBodyBronze: createFemaleBodySkinTexture([184, 116, 76], [92, 42, 18], [224, 164, 124]),
+                femFacePearl: createHumanFaceTexture([218, 158, 122], [124, 68, 40], [248, 204, 174], 'rgba(215, 85, 80, 0.24)'),
+                femFaceGolden: createHumanFaceTexture([202, 136, 94], [108, 54, 26], [238, 184, 146], 'rgba(210, 75, 68, 0.25)'),
+                femFaceBronze: createHumanFaceTexture([184, 116, 76], [92, 42, 18], [224, 164, 124], 'rgba(198, 65, 58, 0.24)'),
+                // Erkek Cilt Tonları
+                maleTorsoHorus: createMaleTorsoTexture([208, 142, 100], [104, 50, 24], [244, 194, 156]),
+                maleTorsoBek: createMaleTorsoTexture([196, 128, 88], [94, 44, 20], [236, 180, 142]),
+                maleFaceHorus: createHumanFaceTexture([208, 142, 100], [114, 58, 28], [244, 194, 156]),
+                maleFaceBek: createHumanFaceTexture([196, 128, 88], [108, 54, 26], [236, 180, 142]),
+                // Kumaşlar (Ten rengiyle karışmayan, zengin ve belirgin ipek/brokar tonları)
+                fabricZaya: createSilkFabricTexture('#f8fafc', 'rgba(56, 189, 248, 0.28)', '#f59e0b', '#0284c7'),
+                fabricHathor: createSilkFabricTexture('#9a3412', 'rgba(253, 224, 71, 0.36)', '#fde047', '#dc2626'),
+                fabricNephthys: createSilkFabricTexture('#065f46', 'rgba(253, 224, 71, 0.32)', '#f59e0b', '#14b8a6'),
+                fabricIsis: createSilkFabricTexture('#1e3a8a', 'rgba(251, 191, 36, 0.34)', '#fde047', '#38bdf8'),
+                fabricAstarte: createSilkFabricTexture('#7f1d1d', 'rgba(251, 191, 36, 0.36)', '#f59e0b', '#ef4444'),
+                fabricAnat: createSilkFabricTexture('#581c87', 'rgba(245, 158, 11, 0.34)', '#fde047', '#a855f7'),
+                fabricBastet: createSilkFabricTexture('#18181b', 'rgba(250, 204, 21, 0.38)', '#facc15', '#ca8a04'),
+                fabricVillager: createSilkFabricTexture('#7c2d12', 'rgba(253, 224, 71, 0.30)', '#f59e0b', '#0d9488'),
+                fabricDancer: createSilkFabricTexture('#881337', 'rgba(253, 224, 71, 0.36)', '#fde047', '#fb7185'),
+                linenMale: createSilkFabricTexture('#eee3cf', 'rgba(115, 86, 54, 0.26)', '#b45309', '#1d4ed8')
+            };
+        }
+
+        // ==========================================
+        // 2. KESİNTİSİZ CANLI UZUV (KOL & BACAK) MOTORU
+        // ==========================================
+        function createContinuousSkinnedLimb(totalLength, jointRatio, profile, material, isArm = false) {
+            const radialSegs = 32;
+            const heightSegs = 36;
+            const geom = new THREE.CylinderGeometry(1, 1, totalLength, radialSegs, heightSegs, true);
+
+            const pos = geom.attributes.position;
+            const restData = [];
+
+            for (let i = 0; i < pos.count; i++) {
+                const vx = pos.getX(i);
+                const vy = pos.getY(i);
+                const vz = pos.getZ(i);
+
+                const t = Math.max(0.0, Math.min(1.0, (totalLength / 2 - vy) / totalLength));
+                const radialLen = Math.hypot(vx, vz);
+                const nx = radialLen > 0.0001 ? vx / radialLen : 0;
+                const nz = radialLen > 0.0001 ? vz / radialLen : 0;
+
+                let rx = profile[profile.length - 1][1];
+                let rz = profile[profile.length - 1][2];
+                let offZ = profile[profile.length - 1][3] || 0;
+
+                for (let j = 0; j < profile.length - 1; j++) {
+                    const p0 = profile[j];
+                    const p1 = profile[j + 1];
+                    if (t >= p0[0] && t <= p1[0] + 0.0001) {
+                        const span = Math.max(0.0001, p1[0] - p0[0]);
+                        const lt = Math.max(0.0, Math.min(1.0, (t - p0[0]) / span));
+                        const s = lt * lt * (3 - 2 * lt);
+                        rx = p0[1] + (p1[1] - p0[1]) * s;
+                        rz = p0[2] + (p1[2] - p0[2]) * s;
+                        offZ = (p0[3] || 0) + ((p1[3] || 0) - (p0[3] || 0)) * s;
+                        break;
+                    }
+                }
+
+                let capScale = 1.0;
+                let yLocal = -t * totalLength;
+                if (t < 0.08) {
+                    const kt = t / 0.08;
+                    capScale = Math.sin(kt * Math.PI * 0.5);
+                    yLocal = (1.0 - kt) * (rx * 0.52);
+                }
+
+                const lx = nx * rx * capScale;
+                const lz = nz * rz * capScale + offZ;
+
+                restData.push({ t, lx, ly: yLocal, lz });
+                pos.setXYZ(i, lx, yLocal, lz);
+            }
+
+            geom.computeVertexNormals();
+            const mesh = new THREE.Mesh(geom, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+
+            const jointY = -jointRatio * totalLength;
+
+            const upperGroup = new THREE.Group();
+            upperGroup.position.set(0, -totalLength * 0.25, 0);
+            mesh.add(upperGroup);
+
+            const lowerGroup = new THREE.Group();
+            lowerGroup.position.set(0, jointY, 0);
+            mesh.add(lowerGroup);
+
+            const endGroup = new THREE.Group();
+            endGroup.position.set(0, -totalLength, 0);
+            mesh.add(endGroup);
+
+            function updateBend(jointAngleX) {
+                const sinA = Math.sin(jointAngleX);
+                const cosA = Math.cos(jointAngleX);
+
+                for (let i = 0; i < restData.length; i++) {
+                    const v = restData[i];
+                    if (v.t <= jointRatio - 0.09) {
+                        pos.setXYZ(i, v.lx, v.ly, v.lz);
+                    } else {
+                        let weight = 1.0;
+                        if (v.t < jointRatio + 0.09) {
+                            const kt = (v.t - (jointRatio - 0.09)) / 0.18;
+                            weight = kt * kt * (3 - 2 * kt);
+                        }
+                        const a = jointAngleX * weight;
+                        const s = Math.sin(a);
+                        const c = Math.cos(a);
+
+                        const dy = v.ly - jointY;
+                        const dz = v.lz;
+
+                        const ny = jointY + dy * c - dz * s;
+                        const nz = dy * s + dz * c;
+                        pos.setXYZ(i, v.lx, ny, nz);
+                    }
+                }
+                pos.needsUpdate = true;
+
+                lowerGroup.position.set(0, jointY, 0);
+                lowerGroup.rotation.x = jointAngleX;
+
+                const lowerLen = totalLength * (1 - jointRatio);
+                endGroup.position.set(0, jointY - lowerLen * cosA, -lowerLen * sinA);
+                endGroup.rotation.x = jointAngleX;
+            }
+
+            updateBend(isArm ? -0.16 : 0.04);
+            return { mesh, upperGroup, lowerGroup, endGroup, updateBend };
+        }
+
+        // ==========================================
+        // 3. ÇARPIŞMASIZ (ZERO-CLIPPING) KADIN ANATOMİSİ, TAM OTURAN 3B KRALİYET BÜSTİYERİ VE GERÇEK ZAMANLI HAREKETLİ KUMAŞ ETEK MOTORU
+        // ==========================================
+        function sampleSeamlessFemaleBodySurface(theta, t, curveScale = 1.0) {
+            // t = 0.0 (Kalça/uyluk birleşimi y = -0.14) -> t = 1.0 (Boyun üstü y = +0.62)
+            const nx = Math.sin(theta);
+            const nz = Math.cos(theta);
+
+            const smooth = (a, b, v) => {
+                const k = Math.max(0, Math.min(1, (v - a) / (b - a)));
+                return k * k * (3 - 2 * k);
+            };
+
+            let rx = 0.12;
+            let rz = 0.09;
+            let centerZ = 0;
+
+            if (t < 0.15) {
+                const s = smooth(0.0, 0.15, t);
+                rx = (0.128 + 0.026 * s) * curveScale;
+                rz = (0.094 + 0.018 * s) * curveScale;
+                centerZ = -0.007 * s;
+            } else if (t < 0.31) {
+                // Yuvarlak kalçadan kum saati ince bele geçiş
+                const s = smooth(0.15, 0.31, t);
+                rx = (0.154 * (1 - s) + 0.094 * s) * curveScale;
+                rz = (0.112 * (1 - s) + 0.073 * s);
+                centerZ = -0.007 * (1 - s) + 0.006 * s;
+            } else if (t < 0.46) {
+                const s = smooth(0.31, 0.46, t);
+                rx = 0.094 * curveScale * (1 - s) + 0.121 * s;
+                rz = 0.073 * (1 - s) + 0.091 * s;
+                centerZ = 0.007;
+            } else if (t < 0.74) {
+                const s = smooth(0.46, 0.74, t);
+                rx = 0.121 + Math.sin(s * Math.PI * 0.65) * 0.021;
+                rz = 0.091 + Math.sin(s * Math.PI * 0.55) * 0.009;
+                centerZ = 0.007 * (1 - s * 0.6);
+            } else if (t < 0.86) {
+                const s = smooth(0.74, 0.86, t);
+                rx = 0.138 * (1 - s) + 0.042 * s;
+                rz = 0.095 * (1 - s) + 0.042 * s;
+            } else {
+                const s = smooth(0.86, 1.0, t);
+                rx = 0.042 - Math.sin(s * Math.PI) * 0.003;
+                rz = 0.042 - Math.sin(s * Math.PI) * 0.003;
+                centerZ = 0.003;
+            }
+
+            let x = nx * rx;
+            let z = nz * rz + centerZ;
+            const y = -0.14 + t * 0.76;
+
+            // 1. DOĞAL YUVARLAK DAMLA (TEARDROP) 3B GÖĞÜS ANATOMİSİ (Sivri koni yapmayan yuvarlak kubbe profili!)
+            if (nz > -0.05 && t > 0.49 && t < 0.75) {
+                const ty = (t - 0.618) / 0.108;
+                if (Math.abs(ty) < 1.0) {
+                    // Yuvarlak kubbe dikey profil + doğal alt göğüs dolgunluğu
+                    const domeY = Math.sqrt(Math.max(0, 1.0 - ty * ty)) * (ty < 0 ? 1.12 : 1.0 - ty * 0.16);
+
+                    const distL = Math.abs(nx + 0.44) / 0.40;
+                    const distR = Math.abs(nx - 0.44) / 0.40;
+                    // Sivri tepe yerine pürüzsüz yuvarlak küresel kapak (cos^2)
+                    const lobeL = distL < 1.0 ? Math.pow(Math.cos(distL * Math.PI * 0.5), 1.7) : 0;
+                    const lobeR = distR < 1.0 ? Math.pow(Math.cos(distR * Math.PI * 0.5), 1.7) : 0;
+
+                    const breastVolume = (lobeL + lobeR) * domeY * Math.max(0, nz) * curveScale;
+                    z += breastVolume * 0.062;
+                    x += Math.sign(nx) * breastVolume * 0.016;
+                }
+            }
+
+            // 2. DOĞAL YUVARLAK 3B KALÇA KASLARI (GLUTES)
+            if (nz < 0.05 && t > 0.03 && t < 0.27) {
+                const gy = (t - 0.15) / 0.105;
+                if (Math.abs(gy) < 1.0) {
+                    const gluteDomeY = Math.sqrt(Math.max(0, 1.0 - gy * gy)) * (gy < 0 ? 1.14 : 1.0);
+                    const gDistL = Math.abs(nx + 0.43) / 0.42;
+                    const gDistR = Math.abs(nx - 0.43) / 0.42;
+                    const gLobeL = gDistL < 1.0 ? Math.pow(Math.cos(gDistL * Math.PI * 0.5), 1.7) : 0;
+                    const gLobeR = gDistR < 1.0 ? Math.pow(Math.cos(gDistR * Math.PI * 0.5), 1.7) : 0;
+
+                    const gLobe = (gLobeL + gLobeR) * gluteDomeY * Math.max(0, -nz) * curveScale;
+                    z -= gLobe * 0.050;
+                    x += Math.sign(nx) * gLobe * 0.012;
+                }
+            }
+
+            // 3. YUMUŞAK KARIN KAVİSİ VE OMURGA OLUĞU
+            const absX = Math.abs(nx);
+            if (nz > 0.25 && t > 0.20 && t < 0.48) {
+                const belly = Math.sin(((t - 0.20) / 0.28) * Math.PI) * Math.cos(Math.min(1, absX / 0.55) * Math.PI * 0.5);
+                z += belly * 0.007;
+            }
+            if (nz < -0.25 && t > 0.28 && t < 0.75 && absX < 0.20) {
+                z += (1.0 - absX / 0.20) * ((-nz - 0.25) / 0.75) * 0.008;
+            }
+
+            return { x, y, z, nx, nz };
+        }
+
+        // Büstiyer üst sınır fonksiyonu (Hem gövde gizlemede hem büstiyer ağında ortak kullanılır -> %100 sıfır çarpışma!)
+        function getBraUpperBoundaryT(theta) {
+            const absTheta = Math.abs(theta);
+            if (absTheta >= 1.48) return 0.562; // Sırtta zarif düz bant
+            const cupArch = Math.sin(Math.min(1, absTheta / 1.18) * Math.PI);
+            const plungeV = Math.pow(Math.min(1, absTheta / 0.34), 1.35);
+            return 0.546 + plungeV * cupArch * 0.118;
+        }
+
+        // Kemer yüksekliği fonksiyonu
+        function getBeltTopT(theta) {
+            const cosT = Math.cos(theta);
+            return 0.232 - (cosT > 0 ? Math.pow(cosT, 1.6) * 0.044 : 0.010 * (-cosT));
+        }
+
+        function createSeamlessFemaleBodyAndAttire(role, bodyMat, skinMat, fabricMat, goldMat, accentMat, gemMat, curveScale = 1.0) {
+            const bodyGroup = new THREE.Group();
+
+            // A) TEK PARÇA KADIN VÜCUDU (Kıyafet altında kalan bölgeler 2.5mm içe çekilir, böylece ten ASLA kıyafetin dışına çıkamaz!)
+            const rSegs = 96;
+            const hSegs = 96;
+            const totalH = 0.76;
+            const bodyGeom = new THREE.CylinderGeometry(1, 1, totalH, rSegs, hSegs, false);
+            const pos = bodyGeom.attributes.position;
+            const uv = bodyGeom.attributes.uv;
+
+            for (let i = 0; i < pos.count; i++) {
+                const vx = pos.getX(i);
+                const vy = pos.getY(i);
+                const vz = pos.getZ(i);
+
+                const radial = Math.hypot(vx, vz);
+                const t = Math.max(0.0, Math.min(1.0, (vy + totalH / 2) / totalH));
+
+                if (radial < 0.001) {
+                    pos.setXYZ(i, 0, -0.14 + t * totalH, 0);
+                    uv.setXY(i, 0.5, t);
+                    continue;
+                }
+
+                const theta = Math.atan2(vx, vz);
+                const lockedU = (theta / (Math.PI * 2)) + 0.5;
+                uv.setXY(i, lockedU, t);
+
+                const pt = sampleSeamlessFemaleBodySurface(theta, t, curveScale);
+
+                // ЧARPIŞMA ÖNLEYİCİ (ZERO-CLIPPING TUCK):
+                // Büstiyerin tam ortasında kalan veya kemerin/eteğin altında kalan gövde noktalarını hafifçe içe çekiyoruz.
+                const tBraMax = getBraUpperBoundaryT(theta);
+                const tBelt = getBeltTopT(theta);
+                let shrink = 1.0;
+
+                if (t >= 0.520 && t <= tBraMax - 0.008) {
+                    shrink = 0.975; // Ten asla sütyenin içinden dışarı taşamaz
+                } else if (t <= tBelt + 0.012) {
+                    // Kemer ve kalça altı bölgesi: ön ve arka etek panellerinin altında kalan gövdeyi içe çek
+                    const absTh = Math.abs(theta);
+                    if (absTh < 1.02 || absTh > 1.38 || Math.abs(t - tBelt) < 0.018) {
+                        shrink = 0.965;
+                    }
+                }
+
+                pos.setXYZ(i, pt.x * shrink, pt.y, pt.z * shrink);
+            }
+
+            bodyGeom.computeVertexNormals();
+            const bodyMesh = new THREE.Mesh(bodyGeom, bodyMat);
+            bodyMesh.castShadow = true;
+            bodyMesh.receiveShadow = true;
+            bodyGroup.add(bodyMesh);
+
+            // B) ÇARPIŞMASIZ (ZERO-CLIPPING) ÇOK KATMANLI 3B KRALİYET & KÖYLÜ BÜSTİYERİ
+            const braGroup = new THREE.Group();
+            bodyGroup.add(braGroup);
+
+            const braRSegs = 96;
+            const braHSegs = 32;
+            const braGeom = new THREE.CylinderGeometry(1, 1, 1, braRSegs, braHSegs, true);
+            const bPos = braGeom.attributes.position;
+            const bUv = braGeom.attributes.uv;
+
+            const isGoldArmorBra = (role === 'astarte' || role === 'bastet' || role === 'anat');
+            const braMainMat = (isGoldArmorBra ? goldMat : fabricMat).clone();
+            braMainMat.side = THREE.DoubleSide;
+            braMainMat.polygonOffset = true;
+            braMainMat.polygonOffsetFactor = -2;
+            braMainMat.polygonOffsetUnits = -2;
+
+            for (let i = 0; i < bPos.count; i++) {
+                const vx = bPos.getX(i);
+                const vy = bPos.getY(i);
+                const vz = bPos.getZ(i);
+
+                const theta = Math.atan2(vx, vz);
+                const s = Math.max(0.0, Math.min(1.0, vy + 0.5));
+
+                const tMin = 0.512;
+                const tMax = getBraUpperBoundaryT(theta);
+                const tBody = tMin + s * (tMax - tMin);
+                const pt = sampleSeamlessFemaleBodySurface(theta, tBody, curveScale);
+
+                // Kumaş kabartması ve güvenli dış kontur (Vücut yüzeyinin 5mm dışında, tenle asla çakışmaz)
+                const pleatRelief = Math.sin(theta * 36) * 0.0008;
+                const outScale = 1.036 + pleatRelief;
+                bPos.setXYZ(i, pt.x * outScale, pt.y, pt.z * outScale + (pt.nz > 0 ? 0.0035 : 0));
+                bUv.setXY(i, (theta / (Math.PI * 2)) + 0.5, s);
+            }
+            braGeom.computeVertexNormals();
+            const braMesh = new THREE.Mesh(braGeom, braMainMat);
+            braMesh.castShadow = true;
+            braMesh.receiveShadow = true;
+            braGroup.add(braMesh);
+
+            // Sütyen Altı Kalıplı Altın Kemer Bandı (Yüksek yoğunluklu 96 segment -> gövdeyi kesmez!)
+            const underBandPoints = [];
+            for (let k = 0; k <= 96; k++) {
+                const th = (k / 96) * Math.PI * 2;
+                const pt = sampleSeamlessFemaleBodySurface(th, 0.512, curveScale);
+                underBandPoints.push(new THREE.Vector3(pt.x * 1.044, pt.y, pt.z * 1.044 + (pt.nz > 0 ? 0.004 : 0)));
+            }
+            const underBandCurve = new THREE.CatmullRomCurve3(underBandPoints, true);
+            const underBandMesh = new THREE.Mesh(new THREE.TubeGeometry(underBandCurve, 96, 0.0065, 10, true), goldMat);
+            braGroup.add(underBandMesh);
+
+            // Sütyen Üst Dekolte Kenarı Altın İşleme Şeridi (96 nokta ile kumaş sınırına tam kilitli!)
+            const upperEdgePoints = [];
+            for (let k = -48; k <= 48; k++) {
+                const th = (k / 48) * 1.48;
+                const tMax = getBraUpperBoundaryT(th);
+                const pt = sampleSeamlessFemaleBodySurface(th, tMax, curveScale);
+                upperEdgePoints.push(new THREE.Vector3(pt.x * 1.042, pt.y, pt.z * 1.042 + (pt.nz > 0 ? 0.0042 : 0)));
+            }
+            const upperEdgeCurve = new THREE.CatmullRomCurve3(upperEdgePoints, false);
+            const upperEdgeMesh = new THREE.Mesh(new THREE.TubeGeometry(upperEdgeCurve, 96, 0.0048, 10, false), goldMat);
+            braGroup.add(upperEdgeMesh);
+
+            // Göğüs Üzerinden Gerdanlığa Çıkan İkiz Altın & Mücevherli Askılar (Tenin içine girmeyen dış kontur!)
+            [-1, 1].forEach(dir => {
+                const strapPts = [];
+                for (let s = 0; s <= 24; s++) {
+                    const u = s / 24;
+                    const th = dir * (0.50 * (1 - u) + 0.34 * u);
+                    const tStart = getBraUpperBoundaryT(dir * 0.50);
+                    const tB = tStart * (1 - u) + 0.835 * u;
+                    const pt = sampleSeamlessFemaleBodySurface(th, tB, curveScale);
+                    strapPts.push(new THREE.Vector3(pt.x * 1.045, pt.y, pt.z * 1.045 + 0.0045));
+                }
+                const strapCurve = new THREE.CatmullRomCurve3(strapPts);
+                const strapMesh = new THREE.Mesh(new THREE.TubeGeometry(strapCurve, 32, 0.0048, 8, false), goldMat);
+                braGroup.add(strapMesh);
+            });
+
+            // Göğüs Ortası Kraliyet Broşu, Mücevheri ve Göbek Zinciri (Belly Chain)
+            const centerPt = sampleSeamlessFemaleBodySurface(0, 0.546, curveScale);
+            const centerBrooch = new THREE.Mesh(new THREE.OctahedronGeometry(0.015, 1), goldMat);
+            centerBrooch.scale.set(0.9, 1.4, 0.55);
+            centerBrooch.position.set(0, centerPt.y, centerPt.z * 1.045 + 0.008);
+            braGroup.add(centerBrooch);
+
+            const centerGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.010, 1), gemMat);
+            centerGem.position.set(0, centerPt.y, centerPt.z * 1.045 + 0.013);
+            braGroup.add(centerGem);
+
+            // Büstiyer Altından Kemer Tokasına İnen Zarif Altın Göbek Zinciri ve Yan Bel Zincirleri
+            [-1, 1].forEach(dir => {
+                const waistChainPts = [];
+                for (let c = 0; c <= 20; c++) {
+                    const u = c / 20;
+                    const th = dir * (u * 0.95);
+                    const tC = 0.510 * (1 - u) + 0.255 * u - Math.sin(u * Math.PI) * 0.035;
+                    const pt = sampleSeamlessFemaleBodySurface(th, tC, curveScale);
+                    waistChainPts.push(new THREE.Vector3(pt.x * 1.042, pt.y, pt.z * 1.042 + 0.003));
+                }
+                const wCurve = new THREE.CatmullRomCurve3(waistChainPts);
+                braGroup.add(new THREE.Mesh(new THREE.TubeGeometry(wCurve, 28, 0.0028, 6, false), goldMat));
+            });
+
+            // C) ÇOK SIRALI MISIR KRALİYET GERDANLIĞI (USEKH BROAD COLLAR)
+            const collarRings = (role === 'female_villager') ? 2 : 4;
+            for (let r = 0; r < collarRings; r++) {
+                const tCollar = 0.845 - r * 0.024;
+                const cPts = [];
+                for (let k = 0; k <= 64; k++) {
+                    const th = (k / 64) * Math.PI * 2;
+                    const frontDrop = Math.cos(th) > 0 ? Math.pow(Math.cos(th), 1.4) * (0.016 + r * 0.008) : 0;
+                    const pt = sampleSeamlessFemaleBodySurface(th, tCollar - frontDrop, curveScale);
+                    cPts.push(new THREE.Vector3(pt.x * 1.042, pt.y, pt.z * 1.042 + 0.002));
+                }
+                const cCurve = new THREE.CatmullRomCurve3(cPts, true);
+                const cMat = (r % 2 === 0) ? goldMat : accentMat;
+                const cMesh = new THREE.Mesh(new THREE.TubeGeometry(cCurve, 64, 0.0046, 8, true), cMat);
+                bodyGroup.add(cMesh);
+            }
+
+            // D) KALÇAYA TAM OTURAN 3B İŞLEMELİ V-KEMER VE GERÇEK ZAMANLI HAREKET EDEN (CLOTH PHYSICS) YIRTMAÇLI ETEK
+            const isShortSkirt = (role === 'astarte' || role === 'anat' || role === 'dancer');
+            const skirtLength = isShortSkirt ? 0.42 : 0.68;
+
+            // V-Kesim Altın Kalça Kemeri (96 nokta ile yüzeyin 5mm dışından geçer, ten asla kemerin dışına çıkmaz!)
+            const beltPts = [];
+            for (let k = 0; k <= 96; k++) {
+                const th = (k / 96) * Math.PI * 2;
+                const tBelt = getBeltTopT(th);
+                const pt = sampleSeamlessFemaleBodySurface(th, tBelt, curveScale);
+                beltPts.push(new THREE.Vector3(pt.x * 1.046, pt.y, pt.z * 1.046));
+            }
+            const beltCurve = new THREE.CatmullRomCurve3(beltPts, true);
+            const beltMesh = new THREE.Mesh(new THREE.TubeGeometry(beltCurve, 96, 0.0125, 12, true), goldMat);
+            beltMesh.castShadow = true;
+            bodyGroup.add(beltMesh);
+
+            // Kemer Altın Plakaları ve Ön V-Mücevheri
+            const frontBeltPt = sampleSeamlessFemaleBodySurface(0, getBeltTopT(0), curveScale);
+            const beltGemFrame = new THREE.Mesh(new THREE.OctahedronGeometry(0.022, 1), goldMat);
+            beltGemFrame.scale.set(1.0, 1.35, 0.55);
+            beltGemFrame.position.set(0, frontBeltPt.y, frontBeltPt.z * 1.048 + 0.010);
+            bodyGroup.add(beltGemFrame);
+
+            const beltGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.015, 1), gemMat);
+            beltGem.scale.set(0.9, 1.30, 0.60);
+            beltGem.position.set(0, frontBeltPt.y, frontBeltPt.z * 1.048 + 0.015);
+            bodyGroup.add(beltGem);
+
+            // GERÇEK ZAMANLI DİNAMİK KUMAŞ ETEK SİSTEMİ (`dynamicSkirtPanels`)
+            // Bacaklar ileri/geri adım attığında veya karakter döndüğünde kumaş bacakların içinden geçmez;
+            // bacağın ön/arka açısına göre kumaş gerçek hayattaki gibi havalanır, dalgalanır ve bacağın etrafından dökülür!
+            const dynamicSkirtPanels = [];
+
+            function createDynamicSkirtPanel(thetaStart, thetaEnd, isFront) {
+                const cols = 48;
+                const rows = 36;
+                const geom = new THREE.PlaneGeometry(1, 1, cols, rows);
+                const p = geom.attributes.position;
+                const uvs = geom.attributes.uv;
+                const baseVertices = [];
+
+                for (let i = 0; i < p.count; i++) {
+                    const u = p.getX(i) + 0.5; // 0..1 yatay
+                    const v = 0.5 - p.getY(i); // 0 (kemer üstü) .. 1 (etek ucu)
+
+                    // Yırtmaç kesimi: kalçada birleşik başlar, aşağı indikçe zarifçe açılır
+                    const slitNarrow = isFront ? (1.0 - Math.pow(v, 0.85) * 0.24) : (1.0 - Math.pow(v, 0.85) * 0.12);
+                    const midTheta = (thetaStart + thetaEnd) * 0.5;
+                    const halfSpan = ((thetaEnd - thetaStart) * 0.5) * slitNarrow;
+                    const th = midTheta + (u - 0.5) * 2.0 * halfSpan;
+
+                    const tTop = getBeltTopT(th);
+                    const hipFollow = Math.min(1.0, v / 0.25);
+                    const tSample = tTop * (1 - hipFollow) + 0.02 * hipFollow;
+                    const hipPt = sampleSeamlessFemaleBodySurface(th, tSample, curveScale);
+                    const topPt = sampleSeamlessFemaleBodySurface(th, tTop, curveScale);
+
+                    const yPos = topPt.y - v * skirtLength;
+                    // Kalça ve bacak yüzeyinin güvenli dışında başlayan A-kesim ipek döküm
+                    const drapeFlare = Math.pow(v, 1.15) * 0.055;
+                    const pleatWave = Math.sin(u * Math.PI * 24) * (0.0018 + v * 0.0055);
+                    const radScale = 1.048 + drapeFlare + pleatWave;
+
+                    const bx = hipPt.x * radScale;
+                    const by = yPos;
+                    const bz = hipPt.z * radScale;
+
+                    baseVertices.push({ u, v, th, bx, by, bz });
+                    p.setXYZ(i, bx, by, bz);
+                    uvs.setXY(i, u, 1 - v);
+                }
+
+                geom.computeVertexNormals();
+                const mat = fabricMat.clone();
+                mat.side = THREE.DoubleSide;
+                mat.polygonOffset = true;
+                mat.polygonOffsetFactor = -1;
+                mat.polygonOffsetUnits = -1;
+
+                const mesh = new THREE.Mesh(geom, mat);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+
+                dynamicSkirtPanels.push({ mesh, geom, baseVertices, isFront, skirtLength });
+                return mesh;
+            }
+
+            // Ön İpek Etek Paneli ve Arka İpek Etek Paneli
+            bodyGroup.add(createDynamicSkirtPanel(-1.12, 1.12, true));
+            bodyGroup.add(createDynamicSkirtPanel(1.28, Math.PI * 2 - 1.28, false));
+
+            // Kemerden Aşağı Sarkan Hareketli Kraliyet Ön Kuşağı (Royal Apron / Sash)
+            const sashCols = 16;
+            const sashRows = 28;
+            const sashGeom = new THREE.PlaneGeometry(1, 1, sashCols, sashRows);
+            const sPos = sashGeom.attributes.position;
+            const sUv = sashGeom.attributes.uv;
+            const sashBase = [];
+            const sashLen = skirtLength * 0.88;
+
+            for (let i = 0; i < sPos.count; i++) {
+                const u = sPos.getX(i) + 0.5;
+                const v = 0.5 - sPos.getY(i);
+                const pointTaper = v > 0.82 ? (1.0 - (v - 0.82) / 0.18) : (1.0 - v * 0.15);
+                const th = (u - 0.5) * 0.42 * pointTaper;
+
+                const tTop = getBeltTopT(th);
+                const hipFollow = Math.min(1.0, v / 0.25);
+                const hipPt = sampleSeamlessFemaleBodySurface(th, tTop * (1 - hipFollow) + 0.02 * hipFollow, curveScale);
+                const topPt = sampleSeamlessFemaleBodySurface(th, tTop, curveScale);
+
+                const bx = hipPt.x * 1.068;
+                const by = topPt.y - v * sashLen;
+                const bz = hipPt.z * 1.068 + 0.008 + Math.pow(v, 1.2) * 0.025;
+
+                sashBase.push({ u, v, th, bx, by, bz });
+                sPos.setXYZ(i, bx, by, bz);
+                sUv.setXY(i, u, 1 - v);
+            }
+            sashGeom.computeVertexNormals();
+            const sashMat = (role === 'zaya' || role === 'female_villager') ? goldMat.clone() : accentMat.clone();
+            sashMat.side = THREE.DoubleSide;
+            const sashMesh = new THREE.Mesh(sashGeom, sashMat);
+            sashMesh.castShadow = true;
+            bodyGroup.add(sashMesh);
+            dynamicSkirtPanels.push({ mesh: sashMesh, geom: sashGeom, baseVertices: sashBase, isFront: true, isSash: true, skirtLength: sashLen });
+
+            // Her karede bacak açısına ve yürüyüş hızına göre eteği dalgalandıran ve bacak çarpışmasını %100 önleyen fizik çözücü
+            function updateSkirtClothPhysics(lHipAngle, rHipAngle, walkMag, elapsed, phase) {
+                for (let pIdx = 0; pIdx < dynamicSkirtPanels.length; pIdx++) {
+                    const panel = dynamicSkirtPanels[pIdx];
+                    const posAttr = panel.geom.attributes.position;
+                    const verts = panel.baseVertices;
+
+                    for (let i = 0; i < verts.length; i++) {
+                        const vtx = verts[i];
+                        const v = vtx.v; // 0 (kemer) -> 1 (etek ucu)
+                        if (v < 0.02) {
+                            posAttr.setXYZ(i, vtx.bx, vtx.by, vtx.bz);
+                            continue;
+                        }
+
+                        const sinTh = Math.sin(vtx.th); // < 0 sol bacak tarafı, > 0 sağ bacak tarafı
+                        const cosTh = Math.cos(vtx.th); // > 0 ön, < 0 arka
+
+                        // Sol ve sağ bacağın ileri/geri adım açısına göre kumaşı bacağın önünde/arkasında itme (Leg Collision Response)
+                        const leftWeight = Math.max(0, -sinTh * 1.35);
+                        const rightWeight = Math.max(0, sinTh * 1.35);
+                        const centerBlend = Math.max(0, 1.0 - Math.abs(sinTh) * 1.5);
+
+                        let legPushZ = 0;
+                        let legLiftY = 0;
+                        let slitFlareX = 0;
+
+                        if (panel.isFront) {
+                            // Bacak öne kalktığında (hip.rotation.x < 0 ise Three.js'de bacak +Z yönüne, yani ÖNE gider!)
+                            // Dikkat: Three.js'de Y-ekseni aşağı uzanan uzuvda rotation.x < 0 ucu +Z'ye (öne) kaldırır, rotation.x > 0 ucu -Z'ye (arkaya) iter!
+                            const fwdLeft = Math.max(0, -lHipAngle);
+                            const fwdRight = Math.max(0, -rHipAngle);
+                            const maxFwd = Math.max(fwdLeft, fwdRight);
+
+                            const activeFwd = fwdLeft * leftWeight + fwdRight * rightWeight + maxFwd * centerBlend * 0.75;
+                            const distAlongLeg = v * panel.skirtLength;
+
+                            // Uyluk ve dizin öne çıkma miktarından +2.5cm daha fazla kumaşı öne ve yukarı kaldır!
+                            legPushZ = Math.sin(activeFwd) * distAlongLeg * 1.18 + (activeFwd > 0.01 ? 0.022 * Math.min(1, v * 3.0) : 0);
+                            legLiftY = (1.0 - Math.cos(activeFwd)) * distAlongLeg * 0.45;
+                            slitFlareX = sinTh * activeFwd * Math.pow(v, 1.2) * 0.065;
+                        } else {
+                            // Arka panel: Bacak geriye gittiğinde (hip.rotation.x > 0 ise uç -Z'ye, yani ARKAYA gider!)
+                            const backLeft = Math.max(0, lHipAngle);
+                            const backRight = Math.max(0, rHipAngle);
+                            const maxBack = Math.max(backLeft, backRight);
+
+                            const activeBack = backLeft * leftWeight + backRight * rightWeight + maxBack * centerBlend * 0.75;
+                            const distAlongLeg = v * panel.skirtLength;
+
+                            legPushZ = -Math.sin(activeBack) * distAlongLeg * 1.18 - (activeBack > 0.01 ? 0.022 * Math.min(1, v * 3.0) : 0);
+                            legLiftY = (1.0 - Math.cos(activeBack)) * distAlongLeg * 0.40;
+                            slitFlareX = sinTh * activeBack * Math.pow(v, 1.2) * 0.055;
+                        }
+
+                        // Gerçek zamanlı ipek rüzgar ve adım dalgalanması (Silk Wave & Flutter)
+                        const waveAmp = Math.pow(v, 1.45) * (0.008 + walkMag * 0.024);
+                        const wavePhase = elapsed * (3.2 + walkMag * 4.5) + vtx.u * 9.0 - v * 5.5 + phase;
+                        const flutterZ = Math.sin(wavePhase) * waveAmp * (panel.isSash ? 1.35 : 1.0);
+                        const swayX = Math.cos(elapsed * 2.6 + phase - v * 3.5) * Math.pow(v, 1.3) * (0.005 + walkMag * 0.018);
+
+                        posAttr.setXYZ(
+                            i,
+                            vtx.bx + slitFlareX + swayX,
+                            vtx.by + legLiftY,
+                            vtx.bz + legPushZ + flutterZ
+                        );
+                    }
+                    posAttr.needsUpdate = true;
+                    panel.geom.computeVertexNormals();
+                }
+            }
+
+            return { bodyGroup, braGroup, updateSkirtClothPhysics };
+        }
+
+        // ==========================================
+        // 4. ERKEK TANRI & KAHRAMAN GÖVDESİ (Horus, Set, Bek)
+        // ==========================================
+        function createMaleTorso(muscleScale, torsoMat) {
+            const torsoGroup = new THREE.Group();
+            const totalH = 0.78;
+            const geom = new THREE.CylinderGeometry(1, 1, totalH, 64, 52, false);
+            const pos = geom.attributes.position;
+            const uv = geom.attributes.uv;
+
+            for (let i = 0; i < pos.count; i++) {
+                const vx = pos.getX(i);
+                const vy = pos.getY(i);
+                const vz = pos.getZ(i);
+
+                const radial = Math.hypot(vx, vz);
+                const t = Math.max(0.0, Math.min(1.0, (vy + totalH / 2) / totalH));
+
+                if (radial < 0.001) {
+                    pos.setXYZ(i, 0, vy + totalH / 2 - 0.02, 0);
+                    uv.setXY(i, 0.5, t);
+                    continue;
+                }
+
+                const nx = vx / radial;
+                const nz = vz / radial;
+                const lockedU = (Math.atan2(nx, nz) / (Math.PI * 2)) + 0.5;
+                uv.setXY(i, lockedU, t);
+
+                let rx = 0.145;
+                let rz = 0.102;
+                let centerZ = 0;
+
+                if (t < 0.22) {
+                    const k = t / 0.22;
+                    rx = (0.148 * (1 - k) + 0.132 * k) * muscleScale;
+                    rz = (0.112 * (1 - k) + 0.094 * k) * muscleScale;
+                } else if (t < 0.75) {
+                    const k = (t - 0.22) / 0.53;
+                    const curve = Math.sin(k * Math.PI * 0.60);
+                    rx = (0.132 + curve * 0.056) * muscleScale;
+                    rz = (0.094 + curve * 0.030) * muscleScale;
+                    centerZ = Math.sin(k * Math.PI) * 0.007;
+                } else if (t < 0.88) {
+                    const k = (t - 0.75) / 0.13;
+                    const sk = k * k * (3 - 2 * k);
+                    rx = (0.182 * (1 - sk) + 0.060 * sk) * muscleScale;
+                    rz = (0.118 * (1 - sk) + 0.058 * sk) * muscleScale;
+                } else {
+                    const k = (t - 0.88) / 0.12;
+                    rx = (0.060 - Math.sin(k * Math.PI) * 0.003) * muscleScale;
+                    rz = (0.058 - Math.sin(k * Math.PI) * 0.003) * muscleScale;
+                    centerZ = 0.004;
+                }
+
+                let xOut = nx * rx;
+                let zOut = nz * rz + centerZ;
+
+                const absX = Math.abs(nx);
+                if (nz > 0.15 && t > 0.18 && t < 0.75) {
+                    const frontWeight = (nz - 0.15) / 0.85;
+                    if (t >= 0.50 && t <= 0.74 && absX > 0.06 && absX < 0.84) {
+                        const py = (t - 0.50) / 0.24;
+                        const pecProfileY = Math.sin(py * Math.PI);
+                        const sternumGap = Math.min(1, (absX - 0.06) / 0.18);
+                        const outerFade = Math.sin(((absX - 0.06) / 0.78) * Math.PI);
+                        zOut += pecProfileY * sternumGap * outerFade * 0.018 * muscleScale * frontWeight;
+                    }
+                    if (t >= 0.22 && t < 0.49 && absX > 0.05 && absX < 0.46) {
+                        const ay = (t - 0.22) / 0.27;
+                        const rowWave = Math.pow(Math.abs(Math.sin(ay * Math.PI * 3)), 0.85);
+                        const colWave = Math.sin(((absX - 0.05) / 0.41) * Math.PI);
+                        zOut += rowWave * colWave * 0.006 * muscleScale * frontWeight;
+                    }
+                }
+
+                pos.setXYZ(i, xOut, vy + totalH / 2 - 0.02, zOut);
+            }
+
+            geom.computeVertexNormals();
+            const torsoMesh = new THREE.Mesh(geom, torsoMat);
+            torsoMesh.castShadow = true;
+            torsoMesh.receiveShadow = true;
+            torsoGroup.add(torsoMesh);
+
+            return torsoGroup;
+        }
+
+        // ==========================================
+        // 5. UÇLARI İNCELEN (TAPERED) DOĞAL 3B KADIN SAÇ SİSTEMİ
+        // (Küt boru uçlarını kaldırır, uçları doğal saç teli gibi sivrilen ve gövdeye girmeyen bukleler üretir!)
+        // ==========================================
+        function createTaperedHairStrand(curvePoints, baseRadius, hairMat, goldMat = null, addRingAt = -1) {
+            const curve = new THREE.CatmullRomCurve3(curvePoints);
+            const tubularSegs = 28;
+            const radialSegs = 10;
+            const geom = new THREE.TubeGeometry(curve, tubularSegs, baseRadius, radialSegs, false);
+            const pos = geom.attributes.position;
+
+            // Saç buklesinin kökünden ucuna doğru doğal incelme (Taper to fine tip) ve saç teli olukları
+            for (let i = 0; i <= tubularSegs; i++) {
+                const u = i / tubularSegs;
+                const center = curve.getPointAt(u);
+                // Ortada dolgun, uçta 0.08'e kadar incelen doğal saç tutamı profili
+                const taper = u < 0.15
+                    ? (0.75 + (u / 0.15) * 0.25)
+                    : (u > 0.65 ? Math.max(0.06, 1.0 - ((u - 0.65) / 0.35) * 0.94) : 1.0 + Math.sin(u * Math.PI * 3) * 0.08);
+
+                for (let j = 0; j <= radialSegs; j++) {
+                    const idx = i * (radialSegs + 1) + j;
+                    if (idx >= pos.count) continue;
+                    const vx = pos.getX(idx) - center.x;
+                    const vy = pos.getY(idx) - center.y;
+                    const vz = pos.getZ(idx) - center.z;
+                    const strandGroove = 1.0 + Math.sin((j / radialSegs) * Math.PI * 6) * 0.08;
+                    pos.setXYZ(
+                        idx,
+                        center.x + vx * taper * strandGroove,
+                        center.y + vy * taper * strandGroove,
+                        center.z + vz * taper * strandGroove
+                    );
+                }
+            }
+            geom.computeVertexNormals();
+            const group = new THREE.Group();
+            const mesh = new THREE.Mesh(geom, hairMat);
+            mesh.castShadow = true;
+            group.add(mesh);
+
+            if (goldMat && addRingAt > 0 && addRingAt < 1) {
+                const ringPt = curve.getPointAt(addRingAt);
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(baseRadius * 0.92, 0.0028, 8, 16), goldMat);
+                ring.rotation.x = Math.PI / 2;
+                ring.position.copy(ringPt);
+                group.add(ring);
+            }
+            return group;
+        }
+
+        function createRealisticFlowingFemaleHair(role, headRoot, goldMat) {
+            const hairColor = role === 'zaya' ? 0x261207 : (role === 'hathor' || role === 'dancer' ? 0x180a05 : 0x100806);
+            const hairMat = new THREE.MeshStandardMaterial({
+                color: hairColor,
+                roughness: 0.42,
+                metalness: 0.16
+            });
+
+            // 1. Kafa derisini ve tepeyi saran ortadan ayrılmış hacimli saç kökü
+            const crownHairGeom = new THREE.SphereGeometry(0.108, 40, 32);
+            const cPos = crownHairGeom.attributes.position;
+            for (let i = 0; i < cPos.count; i++) {
+                let hx = cPos.getX(i), hy = cPos.getY(i), hz = cPos.getZ(i);
+                const ny = hy / 0.108;
+                const nz = hz / 0.108;
+                if (nz > 0.14 && ny < 0.36) {
+                    hx *= 0.60; hy *= 0.70; hz *= 0.58;
+                } else {
+                    hx *= 0.90; hy *= 1.13; hz *= 1.05;
+                    // Ortadan ayrım (center part) ve doğal saç dalgası
+                    if (ny > 0.55 && Math.abs(hx) < 0.015) {
+                        hy -= (0.015 - Math.abs(hx)) * 0.25;
+                    }
+                }
+                cPos.setXYZ(i, hx, hy, hz);
+            }
+            crownHairGeom.computeVertexNormals();
+            const crownHair = new THREE.Mesh(crownHairGeom, hairMat);
+            crownHair.position.set(0, 0.010, -0.008);
+            headRoot.add(crownHair);
+
+            // 2. Yüzü çerçeveleyip omuzların ve göğüslerin DIŞINDAN süzülen ucu incelen 3B bukleler (Gövdeye çarpma yapmaz!)
+            [-1, 1].forEach(dir => {
+                for (let b = 0; b < 4; b++) {
+                    const xSpread = dir * (0.074 + b * 0.015);
+                    const zStart = 0.024 - b * 0.018;
+                    const wavePts = [
+                        new THREE.Vector3(dir * 0.042, 0.078, zStart + 0.02),
+                        new THREE.Vector3(xSpread * 1.02, 0.018, zStart + 0.014),
+                        new THREE.Vector3(xSpread * 1.08, -0.055, zStart + 0.026),
+                        new THREE.Vector3(xSpread * 1.18, -0.135, zStart + 0.048),
+                        new THREE.Vector3(xSpread * 1.14, -0.215 - b * 0.022, zStart + 0.056),
+                        new THREE.Vector3(xSpread * 1.06, -0.295 - b * 0.028, zStart + 0.044)
+                    ];
+                    const strand = createTaperedHairStrand(
+                        wavePts,
+                        0.0145 - b * 0.0015,
+                        hairMat,
+                        goldMat,
+                        b < 2 ? 0.62 : -1
+                    );
+                    headRoot.add(strand);
+                }
+            });
+
+            // 3. Sırttan aşağı omuzların dışından dalgalar halinde dökülen gür arka saç yelesi (15 adet ucu incelen 3B bukle)
+            for (let idx = -7; idx <= 7; idx++) {
+                const normIdx = idx / 7;
+                const xBase = normIdx * 0.084;
+                const zBase = -0.082 + Math.abs(normIdx) * 0.016;
+                const lengthBoost = (1.0 - Math.abs(normIdx) * 0.22) * 0.44;
+
+                const backPts = [
+                    new THREE.Vector3(xBase * 0.75, 0.058, zBase + 0.012),
+                    new THREE.Vector3(xBase * 0.96, -0.025, zBase - 0.018),
+                    new THREE.Vector3(xBase * 1.10 + Math.sin(idx) * 0.008, -0.125, zBase - 0.042),
+                    new THREE.Vector3(xBase * 1.06 - Math.sin(idx) * 0.008, -0.225, zBase - 0.048),
+                    new THREE.Vector3(xBase * 1.12, -0.225 - lengthBoost * 0.52, zBase - 0.054),
+                    new THREE.Vector3(xBase * 1.04, -0.225 - lengthBoost, zBase - 0.044)
+                ];
+                const backStrand = createTaperedHairStrand(
+                    backPts,
+                    0.0165,
+                    hairMat,
+                    goldMat,
+                    Math.abs(idx) % 3 === 0 ? 0.72 : -1
+                );
+                headRoot.add(backStrand);
+            }
+        }
+
+        // ==========================================
+        // 6. GERÇEKÇİ 3B İNSAN YÜZÜ (DOĞAL GÖZ KAPAĞI & SÜRMELİ BAKIŞ), TANRIÇA TAÇLARI VE MİĞFERLER
+        // ==========================================
+        function createHeadAndCrown(role, isFemale, faceMat, skinMat, goldMat, darkGoldMat, accentMat, obsidianMat, gemMat) {
+            const headRoot = new THREE.Group();
+
+            // A) HORUS SAVAŞ FORMU: ALTIN ŞAHİN MİĞFERİ
+            if (role === 'horus_god') {
+                const skullGeom = new THREE.SphereGeometry(0.116, 40, 32);
+                const sPos = skullGeom.attributes.position;
+                for (let i = 0; i < sPos.count; i++) {
+                    let x = sPos.getX(i), y = sPos.getY(i), z = sPos.getZ(i);
+                    const ny = y / 0.116, nz = z / 0.116;
+                    x *= 0.82; y *= 0.98; z *= 1.25;
+                    if (nz > 0.15) {
+                        x *= (1.0 - nz * 0.35);
+                        if (ny > 0.05 && ny < 0.35) z += Math.sin(((ny - 0.05) / 0.30) * Math.PI) * 0.026;
+                    }
+                    if (nz < -0.1 && ny < 0.2) z -= (1.0 - Math.abs(x) / 0.10) * 0.045;
+                    sPos.setXYZ(i, x, y, z);
+                }
+                skullGeom.computeVertexNormals();
+                headRoot.add(new THREE.Mesh(skullGeom, goldMat));
+
+                const beakShape = new THREE.Shape();
+                beakShape.moveTo(0, 0.036);
+                beakShape.quadraticCurveTo(0.088, 0.030, 0.118, -0.044);
+                beakShape.quadraticCurveTo(0.062, -0.014, 0, -0.015);
+                beakShape.closePath();
+                const beakGeom = new THREE.ExtrudeGeometry(beakShape, { depth: 0.024, bevelEnabled: true, bevelSegments: 4, steps: 1, bevelSize: 0.008, bevelThickness: 0.008 });
+                beakGeom.center();
+                const upperBeak = new THREE.Mesh(beakGeom, darkGoldMat);
+                upperBeak.rotation.y = -Math.PI / 2;
+                upperBeak.position.set(0, -0.008, 0.146);
+                headRoot.add(upperBeak);
+
+                const finShape = new THREE.Shape();
+                finShape.moveTo(0, 0.014);
+                finShape.quadraticCurveTo(0.10, 0.022, 0.21, -0.008);
+                finShape.quadraticCurveTo(0.10, -0.014, 0, -0.012);
+                finShape.closePath();
+                const finGeom = new THREE.ExtrudeGeometry(finShape, { depth: 0.007, bevelEnabled: true, bevelSize: 0.002, bevelThickness: 0.002 });
+
+                [-1, 1].forEach(dir => {
+                    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 14, 12), gemMat);
+                    eye.scale.set(1.35, 0.42, 0.55);
+                    eye.position.set(dir * 0.040, 0.018, 0.118);
+                    eye.rotation.z = -dir * 0.28;
+                    eye.rotation.y = dir * 0.42;
+                    headRoot.add(eye);
+
+                    for (let k = 0; k < 6; k++) {
+                        const fin = new THREE.Mesh(finGeom, k % 2 === 0 ? goldMat : accentMat);
+                        fin.scale.set(1.0 - k * 0.09, 1.0, 1.0);
+                        fin.rotation.y = Math.PI / 2 + dir * (0.18 + k * 0.04);
+                        fin.rotation.x = 0.22 - k * 0.06;
+                        fin.position.set(dir * (0.068 + k * 0.005), 0.052 - k * 0.019, 0.025 - k * 0.012);
+                        headRoot.add(fin);
+                    }
+                });
+                return headRoot;
+            }
+
+            // B) SET SAVAŞ FORMU: OBSİDYEN & ALTIN ÇAKAL MİĞFERİ
+            if (role === 'set_god') {
+                const skullGeom = new THREE.SphereGeometry(0.114, 40, 32);
+                const sPos = skullGeom.attributes.position;
+                for (let i = 0; i < sPos.count; i++) {
+                    let x = sPos.getX(i), y = sPos.getY(i), z = sPos.getZ(i);
+                    const ny = y / 0.114, nz = z / 0.114;
+                    x *= 0.80; y *= 0.98; z *= 1.28;
+                    if (nz > 0.15 && ny < 0.25 && ny > -0.45) {
+                        const snoutFactor = (nz - 0.15) / 0.85;
+                        x *= (1.0 - snoutFactor * 0.48);
+                        z += snoutFactor * 0.072;
+                        y -= snoutFactor * 0.016;
+                    }
+                    sPos.setXYZ(i, x, y, z);
+                }
+                skullGeom.computeVertexNormals();
+                headRoot.add(new THREE.Mesh(skullGeom, obsidianMat));
+
+                const earShape = new THREE.Shape();
+                earShape.moveTo(-0.018, 0);
+                earShape.quadraticCurveTo(-0.022, 0.15, -0.008, 0.29);
+                earShape.lineTo(0.012, 0.27);
+                earShape.quadraticCurveTo(0.020, 0.14, 0.016, 0);
+                earShape.closePath();
+                const earGeom = new THREE.ExtrudeGeometry(earShape, { depth: 0.012, bevelEnabled: true, bevelSize: 0.003, bevelThickness: 0.003 });
+
+                [-1, 1].forEach(dir => {
+                    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 14, 12), gemMat);
+                    eye.scale.set(1.35, 0.42, 0.55);
+                    eye.position.set(dir * 0.039, 0.022, 0.116);
+                    eye.rotation.z = -dir * 0.32;
+                    eye.rotation.y = dir * 0.40;
+                    headRoot.add(eye);
+
+                    const earGroup = new THREE.Group();
+                    earGroup.position.set(dir * 0.046, 0.078, -0.018);
+                    earGroup.rotation.x = -0.48;
+                    earGroup.rotation.z = -dir * 0.14;
+                    headRoot.add(earGroup);
+                    earGroup.add(new THREE.Mesh(earGeom, obsidianMat));
+                });
+                return headRoot;
+            }
+
+            // C) DOĞAL 3B İNSAN & TANRIÇA YÜZ HEYKELİ
+            const headGeom = new THREE.SphereGeometry(0.104, 64, 52);
+            const pos = headGeom.attributes.position;
+            const uv = headGeom.attributes.uv;
+
+            for (let i = 0; i < pos.count; i++) {
+                let x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+                const r = Math.hypot(x, y, z) || 0.104;
+                const nx = x / r, ny = y / r, nz = z / r;
+
+                uv.setXY(i, (Math.atan2(nx, nz) / (Math.PI * 2)) + 0.5, Math.max(0.0, Math.min(1.0, (ny + 1.0) * 0.5)));
+
+                x *= isFemale ? 0.79 : 0.84;
+                y *= isFemale ? 1.07 : 1.12;
+                z *= 0.93;
+
+                if (ny < 0) {
+                    const jawTaper = 1.0 + ny * (isFemale ? 0.43 : 0.32);
+                    x *= Math.max(isFemale ? 0.44 : 0.54, jawTaper);
+                    if (nz > 0.25 && ny < -0.52 && ny > -0.88) {
+                        const chinCurve = Math.sin(((ny + 0.88) / 0.36) * Math.PI);
+                        z += (1.0 - Math.min(1, Math.abs(nx) / 0.42)) * chinCurve * 0.010;
+                    }
+                }
+
+                if (nz > 0.25) {
+                    const absX = Math.abs(nx);
+                    // Elmacık kemikleri
+                    if (ny > -0.15 && ny < 0.08 && absX > 0.25 && absX < 0.74) {
+                        const cheek = Math.sin(((ny + 0.15) / 0.23) * Math.PI) * Math.sin(((absX - 0.25) / 0.49) * Math.PI);
+                        z += cheek * (isFemale ? 0.0085 : 0.007);
+                    }
+                    // Hafif göz çukuru
+                    if (ny > 0.02 && ny < 0.20 && absX > 0.15 && absX < 0.54) {
+                        const socketY = Math.sin(((ny - 0.02) / 0.18) * Math.PI);
+                        const socketX = Math.sin(((absX - 0.15) / 0.39) * Math.PI);
+                        z -= socketY * socketX * 0.005;
+                    }
+                }
+
+                pos.setXYZ(i, x, y, z);
+            }
+            headGeom.computeVertexNormals();
+            const headMesh = new THREE.Mesh(headGeom, faceMat);
+            headMesh.castShadow = true;
+            headMesh.receiveShadow = true;
+            headRoot.add(headMesh);
+
+            // Zarif 3B Burun
+            const noseGroup = new THREE.Group();
+            noseGroup.position.set(0, 0.002, 0.091);
+            headRoot.add(noseGroup);
+
+            const noseBridge = new THREE.Mesh(new THREE.CylinderGeometry(isFemale ? 0.0048 : 0.0065, isFemale ? 0.0088 : 0.011, 0.034, 14), skinMat);
+            noseBridge.scale.set(0.80, 1.0, 0.92);
+            noseBridge.rotation.x = -0.25;
+            noseBridge.position.set(0, 0.004, 0.004);
+            noseGroup.add(noseBridge);
+
+            const noseTip = new THREE.Mesh(new THREE.SphereGeometry(isFemale ? 0.0084 : 0.0102, 16, 14), skinMat);
+            noseTip.scale.set(0.98, 0.85, 1.08);
+            noseTip.position.set(0, -0.011, 0.010);
+            noseGroup.add(noseTip);
+
+            [-1, 1].forEach(dir => {
+                const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.0058, 12, 10), skinMat);
+                nostril.scale.set(1.05, 0.75, 0.92);
+                nostril.position.set(dir * 0.0072, -0.013, 0.005);
+                noseGroup.add(nostril);
+            });
+
+            // Doğal 3B Dudaklar
+            if (isFemale) {
+                const isRedLip = ['hathor', 'astarte', 'dancer', 'isis'].includes(role);
+                const upperLipMat = new THREE.MeshStandardMaterial({ color: isRedLip ? 0x991b1b : 0xb44c4b, roughness: 0.26 });
+                const lowerLipMat = new THREE.MeshStandardMaterial({ color: isRedLip ? 0xdc2626 : 0xcf5c5b, roughness: 0.20 });
+
+                [-1, 1].forEach(dir => {
+                    const upperLobe = new THREE.Mesh(new THREE.SphereGeometry(0.0096, 16, 12), upperLipMat);
+                    upperLobe.scale.set(1.15, 0.45, 0.62);
+                    upperLobe.position.set(dir * 0.0052, -0.033, 0.089);
+                    upperLobe.rotation.z = -dir * 0.14;
+                    headRoot.add(upperLobe);
+                });
+
+                const lowerLip = new THREE.Mesh(new THREE.SphereGeometry(0.014, 18, 14), lowerLipMat);
+                lowerLip.scale.set(1.30, 0.46, 0.66);
+                lowerLip.position.set(0, -0.041, 0.089);
+                headRoot.add(lowerLip);
+            } else {
+                const upperLip = new THREE.Mesh(new THREE.SphereGeometry(0.0155, 16, 12), new THREE.MeshStandardMaterial({ color: 0x9e503c, roughness: 0.55 }));
+                upperLip.scale.set(1.42, 0.34, 0.55);
+                upperLip.position.set(0, -0.036, 0.093);
+                headRoot.add(upperLip);
+
+                const lowerLip = new THREE.Mesh(new THREE.SphereGeometry(0.0145, 16, 12), new THREE.MeshStandardMaterial({ color: 0xb05c46, roughness: 0.48 }));
+                lowerLip.scale.set(1.30, 0.40, 0.60);
+                lowerLip.position.set(0, -0.044, 0.092);
+                headRoot.add(lowerLip);
+            }
+
+            // Canlı Badem Gözler, 3B Üst Göz Kapağı (Şaşkın bakışı önleyen doğal kapak kıvrımı!), İris ve Cleopatra Eyeliner
+            const scleraMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
+            let irisHex = 0x38bdf8;
+            if (role === 'hathor' || role === 'bastet') irisHex = 0xf59e0b;
+            else if (role === 'nephthys') irisHex = 0x10b981;
+            else if (role === 'astarte' || role === 'anat') irisHex = 0xa855f7;
+            else if (role === 'female_villager' || role === 'dancer' || role === 'bek') irisHex = 0x5c3416;
+
+            const irisMat = new THREE.MeshBasicMaterial({ color: irisHex });
+            const pupilMat = new THREE.MeshBasicMaterial({ color: 0x050505 });
+            const catchlightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const lashMat = new THREE.MeshStandardMaterial({ color: 0x120a07, roughness: 0.4 });
+
+            [-1, 1].forEach(dir => {
+                const eyeGroup = new THREE.Group();
+                eyeGroup.position.set(dir * 0.0285, 0.0155, 0.088);
+                eyeGroup.rotation.y = dir * 0.14;
+                eyeGroup.rotation.z = -dir * (isFemale ? 0.06 : 0.02); // Hafif çekik kedi/badem göz açısı
+                headRoot.add(eyeGroup);
+
+                const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.0122, 20, 16), scleraMat);
+                sclera.scale.set(1.22, 0.68, 0.42);
+                eyeGroup.add(sclera);
+
+                // 3B Üst Göz Kapağı (Göz akının üst kısmını doğal şekilde örterek baygın/çekici ve gerçekçi bakış sağlar!)
+                const upperEyelid = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.0126, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.42),
+                    skinMat
+                );
+                upperEyelid.scale.set(1.24, 0.72, 0.46);
+                upperEyelid.rotation.x = -0.22;
+                upperEyelid.position.set(0, 0.0006, 0.0004);
+                eyeGroup.add(upperEyelid);
+
+                const iris = new THREE.Mesh(new THREE.CircleGeometry(0.0062, 20), irisMat);
+                iris.position.set(0, -0.0004, 0.0054);
+                eyeGroup.add(iris);
+
+                const pupil = new THREE.Mesh(new THREE.CircleGeometry(0.0030, 16), pupilMat);
+                pupil.position.set(0, -0.0004, 0.0056);
+                eyeGroup.add(pupil);
+
+                const catchlight = new THREE.Mesh(new THREE.CircleGeometry(0.0014, 10), catchlightMat);
+                catchlight.position.set(0.0018, 0.0016, 0.0058);
+                eyeGroup.add(catchlight);
+
+                // İnce Üst Kirpik ve Kuyruklu Mısır Sürmesi (Winged Kohl Liner)
+                const upperLash = new THREE.Mesh(new THREE.TorusGeometry(0.0122, 0.0014, 8, 22, Math.PI), lashMat);
+                upperLash.scale.set(1.26, 0.60, 0.65);
+                upperLash.position.set(0, 0.0004, 0.0044);
+                eyeGroup.add(upperLash);
+
+                if (isFemale) {
+                    const wingTip = new THREE.Mesh(new THREE.ConeGeometry(0.0016, 0.009, 6), lashMat);
+                    wingTip.rotation.z = -dir * 1.15;
+                    wingTip.position.set(dir * 0.0165, 0.0018, 0.0025);
+                    eyeGroup.add(wingTip);
+                }
+
+                // Doğal Kavisli Kaşlar (Çok yukarıda durmayan, gözle uyumlu zarif kaş kemeri)
+                const brow = new THREE.Mesh(new THREE.TorusGeometry(0.0175, 0.0019, 8, 18, Math.PI * 0.72), lashMat);
+                brow.rotation.z = Math.PI * 0.14 - dir * 0.08;
+                brow.scale.set(1.14, 0.48, 0.70);
+                brow.position.set(-dir * 0.001, 0.0048, 0.0045);
+                eyeGroup.add(brow);
+
+                const ear = new THREE.Mesh(new THREE.SphereGeometry(0.018, 12, 12), skinMat);
+                ear.scale.set(0.34, 1.12, 0.58);
+                ear.position.set(dir * 0.082, 0.003, -0.006);
+                headRoot.add(ear);
+
+                if (isFemale) {
+                    const earring = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.0022, 8, 20), goldMat);
+                    earring.rotation.y = Math.PI / 2;
+                    earring.position.set(dir * 0.085, -0.020, -0.004);
+                    headRoot.add(earring);
+                }
+            });
+
+            // SAÇLAR VE TAÇLAR
+            if (isFemale) {
+                createRealisticFlowingFemaleHair(role, headRoot, goldMat);
+
+                if (role === 'zaya' || role === 'dancer' || role === 'female_villager') {
+                    const diadem = new THREE.Mesh(new THREE.TorusGeometry(0.087, 0.0042, 10, 36), goldMat);
+                    diadem.rotation.x = Math.PI / 2 - 0.10;
+                    diadem.position.set(0, 0.052, 0.003);
+                    headRoot.add(diadem);
+
+                    const browGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.011, 1), gemMat);
+                    browGem.position.set(0, 0.050, 0.090);
+                    headRoot.add(browGem);
+                } else if (role === 'hathor') {
+                    const baseCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.064, 0.078, 0.042, 28), goldMat);
+                    baseCrown.position.set(0, 0.094, 0.004);
+                    headRoot.add(baseCrown);
+
+                    const sunDisk = new THREE.Mesh(new THREE.CylinderGeometry(0.064, 0.064, 0.015, 32), goldMat);
+                    sunDisk.rotation.x = Math.PI / 2;
+                    sunDisk.position.set(0, 0.185, 0.008);
+                    headRoot.add(sunDisk);
+
+                    [-1, 1].forEach(dir => {
+                        const horn = new THREE.Mesh(new THREE.TorusGeometry(0.088, 0.0085, 12, 28, Math.PI * 0.76), goldMat);
+                        horn.position.set(dir * 0.015, 0.185, 0.008);
+                        horn.rotation.z = dir === 1 ? -0.35 : Math.PI - 0.42;
+                        headRoot.add(horn);
+                    });
+                } else if (role === 'nephthys') {
+                    const vultureCap = new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.084, 0.044, 28), goldMat);
+                    vultureCap.position.set(0, 0.092, 0.002);
+                    headRoot.add(vultureCap);
+
+                    const enclosure = new THREE.Mesh(new THREE.BoxGeometry(0.060, 0.078, 0.018), goldMat);
+                    enclosure.position.set(0, 0.154, 0.008);
+                    headRoot.add(enclosure);
+
+                    const basketTop = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.020, 0.028, 20), accentMat);
+                    basketTop.position.set(0, 0.205, 0.008);
+                    headRoot.add(basketTop);
+                } else if (role === 'isis') {
+                    const diadem = new THREE.Mesh(new THREE.CylinderGeometry(0.070, 0.084, 0.040, 28), goldMat);
+                    diadem.position.set(0, 0.090, 0.004);
+                    headRoot.add(diadem);
+
+                    const sunDisk = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.052, 0.014, 28), goldMat);
+                    sunDisk.rotation.x = Math.PI / 2;
+                    sunDisk.position.set(0, 0.158, 0.010);
+                    headRoot.add(sunDisk);
+
+                    const throneBack = new THREE.Mesh(new THREE.BoxGeometry(0.040, 0.088, 0.015), goldMat);
+                    throneBack.position.set(-0.010, 0.222, 0.010);
+                    headRoot.add(throneBack);
+
+                    const throneSeat = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.042, 0.016), accentMat);
+                    throneSeat.position.set(0.005, 0.198, 0.010);
+                    headRoot.add(throneSeat);
+                } else if (role === 'astarte' || role === 'anat') {
+                    const helmBand = new THREE.Mesh(new THREE.CylinderGeometry(0.076, 0.086, 0.042, 28), goldMat);
+                    helmBand.position.set(0, 0.080, 0.005);
+                    headRoot.add(helmBand);
+
+                    [-1, 1].forEach(dir => {
+                        const hornFin = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.15, 6), role === 'anat' ? accentMat : goldMat);
+                        hornFin.position.set(dir * 0.075, 0.112, 0.012);
+                        hornFin.rotation.z = -dir * 0.26;
+                        hornFin.rotation.x = -0.22;
+                        headRoot.add(hornFin);
+                    });
+                } else if (role === 'bastet') {
+                    const catBand = new THREE.Mesh(new THREE.TorusGeometry(0.086, 0.0055, 10, 32), goldMat);
+                    catBand.rotation.x = Math.PI / 2 - 0.12;
+                    catBand.position.set(0, 0.054, 0.004);
+                    headRoot.add(catBand);
+
+                    [-1, 1].forEach(dir => {
+                        const catEar = new THREE.Mesh(new THREE.ConeGeometry(0.026, 0.072, 4), goldMat);
+                        catEar.position.set(dir * 0.056, 0.114, 0.005);
+                        catEar.rotation.y = Math.PI / 4;
+                        catEar.rotation.z = -dir * 0.22;
+                        headRoot.add(catEar);
+                    });
+                }
+            } else {
+                // Erkek Karakter Saç & Sakal (Horus İnsan ve Bek)
+                const isRoyal = role === 'horus_human';
+                const hairMat = new THREE.MeshStandardMaterial({ color: isRoyal ? 0x3b2312 : 0x221309, roughness: 0.75 });
+
+                const beardGeom = new THREE.SphereGeometry(0.1055, 36, 28);
+                const bPos = beardGeom.attributes.position;
+                for (let i = 0; i < bPos.count; i++) {
+                    let bx = bPos.getX(i), by = bPos.getY(i), bz = bPos.getZ(i);
+                    const ny = by / 0.1055, nz = bz / 0.1055, absX = Math.abs(bx) / 0.1055;
+                    bx *= 0.85; by *= 1.13; bz *= 0.94;
+                    if (ny < 0) bx *= Math.max(0.55, 1.0 + ny * 0.32);
+                    const isJawBeard = (nz > -0.05 && ny < -0.14 && !(ny > -0.46 && absX < 0.25));
+                    if (!isJawBeard) { bx *= 0.75; by *= 0.75; bz *= 0.75; }
+                    bPos.setXYZ(i, bx, by, bz);
+                }
+                beardGeom.computeVertexNormals();
+                headRoot.add(new THREE.Mesh(beardGeom, hairMat));
+
+                const hairGeom = new THREE.SphereGeometry(0.109, 36, 28);
+                const hPos = hairGeom.attributes.position;
+                for (let i = 0; i < hPos.count; i++) {
+                    let hx = hPos.getX(i), hy = hPos.getY(i), hz = hPos.getZ(i);
+                    const ny = hy / 0.109, nz = hz / 0.109;
+                    if (nz > 0.16 && ny < 0.38) { hx *= 0.65; hy *= 0.75; hz *= 0.65; }
+                    else { hx *= 0.89; hy *= 1.14; hz *= 1.03; }
+                    hPos.setXYZ(i, hx, hy, hz);
+                }
+                hairGeom.computeVertexNormals();
+                const hairMesh = new THREE.Mesh(hairGeom, hairMat);
+                hairMesh.position.set(0, 0.006, -0.006);
+                headRoot.add(hairMesh);
+
+                if (isRoyal) {
+                    const crown = new THREE.Mesh(new THREE.TorusGeometry(0.092, 0.008, 12, 32), goldMat);
+                    crown.rotation.x = Math.PI / 2 - 0.12;
+                    crown.position.set(0, 0.056, 0.002);
+                    headRoot.add(crown);
+                }
+            }
+
+            return headRoot;
+        }
+
+        // ==========================================
+        // 7. YELPAZE KAVİSLİ BİYOMEKANİK TANRI & TANRIÇA KANATLARI
+        // ==========================================
+        function createBiomechanicalWings(goldMat, darkGoldMat, accentMat, glowMat) {
+            const wingsGroup = new THREE.Group();
+            wingsGroup.position.set(0, 0.44, -0.095);
+
+            const featherShape = new THREE.Shape();
+            featherShape.moveTo(0, 0);
+            featherShape.quadraticCurveTo(0.030, -0.35, 0.016, -0.82);
+            featherShape.lineTo(0, -1.0);
+            featherShape.lineTo(-0.015, -0.85);
+            featherShape.quadraticCurveTo(-0.022, -0.40, 0, 0);
+            featherShape.closePath();
+
+            const featherGeom = new THREE.ExtrudeGeometry(featherShape, {
+                depth: 0.007,
+                bevelEnabled: true,
+                bevelSegments: 2,
+                steps: 1,
+                bevelSize: 0.0025,
+                bevelThickness: 0.0025
+            });
+
+            ['left', 'right'].forEach(side => {
+                const dir = side === 'left' ? -1 : 1;
+
+                const innerWing = new THREE.Group();
+                innerWing.position.set(dir * 0.065, 0, 0);
+                wingsGroup.add(innerWing);
+
+                const outerWing = new THREE.Group();
+                outerWing.position.set(dir * 0.46, 0.22, -0.02);
+                innerWing.add(outerWing);
+
+                for (let s = 0; s < 5; s++) {
+                    const seg = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.022 - s * 0.002, 0.026 - s * 0.002, 0.13, 12),
+                        s % 2 === 0 ? goldMat : darkGoldMat
+                    );
+                    seg.position.set(dir * (0.055 + s * 0.09), 0.03 + s * 0.045, 0);
+                    seg.rotation.z = -dir * (1.08 + s * 0.04);
+                    innerWing.add(seg);
+                }
+
+                const jointGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.030, 1), glowMat);
+                jointGem.position.set(0, 0.02, 0.012);
+                outerWing.add(jointGem);
+
+                for (let i = 0; i < 10; i++) {
+                    const t = i / 9;
+                    const fx = dir * (0.04 + i * 0.044);
+                    const fy = 0.02 + t * 0.20;
+                    const fanAngle = dir * (0.12 + t * 0.36);
+
+                    const cov = new THREE.Mesh(featherGeom, goldMat);
+                    cov.scale.set(dir * 0.82, 0.25, 1.1);
+                    cov.position.set(fx, fy, 0.012);
+                    cov.rotation.z = fanAngle;
+                    innerWing.add(cov);
+
+                    const mid = new THREE.Mesh(featherGeom, accentMat);
+                    mid.scale.set(dir * 0.90, 0.42 + Math.sin(t * Math.PI) * 0.08, 1.0);
+                    mid.position.set(fx, fy, 0.004);
+                    mid.rotation.z = fanAngle * 1.05;
+                    innerWing.add(mid);
+
+                    const sec = new THREE.Mesh(featherGeom, i % 2 === 0 ? goldMat : darkGoldMat);
+                    sec.scale.set(dir * 0.96, 0.62 + Math.sin(t * Math.PI) * 0.14, 1.0);
+                    sec.position.set(fx, fy, -0.005);
+                    sec.rotation.z = fanAngle * 1.10;
+                    sec.castShadow = true;
+                    innerWing.add(sec);
+                }
+
+                for (let j = 0; j < 13; j++) {
+                    const t = j / 12;
+                    const bx = dir * (j * 0.040);
+                    const by = (1.0 - t) * 0.02;
+                    const sweepZ = dir * (0.34 + t * 1.12);
+
+                    const priLen = 0.84 + Math.sin(t * Math.PI * 0.7) * 0.30 - t * 0.18;
+                    const pri = new THREE.Mesh(featherGeom, j % 3 === 1 ? accentMat : goldMat);
+                    pri.scale.set(dir * 1.0, priLen, 1.0);
+                    pri.position.set(bx, by, -0.004);
+                    pri.rotation.z = sweepZ;
+                    pri.castShadow = true;
+                    outerWing.add(pri);
+                }
+
+                if (side === 'left') {
+                    wingsGroup.leftInner = innerWing;
+                    wingsGroup.leftOuter = outerWing;
+                } else {
+                    wingsGroup.rightInner = innerWing;
+                    wingsGroup.rightOuter = outerWing;
+                }
+            });
+
+            return wingsGroup;
+        }
+
+        // ==========================================
+        // 8. SİLAHLAR VE TANRIÇA ASALARI
+        // ==========================================
+        function createAccessoryOrWeapon(role, goldMat, darkGoldMat, obsidianMat, accentMat, gemMat) {
+            const wGroup = new THREE.Group();
+
+            if (role === 'zaya') {
+                const papyrusMat = new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.55 });
+                const scroll = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.22, 16), papyrusMat);
+                scroll.rotation.z = Math.PI / 2;
+                wGroup.add(scroll);
+                [-1, 1].forEach(dir => {
+                    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.017, 0.018, 14), goldMat);
+                    cap.rotation.z = Math.PI / 2;
+                    cap.position.x = dir * 0.11;
+                    wGroup.add(cap);
+                });
+            } else if (role === 'hathor' || role === 'bastet' || role === 'dancer') {
+                const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.011, 0.24, 12), goldMat);
+                handle.rotation.x = Math.PI / 2;
+                handle.position.z = 0.06;
+                wGroup.add(handle);
+
+                const loop = new THREE.Mesh(new THREE.TorusGeometry(0.048, 0.008, 10, 24), goldMat);
+                loop.rotation.x = Math.PI / 2;
+                loop.scale.set(0.76, 1.24, 1.0);
+                loop.position.z = 0.22;
+                wGroup.add(loop);
+
+                const coreGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.018, 1), gemMat);
+                coreGem.position.z = 0.22;
+                wGroup.add(coreGem);
+            } else if (role === 'isis' || role === 'nephthys') {
+                const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.010, 0.012, 0.24, 12), goldMat);
+                stem.rotation.x = Math.PI / 2;
+                stem.position.z = 0.08;
+                wGroup.add(stem);
+
+                const crossbar = new THREE.Mesh(new THREE.BoxGeometry(0.125, 0.018, 0.018), goldMat);
+                crossbar.position.z = 0.19;
+                wGroup.add(crossbar);
+
+                const ankhLoop = new THREE.Mesh(new THREE.TorusGeometry(0.046, 0.010, 10, 24), goldMat);
+                ankhLoop.rotation.x = Math.PI / 2;
+                ankhLoop.scale.set(0.78, 1.22, 1.0);
+                ankhLoop.position.z = 0.26;
+                wGroup.add(ankhLoop);
+            } else if (['astarte', 'anat', 'horus_human', 'horus_god'].includes(role)) {
+                const spearHolder = new THREE.Group();
+                spearHolder.rotation.x = 0.14;
+                spearHolder.rotation.z = -0.04;
+                wGroup.add(spearHolder);
+
+                const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.014, 1.72, 14), goldMat);
+                shaft.position.y = 0.25;
+                spearHolder.add(shaft);
+
+                const wingsGuard = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.024, 0.032), accentMat);
+                wingsGuard.position.y = 1.10;
+                spearHolder.add(wingsGuard);
+
+                const spearTip = new THREE.Mesh(new THREE.ConeGeometry(0.034, 0.28, 4), goldMat);
+                spearTip.rotation.y = Math.PI / 4;
+                spearTip.scale.set(0.45, 1.0, 1.0);
+                spearTip.position.y = 1.25;
+                spearHolder.add(spearTip);
+            } else if (role === 'set_god') {
+                const staffHolder = new THREE.Group();
+                staffHolder.rotation.x = 0.14;
+                staffHolder.rotation.z = -0.04;
+                wGroup.add(staffHolder);
+
+                const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.016, 1.82, 14), obsidianMat);
+                shaft.position.y = 0.28;
+                staffHolder.add(shaft);
+
+                const headFork = new THREE.Mesh(new THREE.ConeGeometry(0.054, 0.32, 4), goldMat);
+                headFork.rotation.y = Math.PI / 4;
+                headFork.scale.set(0.45, 1.0, 1.1);
+                headFork.position.y = 1.32;
+                staffHolder.add(headFork);
+
+                const chaosOrb = new THREE.Mesh(new THREE.OctahedronGeometry(0.032, 1), gemMat);
+                chaosOrb.position.y = 1.16;
+                staffHolder.add(chaosOrb);
+            } else if (role === 'bek') {
+                const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.013, 0.15, 10), darkGoldMat);
+                hilt.rotation.x = Math.PI / 2;
+                wGroup.add(hilt);
+
+                const khopeshShape = new THREE.Shape();
+                khopeshShape.moveTo(0, 0);
+                khopeshShape.lineTo(0, 0.14);
+                khopeshShape.quadraticCurveTo(0.09, 0.24, 0.02, 0.38);
+                khopeshShape.lineTo(-0.01, 0.42);
+                khopeshShape.quadraticCurveTo(0.05, 0.24, -0.018, 0.13);
+                khopeshShape.lineTo(-0.018, 0);
+                khopeshShape.closePath();
+
+                const bladeGeom = new THREE.ExtrudeGeometry(khopeshShape, { depth: 0.006, bevelEnabled: true, bevelSize: 0.002, bevelThickness: 0.002 });
+                const blade = new THREE.Mesh(bladeGeom, goldMat);
+                blade.rotation.x = Math.PI / 2;
+                blade.rotation.y = Math.PI / 2;
+                blade.position.set(0.003, 0, 0.08);
+                wGroup.add(blade);
+            } else if (role === 'female_villager') {
+                const clayMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.55 });
+                const jarBody = new THREE.Mesh(new THREE.SphereGeometry(0.058, 18, 16), clayMat);
+                jarBody.scale.set(1.0, 1.30, 1.0);
+                jarBody.position.set(0, -0.080, 0.04);
+                wGroup.add(jarBody);
+
+                const jarNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.020, 0.055, 14), goldMat);
+                jarNeck.position.set(0, -0.008, 0.04);
+                wGroup.add(jarNeck);
+            }
+
+            return wGroup;
+        }
+
+        // ==========================================
+        // 9. ANA KARAKTER OLUŞTURUCU (TANRIÇALAR, KADIN KÖYLÜLER VE TANRILAR)
+        // ==========================================
+        function createCharacter(config) {
+            const {
+                name,
+                desc = '',
+                role = 'zaya',
+                isFemale = true,
+                scale = 1.0,
+                skinTone = 'pearl',
+                curveScale = 1.06
+            } = config;
+
+            const root = new THREE.Group();
+            root.scale.set(scale, scale, scale);
+
+            const isHorusGod = role === 'horus_god';
+            const isSetGod = role === 'set_god';
+            const isArmoredGod = isHorusGod || isSetGod;
+            const hasWings = ['nephthys', 'isis', 'horus_god', 'set_god'].includes(role);
+
+            // PBR Materyaller
+            const goldMat = new THREE.MeshStandardMaterial({
+                map: window.textures.goldTex,
+                envMap: window.textures.envMap,
+                envMapIntensity: 1.85,
+                color: 0xffcf40,
+                emissive: 0x241200,
+                emissiveIntensity: 0.10,
+                metalness: 0.88,
+                roughness: 0.22
+            });
+
+            const darkGoldMat = new THREE.MeshStandardMaterial({
+                map: window.textures.goldTex,
+                envMap: window.textures.envMap,
+                envMapIntensity: 1.65,
+                color: 0xc27815,
+                metalness: 0.88,
+                roughness: 0.28
+            });
+
+            const obsidianMat = new THREE.MeshStandardMaterial({
+                envMap: window.textures.envMap,
+                envMapIntensity: 1.75,
+                color: 0x26232b,
+                metalness: 0.84,
+                roughness: 0.24
+            });
+
+            let accentColorHex = 0x0284c7;
+            let gemColorHex = 0x38bdf8;
+            let fabricTex = window.textures.fabricZaya;
+
+            if (role === 'hathor') { accentColorHex = 0xd97706; gemColorHex = 0xfde047; fabricTex = window.textures.fabricHathor; }
+            else if (role === 'nephthys') { accentColorHex = 0x0d9488; gemColorHex = 0x2dd4bf; fabricTex = window.textures.fabricNephthys; }
+            else if (role === 'isis' || role === 'horus_human' || role === 'horus_god') { accentColorHex = 0x1d4ed8; gemColorHex = 0x7dd3fc; fabricTex = window.textures.fabricIsis; }
+            else if (role === 'astarte' || role === 'set_god') { accentColorHex = 0x991b1b; gemColorHex = 0xf97316; fabricTex = window.textures.fabricAstarte; }
+            else if (role === 'anat') { accentColorHex = 0x6b21a8; gemColorHex = 0xc084fc; fabricTex = window.textures.fabricAnat; }
+            else if (role === 'bastet') { accentColorHex = 0x18181b; gemColorHex = 0xfacc15; fabricTex = window.textures.fabricBastet; }
+            else if (role === 'female_villager') { accentColorHex = 0xb45309; gemColorHex = 0xfbbf24; fabricTex = window.textures.fabricVillager; }
+            else if (role === 'dancer') { accentColorHex = 0xbe123c; gemColorHex = 0xfb7185; fabricTex = window.textures.fabricDancer; }
+
+            const accentMat = new THREE.MeshStandardMaterial({
+                envMap: window.textures.envMap,
+                envMapIntensity: 1.45,
+                color: accentColorHex,
+                metalness: 0.55,
+                roughness: 0.25
+            });
+
+            const gemMat = new THREE.MeshBasicMaterial({ color: gemColorHex });
+
+            // Cilt Materyalleri
+            let bodyTex = window.textures.femBodyPearl;
+            let faceTex = window.textures.femFacePearl;
+            let skinColorHex = 0xda9e7a;
+
+            if (!isFemale) {
+                bodyTex = role === 'horus_human' ? window.textures.maleTorsoHorus : window.textures.maleTorsoBek;
+                faceTex = role === 'horus_human' ? window.textures.maleFaceHorus : window.textures.maleFaceBek;
+                skinColorHex = role === 'horus_human' ? 0xd08e64 : 0xc48058;
+            } else if (skinTone === 'golden') {
+                bodyTex = window.textures.femBodyGolden;
+                faceTex = window.textures.femFaceGolden;
+                skinColorHex = 0xca885e;
+            } else if (skinTone === 'bronze') {
+                bodyTex = window.textures.femBodyBronze;
+                faceTex = window.textures.femFaceBronze;
+                skinColorHex = 0xb8744c;
+            }
+
+            const bodyMat = isHorusGod ? darkGoldMat : (isSetGod ? obsidianMat : new THREE.MeshStandardMaterial({
+                map: bodyTex,
+                color: 0xffffff,
+                roughness: 0.42,
+                metalness: 0.03,
+                envMap: window.textures.envMap,
+                envMapIntensity: 0.28
+            }));
+
+            const faceMat = isHorusGod ? goldMat : (isSetGod ? obsidianMat : new THREE.MeshStandardMaterial({
+                map: faceTex,
+                color: 0xffffff,
+                roughness: 0.40,
+                metalness: 0.02,
+                envMap: window.textures.envMap,
+                envMapIntensity: 0.25
+            }));
+
+            const limbSkinMat = isHorusGod ? goldMat : (isSetGod ? obsidianMat : new THREE.MeshStandardMaterial({
+                color: skinColorHex,
+                roughness: 0.42,
+                metalness: 0.03,
+                envMap: window.textures.envMap,
+                envMapIntensity: 0.28
+            }));
+
+            const fabricMat = new THREE.MeshStandardMaterial({
+                map: isFemale ? fabricTex : window.textures.linenMale,
+                bumpMap: isFemale ? fabricTex : window.textures.linenMale,
+                bumpScale: 0.0025,
+                color: 0xffffff,
+                roughness: 0.48,
+                metalness: 0.12,
+                envMap: window.textures.envMap,
+                envMapIntensity: 0.45
+            });
+
+            // PELVIS & SPINE HİYERARŞİSİ
+            const pelvis = new THREE.Group();
+            pelvis.position.y = 0.94;
+            root.add(pelvis);
+
+            const spine = new THREE.Group();
+            spine.position.y = 0.03;
+            pelvis.add(spine);
+
+            let bustGroup = null;
+            let updateSkirtClothPhysics = null;
+
+            if (isFemale) {
+                // TEK PARÇA KESİNTİSİZ KADIN VÜCUDU + ÇARPIŞMASIZ 3B BÜSTİYER + GERÇEK ZAMANLI HAREKETLİ KUMAŞ ETEK
+                const femAttire = createSeamlessFemaleBodyAndAttire(
+                    role,
+                    bodyMat,
+                    limbSkinMat,
+                    fabricMat,
+                    goldMat,
+                    accentMat,
+                    gemMat,
+                    curveScale
+                );
+                spine.add(femAttire.bodyGroup);
+                bustGroup = femAttire.braGroup;
+                updateSkirtClothPhysics = femAttire.updateSkirtClothPhysics;
+            } else {
+                // ERKEK TANRI & KAHRAMAN GÖVDESİ VE SHENDYT ETEĞİ
+                const muscleScale = isArmoredGod ? 1.14 : (role === 'horus_human' ? 1.07 : 1.0);
+                const kiltGeom = new THREE.CylinderGeometry(0.136 * muscleScale, 0.188 * muscleScale, 0.34, 48, 8, false);
+                const kPos = kiltGeom.attributes.position;
+                for (let i = 0; i < kPos.count; i++) {
+                    let kx = kPos.getX(i), ky = kPos.getY(i), kz = kPos.getZ(i);
+                    const angle = Math.atan2(kx, kz);
+                    const pleat = 1.0 + Math.sin(angle * 28) * 0.015;
+                    kPos.setXYZ(i, kx * 1.04 * pleat, ky, kz * 0.78 * pleat);
+                }
+                kiltGeom.computeVertexNormals();
+                const kilt = new THREE.Mesh(kiltGeom, isHorusGod ? darkGoldMat : (isSetGod ? obsidianMat : fabricMat));
+                kilt.position.y = -0.11;
+                kilt.castShadow = true;
+                pelvis.add(kilt);
+
+                const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.139 * muscleScale, 0.143 * muscleScale, 0.056, 40), goldMat);
+                belt.scale.set(1.04, 1.0, 0.79);
+                belt.position.y = 0.036;
+                pelvis.add(belt);
+
+                const maleTorso = createMaleTorso(muscleScale, bodyMat);
+                spine.add(maleTorso);
+
+                if (role !== 'bek') {
+                    for (let c = 0; c < 3; c++) {
+                        const rScale = 1.0 + c * 0.16;
+                        const collarRing = new THREE.Mesh(
+                            new THREE.TorusGeometry(0.082 * rScale * muscleScale, 0.012, 12, 36),
+                            c % 2 === 0 ? goldMat : (isSetGod ? obsidianMat : accentMat)
+                        );
+                        collarRing.rotation.x = Math.PI / 2 + 0.24;
+                        collarRing.scale.set(1.12, 0.78, 1.0);
+                        collarRing.position.set(0, 0.605 - c * 0.022, 0.010 + c * 0.005);
+                        spine.add(collarRing);
+                    }
+                }
+            }
+
+            // KAFA, YÜZ, SAÇLAR VE TAÇ / MİĞFER
+            const head = createHeadAndCrown(
+                role,
+                isFemale,
+                faceMat,
+                limbSkinMat,
+                goldMat,
+                darkGoldMat,
+                accentMat,
+                obsidianMat,
+                gemMat
+            );
+            head.position.y = isFemale ? 0.64 : 0.77;
+            spine.add(head);
+
+            // OMUZLAR, KOLLAR VE ELLER (Kadınlarda doğal omuz genişliğiyle göğüs/kalça dışından zarifçe iner)
+            const arms = {};
+            const mScale = isFemale ? 1.0 : (isArmoredGod ? 1.14 : 1.05);
+            const armProfile = isFemale ? [
+                [0.00, 0.045, 0.044, 0.00],
+                [0.18, 0.041, 0.040, 0.00],
+                [0.38, 0.036, 0.038, 0.003],
+                [0.52, 0.032, 0.031, 0.00],
+                [0.68, 0.033, 0.032, 0.002],
+                [0.92, 0.025, 0.023, 0.00],
+                [1.00, 0.023, 0.021, 0.00]
+            ] : [
+                [0.00, 0.064 * mScale, 0.060 * mScale, 0.00],
+                [0.18, 0.058 * mScale, 0.056 * mScale, 0.00],
+                [0.36, 0.048 * mScale, 0.054 * mScale, 0.005],
+                [0.52, 0.042 * mScale, 0.040 * mScale, 0.00],
+                [0.66, 0.045 * mScale, 0.043 * mScale, 0.004],
+                [0.92, 0.034, 0.030, 0.00],
+                [1.00, 0.032, 0.028, 0.00]
+            ];
+
+            ['left', 'right'].forEach(side => {
+                const dir = side === 'left' ? -1 : 1;
+                const shoulder = new THREE.Group();
+                shoulder.position.set(dir * (isFemale ? 0.142 : 0.152 * mScale), isFemale ? 0.445 : 0.555, 0);
+                spine.add(shoulder);
+
+                const deltoidCap = new THREE.Mesh(new THREE.SphereGeometry(isFemale ? 0.046 : 0.062 * mScale, 18, 14), limbSkinMat);
+                deltoidCap.scale.set(1.04, 0.90, 0.94);
+                deltoidCap.position.set(-dir * 0.010, -0.010, 0);
+                shoulder.add(deltoidCap);
+
+                const continuousArm = createContinuousSkinnedLimb(isFemale ? 0.49 : 0.54, 0.52, armProfile, limbSkinMat, true);
+                shoulder.add(continuousArm.mesh);
+
+                // Üst Kol Pazubendi & Bileklik
+                const armlet = new THREE.Mesh(new THREE.TorusGeometry(isFemale ? 0.039 : 0.050, 0.0042, 10, 24), goldMat);
+                armlet.rotation.x = Math.PI / 2 + 0.12;
+                armlet.position.y = -0.04;
+                continuousArm.upperGroup.add(armlet);
+
+                const bracer = new THREE.Mesh(new THREE.CylinderGeometry(isFemale ? 0.032 : 0.042, isFemale ? 0.026 : 0.034, 0.09, 20), goldMat);
+                bracer.position.y = -0.14;
+                continuousArm.lowerGroup.add(bracer);
+
+                // Hathor'un 42 Yıldız Bilekliği
+                if (role === 'hathor') {
+                    for (let st = 0; st < 6; st++) {
+                        const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.006, 0), gemMat);
+                        const sa = (st / 6) * Math.PI * 2;
+                        star.position.set(Math.cos(sa) * 0.032, -0.14, Math.sin(sa) * 0.032);
+                        continuousArm.lowerGroup.add(star);
+                    }
+                }
+
+                const hand = continuousArm.endGroup;
+                const palm = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.042, 0.034), limbSkinMat);
+                palm.position.set(0, -0.021, 0.002);
+                hand.add(palm);
+
+                if (side === 'right') {
+                    const weapon = createAccessoryOrWeapon(role, goldMat, darkGoldMat, obsidianMat, accentMat, gemMat);
+                    weapon.position.set(0, -0.035, 0.010);
+                    hand.add(weapon);
+                }
+
+                arms[side] = { shoulder, continuousArm };
+            });
+
+            // KESİNTİSİZ BACAKLAR VE ALTIN SANDALETLER (Kalça tabanına sıfır kaynar!)
+            const legs = {};
+            const legProfile = isFemale ? [
+                [0.00, 0.076 * curveScale, 0.080 * curveScale, 0.00],
+                [0.24, 0.068 * curveScale, 0.072 * curveScale, 0.006],
+                [0.48, 0.046, 0.047, 0.003],
+                [0.64, 0.050, 0.054, -0.007],
+                [0.92, 0.030, 0.032, 0.00],
+                [1.00, 0.028, 0.030, 0.00]
+            ] : [
+                [0.00, 0.084 * mScale, 0.086 * mScale, 0.00],
+                [0.26, 0.076 * mScale, 0.080 * mScale, 0.008],
+                [0.48, 0.054 * mScale, 0.054 * mScale, 0.004],
+                [0.64, 0.060 * mScale, 0.064 * mScale, -0.008],
+                [0.92, 0.036, 0.038, 0.00],
+                [1.00, 0.033, 0.034, 0.00]
+            ];
+
+            ['left', 'right'].forEach(side => {
+                const dir = side === 'left' ? -1 : 1;
+                const hip = new THREE.Group();
+                hip.position.set(dir * (isFemale ? 0.072 * curveScale : 0.086 * mScale), isFemale ? -0.07 : -0.04, 0);
+                pelvis.add(hip);
+
+                const continuousLeg = createContinuousSkinnedLimb(isFemale ? 0.81 : 0.84, 0.50, legProfile, limbSkinMat, false);
+                hip.add(continuousLeg.mesh);
+
+                if (isFemale) {
+                    for (let s = 0; s < 4; s++) {
+                        const strapRing = new THREE.Mesh(
+                            new THREE.TorusGeometry(0.034 + (3 - s) * 0.003, 0.003, 8, 24),
+                            goldMat
+                        );
+                        strapRing.rotation.x = Math.PI / 2 + (s % 2 === 0 ? 0.16 : -0.16);
+                        strapRing.position.y = -0.21 - s * 0.040;
+                        continuousLeg.lowerGroup.add(strapRing);
+                    }
+                } else {
+                    const greave = new THREE.Mesh(new THREE.CylinderGeometry(0.060 * mScale, 0.038, 0.26, 18), goldMat);
+                    greave.position.set(0, -0.20, 0.004);
+                    continuousLeg.lowerGroup.add(greave);
+                }
+
+                const ankle = continuousLeg.endGroup;
+                const foot = new THREE.Mesh(new THREE.SphereGeometry(0.040, 14, 12), isArmoredGod ? goldMat : limbSkinMat);
+                foot.scale.set(0.72, 0.44, 1.72);
+                foot.position.set(0, -0.022, 0.036);
+                foot.castShadow = true;
+                ankle.add(foot);
+
+                const sole = new THREE.Mesh(new THREE.BoxGeometry(0.060, 0.012, 0.165), goldMat);
+                sole.position.set(0, -0.044, 0.036);
+                ankle.add(sole);
+
+                legs[side] = { hip, continuousLeg, ankle };
+            });
+
+            let wings = null;
+            if (hasWings) {
+                wings = createBiomechanicalWings(goldMat, darkGoldMat, isSetGod ? obsidianMat : accentMat, gemMat);
+                spine.add(wings);
+            }
+
+            return {
+                name,
+                desc,
+                role,
+                isFemale,
+                scale,
+                root,
+                pelvis,
+                spine,
+                bustGroup,
+                updateSkirtClothPhysics,
+                head,
+                arms,
+                legs,
+                wings,
+                elbowL: -0.16,
+                elbowR: -0.20,
+                kneeL: 0.04,
+                kneeR: 0.04,
+                phase: Math.random() * Math.PI * 2,
+                aiTarget: new THREE.Vector3(),
+                aiTimer: Math.random() * 3
+            };
+        }
+
+        // ==========================================
+        // 10. ANİMASYON MOTORU (KADINLARDA CONTRAPPOSTO, KALÇA SALINIMI VE GERÇEK ZAMANLI ETEK KUMAŞ FİZİĞİ)
+        // ==========================================
+        function animateCharacter(char, isWalking, speedRatio, delta, elapsed, isSelected) {
+            const { pelvis, spine, head, arms, legs, wings, isFemale } = char;
+            const poseBoost = isSelected && actionPoseActive;
+
+            if (isWalking) {
+                char.phase += delta * 6.8 * Math.max(0.55, speedRatio);
+                const p = char.phase;
+
+                const hipSway = isFemale ? 0.072 : 0.035;
+                const hipYaw = isFemale ? 0.11 : 0.07;
+
+                pelvis.position.y = 0.94 - Math.abs(Math.cos(p)) * 0.024;
+                pelvis.position.x = isFemale ? Math.sin(p) * 0.016 * speedRatio : 0;
+                pelvis.rotation.z = Math.sin(p) * hipSway * speedRatio;
+                pelvis.rotation.y = -Math.sin(p) * hipYaw * speedRatio;
+
+                // Üst gövde (spine) dönüşünü pelvis ile dengeli tutuyoruz ki etek bacakların merkezinden sapmasın
+                spine.rotation.y = Math.sin(p) * 0.06 * speedRatio;
+                spine.rotation.x = 0.02 * speedRatio;
+                spine.rotation.z = -Math.sin(p) * (hipSway * 0.55) * speedRatio;
+
+                head.rotation.y = -spine.rotation.y * 0.75;
+                head.rotation.x = -0.015 + Math.cos(p * 2) * 0.012;
+
+                const lHip = Math.sin(p) * 0.44 * speedRatio;
+                const rHip = Math.sin(p + Math.PI) * 0.44 * speedRatio;
+                legs.left.hip.rotation.x = lHip;
+                legs.right.hip.rotation.x = rHip;
+
+                char.kneeL = Math.max(0.03, -Math.cos(p - 0.3) * 0.68 * speedRatio + 0.05);
+                char.kneeR = Math.max(0.03, -Math.cos(p + Math.PI - 0.3) * 0.68 * speedRatio + 0.05);
+                legs.left.continuousLeg.updateBend(char.kneeL);
+                legs.right.continuousLeg.updateBend(char.kneeR);
+
+                const lArm = Math.sin(p + Math.PI) * 0.36 * speedRatio;
+                const rArm = Math.sin(p) * 0.36 * speedRatio;
+
+                arms.left.shoulder.rotation.x = lArm;
+                arms.left.shoulder.rotation.z = isFemale ? -0.14 : -0.09;
+                char.elbowL = -0.18 - Math.max(0, -lArm) * 0.36;
+                arms.left.continuousArm.updateBend(char.elbowL);
+
+                arms.right.shoulder.rotation.x = rArm;
+                arms.right.shoulder.rotation.z = isFemale ? 0.14 : 0.09;
+                char.elbowR = -0.22 - Math.max(0, -rArm) * 0.36;
+                arms.right.continuousArm.updateBend(char.elbowR);
+            } else {
+                const breath = Math.sin(elapsed * 2.1 + char.phase);
+                const sway = Math.sin(elapsed * 0.70 + char.phase);
+
+                const targetHipZ = isFemale ? (poseBoost ? 0.075 : 0.038 + sway * 0.018) : sway * 0.015;
+                const targetHipY = isFemale ? (poseBoost ? -0.12 : sway * 0.035) : sway * 0.03;
+
+                pelvis.position.y = THREE.MathUtils.lerp(pelvis.position.y, 0.94 + breath * 0.004, 0.12);
+                pelvis.position.x = THREE.MathUtils.lerp(pelvis.position.x, isFemale ? targetHipZ * 0.20 : 0, 0.08);
+                pelvis.rotation.z = THREE.MathUtils.lerp(pelvis.rotation.z, targetHipZ, 0.08);
+                pelvis.rotation.y = THREE.MathUtils.lerp(pelvis.rotation.y, targetHipY, 0.08);
+
+                spine.rotation.x = THREE.MathUtils.lerp(spine.rotation.x, (poseBoost ? -0.055 : -0.015) + breath * 0.014, 0.1);
+                spine.rotation.y = THREE.MathUtils.lerp(spine.rotation.y, -sway * 0.03, 0.08);
+                spine.rotation.z = THREE.MathUtils.lerp(spine.rotation.z, -targetHipZ * 0.55, 0.1);
+
+                head.rotation.y = THREE.MathUtils.lerp(head.rotation.y, sway * 0.08, 0.08);
+                head.rotation.x = THREE.MathUtils.lerp(head.rotation.x, -breath * 0.012, 0.08);
+
+                legs.left.hip.rotation.x = THREE.MathUtils.lerp(legs.left.hip.rotation.x, poseBoost && isFemale ? -0.12 : -0.03, 0.12);
+                legs.right.hip.rotation.x = THREE.MathUtils.lerp(legs.right.hip.rotation.x, 0.03, 0.12);
+
+                char.kneeL = THREE.MathUtils.lerp(char.kneeL, poseBoost && isFemale ? 0.16 : 0.04, 0.12);
+                char.kneeR = THREE.MathUtils.lerp(char.kneeR, 0.04, 0.12);
+                legs.left.continuousLeg.updateBend(char.kneeL);
+                legs.right.continuousLeg.updateBend(char.kneeR);
+
+                const baseOutZ = isFemale ? 0.14 : 0.09;
+                const targetRightArmX = poseBoost ? -0.58 : -0.05;
+                const targetRightArmZ = poseBoost ? 0.32 : baseOutZ + breath * 0.014;
+                const targetRightElbow = poseBoost ? -0.56 : -0.22;
+
+                const targetLeftArmX = poseBoost ? 0.10 : 0.02;
+                const targetLeftArmZ = poseBoost ? -0.26 : -baseOutZ - breath * 0.014;
+                const targetLeftElbow = poseBoost ? -0.46 : -0.18;
+
+                arms.left.shoulder.rotation.x = THREE.MathUtils.lerp(arms.left.shoulder.rotation.x, targetLeftArmX, 0.12);
+                arms.left.shoulder.rotation.z = THREE.MathUtils.lerp(arms.left.shoulder.rotation.z, targetLeftArmZ, 0.12);
+                char.elbowL = THREE.MathUtils.lerp(char.elbowL, targetLeftElbow, 0.12);
+                arms.left.continuousArm.updateBend(char.elbowL);
+
+                arms.right.shoulder.rotation.x = THREE.MathUtils.lerp(arms.right.shoulder.rotation.x, targetRightArmX, 0.12);
+                arms.right.shoulder.rotation.z = THREE.MathUtils.lerp(arms.right.shoulder.rotation.z, targetRightArmZ, 0.12);
+                char.elbowR = THREE.MathUtils.lerp(char.elbowR, targetRightElbow, 0.12);
+                arms.right.continuousArm.updateBend(char.elbowR);
+            }
+
+            // HER KAREDE ETEK KUMAŞ FİZİĞİNİ VE BACAK ÇARPIŞMA ÖNLEYİCİSİNİ ÇALIŞTIR
+            if (char.updateSkirtClothPhysics) {
+                char.updateSkirtClothPhysics(
+                    legs.left.hip.rotation.x,
+                    legs.right.hip.rotation.x,
+                    isWalking ? speedRatio : (poseBoost ? 0.45 : 0.08),
+                    elapsed,
+                    char.phase
+                );
+            }
+
+            if (wings) {
+                const flapSpeed = isWalking ? 3.6 : (poseBoost ? 2.6 : 1.4);
+                const flap = Math.sin(elapsed * flapSpeed) * (poseBoost ? 0.22 : 0.08);
+                const spreadZ = poseBoost ? 0.34 : 0.06;
+                const outerSpreadZ = poseBoost ? 0.28 : -0.08;
+
+                wings.leftInner.rotation.y = THREE.MathUtils.lerp(wings.leftInner.rotation.y, -0.16 - flap, 0.1);
+                wings.rightInner.rotation.y = THREE.MathUtils.lerp(wings.rightInner.rotation.y, 0.16 + flap, 0.1);
+                wings.leftInner.rotation.z = THREE.MathUtils.lerp(wings.leftInner.rotation.z, -spreadZ, 0.1);
+                wings.rightInner.rotation.z = THREE.MathUtils.lerp(wings.rightInner.rotation.z, spreadZ, 0.1);
+                wings.leftOuter.rotation.z = THREE.MathUtils.lerp(wings.leftOuter.rotation.z, -outerSpreadZ, 0.1);
+                wings.rightOuter.rotation.z = THREE.MathUtils.lerp(wings.rightOuter.rotation.z, outerSpreadZ, 0.1);
+            }
+        }
+
+        // ==========================================
+        // 11. SAHNE KURULUMU VE TÜM KADRO
+        // ==========================================
+        function init() {
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 0.96;
+            document.body.appendChild(renderer.domElement);
+
+            window.textures = buildTextures(renderer);
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x221209);
+            scene.environment = window.textures.envMap;
+            scene.fog = new THREE.FogExp2(0x221209, 0.010);
+
+            camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.15, 250);
+            clock = new THREE.Clock();
+
+            const skyGeo = new THREE.SphereGeometry(140, 32, 24);
+            const skyMat = new THREE.MeshBasicMaterial({
+                map: (() => {
+                    const c = document.createElement('canvas');
+                    c.width = 512; c.height = 256;
+                    const ctx = c.getContext('2d');
+                    const g = ctx.createLinearGradient(0, 0, 0, 256);
+                    g.addColorStop(0.0, '#0f172a');
+                    g.addColorStop(0.45, '#92400e');
+                    g.addColorStop(0.75, '#d97706');
+                    g.addColorStop(1.0, '#271104');
+                    ctx.fillStyle = g;
+                    ctx.fillRect(0, 0, 512, 256);
+                    return new THREE.CanvasTexture(c);
+                })(),
+                side: THREE.BackSide,
+                depthWrite: false
+            });
+            scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+            const hemi = new THREE.HemisphereLight(0xffedd5, 0x451a03, 0.72);
+            scene.add(hemi);
+
+            const sun = new THREE.DirectionalLight(0xfff7ed, 1.38);
+            sun.position.set(12, 26, 20);
+            sun.castShadow = true;
+            sun.shadow.mapSize.set(2048, 2048);
+            const d = 26;
+            sun.shadow.camera.left = -d;
+            sun.shadow.camera.right = d;
+            sun.shadow.camera.top = d;
+            sun.shadow.camera.bottom = -d;
+            sun.shadow.bias = -0.0005;
+            scene.add(sun);
+
+            const rimLight = new THREE.DirectionalLight(0xfbbf24, 0.95);
+            rimLight.position.set(-14, 14, -16);
+            scene.add(rimLight);
+
+            frontKeyLight = new THREE.PointLight(0xffedd5, 0.42, 20);
+            scene.add(frontKeyLight);
+
+            warmFillLight = new THREE.PointLight(0xf59e0b, 0.28, 16);
+            scene.add(warmFillLight);
+
+            const ground = new THREE.Mesh(
+                new THREE.PlaneGeometry(240, 240),
+                new THREE.MeshStandardMaterial({
+                    map: window.textures.floorTex,
+                    roughness: 0.70,
+                    metalness: 0.08
+                })
+            );
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            const partCount = 160;
+            const partGeo = new THREE.BufferGeometry();
+            const partPos = new Float32Array(partCount * 3);
+            for (let i = 0; i < partCount; i++) {
+                partPos[i * 3] = (Math.random() - 0.5) * 32;
+                partPos[i * 3 + 1] = Math.random() * 8 + 0.3;
+                partPos[i * 3 + 2] = (Math.random() - 0.5) * 32;
+            }
+            partGeo.setAttribute('position', new THREE.BufferAttribute(partPos, 3));
+            divineParticles = new THREE.Points(
+                partGeo,
+                new THREE.PointsMaterial({ color: 0xfde047, size: 0.085, transparent: true, opacity: 0.75 })
+            );
+            scene.add(divineParticles);
+
+            // TÜM TANRIÇALAR, KADIN KÖYLÜLER VE FİLMDEKİ TANRILAR (13 SEÇİLEBİLİR KARAKTER)
+            const roster = [
+                {
+                    name: 'Zaya (Ölümlü Baş Güzeli)',
+                    desc: 'Kesintisiz 3B Kum Saati Anatomi • Vücuda Kalıplı Büstiyer & Yırtmaçlı İpek Etek (1.72m)',
+                    role: 'zaya', isFemale: true, skinTone: 'pearl', curveScale: 1.06, scale: 1.0, pos: [0, 0]
+                },
+                {
+                    name: 'Hathor (Aşk ve Cazibe Tanrıçası)',
+                    desc: 'Altın & Kehribar Büstiyer • 42 Yıldız Bilekliği & Güneş Boynuzlu Taç (2.75m)',
+                    role: 'hathor', isFemale: true, skinTone: 'golden', curveScale: 1.10, scale: 1.52, pos: [3.8, -1.6]
+                },
+                {
+                    name: 'Nephthys (Kanatlı Koruma Tanrıçası)',
+                    desc: 'Zümrüt & Altın Büstiyer • Biyomekanik Tanrıça Kanatları & Ankh (2.78m)',
+                    role: 'nephthys', isFemale: true, skinTone: 'pearl', curveScale: 1.06, scale: 1.54, pos: [-3.8, -1.6]
+                },
+                {
+                    name: 'İsis (Büyü ve Mısır Kraliçesi)',
+                    desc: 'Safir Kraliçe Büstiyeri • Altın Kanatlar, Taht Tacı & Ebedi Ankh (2.80m)',
+                    role: 'isis', isFemale: true, skinTone: 'pearl', curveScale: 1.08, scale: 1.55, pos: [7.6, -3.4]
+                },
+                {
+                    name: 'Astarte (Vahşi Savaş Tanrıçası)',
+                    desc: 'Altın Zırhlı Savaş Sütyeni • Kısa Savaş Eteği & Çift Kanatlı Mızrak (2.82m)',
+                    role: 'astarte', isFemale: true, skinTone: 'bronze', curveScale: 1.09, scale: 1.56, pos: [-7.6, -3.4]
+                },
+                {
+                    name: 'Anat (Fırtına ve Av Tanrıçası)',
+                    desc: 'Erguvan & Altın Savaş Büstiyeri • Boynuzlu Engerek Tacı & Savaş Mızrağı (2.80m)',
+                    role: 'anat', isFemale: true, skinTone: 'golden', curveScale: 1.08, scale: 1.55, pos: [11.2, -5.2]
+                },
+                {
+                    name: 'Bastet (Zevk, Dans ve Kedi Tanrıçası)',
+                    desc: 'Obsidyen & Altın Büstiyer • Kedi Kulaklı Taç & Kutsal Sistrum (2.74m)',
+                    role: 'bastet', isFemale: true, skinTone: 'golden', curveScale: 1.10, scale: 1.50, pos: [-11.2, -5.2]
+                },
+                {
+                    name: 'Nil Köylü Güzeli (Hasatçı Kız)',
+                    desc: 'Toprak & Altın Köylü Büstiyeri • Yırtmaçlı Kalasiris Etek & Nil Testisi (1.70m)',
+                    role: 'female_villager', isFemale: true, skinTone: 'bronze', curveScale: 1.06, scale: 0.98, pos: [-2.4, -4.4]
+                },
+                {
+                    name: 'Tapınak Dansçısı (Kraliyet Dansçısı)',
+                    desc: 'Yakut İpek Sütyen • Çift Yırtmaçlı Dans Eteği & Kutsal Sistrum (1.71m)',
+                    role: 'dancer', isFemale: true, skinTone: 'golden', curveScale: 1.10, scale: 0.99, pos: [2.4, -4.4]
+                },
+                {
+                    name: 'İnsan Horus (Gökyüzü Kralı)',
+                    desc: 'Kraliyet Usekh Yakalığı • Altın Savaş Eteği & Güneş Mızrağı (2.80m)',
+                    role: 'horus_human', isFemale: false, scale: 1.55, pos: [6.0, -7.5]
+                },
+                {
+                    name: 'Horus (Altın Şahin Savaş Zırhı)',
+                    desc: 'Tam Biyomekanik Altın Şahin Zırhı • Açılır Kanatlar & Kutsal Mızrak (3.50m)',
+                    role: 'horus_god', isFemale: false, scale: 1.95, pos: [-6.0, -7.5]
+                },
+                {
+                    name: 'Set (Obsidyen Kaos Savaş Zırhı)',
+                    desc: 'Obsidyen & Altın Çakal Zırhı • Kaos Kanatları & Fırtına Asası (3.60m)',
+                    role: 'set_god', isFemale: false, scale: 2.02, pos: [10.5, -8.5]
+                },
+                {
+                    name: 'Ölümlü Bek (Mısır Kahramanı)',
+                    desc: 'Atletik İnsan Anatomisi • Keten Shendyt & Khopesh Orak Kılıcı (1.78m)',
+                    role: 'bek', isFemale: false, scale: 1.02, pos: [-10.5, -8.5]
+                }
+            ];
+
+            roster.forEach(cfg => {
+                const c = createCharacter(cfg);
+                c.root.position.set(cfg.pos[0], 0, cfg.pos[1]);
+                scene.add(c.root);
+                characters.push(c);
+            });
+
+            // Arka planda yaşayan Mısırlı Kadın Köylü ve Dansçı NPC'ler
+            const npcRoles = ['female_villager', 'dancer', 'zaya', 'female_villager'];
+            const npcTones = ['bronze', 'golden', 'pearl', 'golden'];
+            for (let i = 0; i < 4; i++) {
+                const ang = (i / 4) * Math.PI * 2 + 0.5;
+                const rad = 16.0;
+                const npc = createCharacter({
+                    name: `Tapınak Sakini #${i + 1}`,
+                    role: npcRoles[i],
+                    isFemale: true,
+                    skinTone: npcTones[i],
+                    curveScale: 1.06,
+                    scale: 0.98
+                });
+                npc.root.position.set(Math.cos(ang) * rad, 0, Math.sin(ang) * rad);
+                npc.aiTarget.set(Math.cos(ang + 1.3) * rad, 0, Math.sin(ang + 1.3) * rad);
+                scene.add(npc.root);
+                characters.push(npc);
+            }
+
+            bindInputEvents();
+            window.addEventListener('resize', onResize);
+            selectCharacter(0);
+            animate();
+        }
+
+        // ==========================================
+        // 12. KONTROLLER VE KAMERA ODAKLARI
+        // ==========================================
+        function bindInputEvents() {
+            const zone = document.getElementById('joystick-zone');
+            const knob = document.getElementById('joystick-knob');
+            const maxR = 40;
+
+            function moveJoy(cx, cy) {
+                const rect = zone.getBoundingClientRect();
+                let dx = cx - (rect.left + rect.width / 2);
+                let dy = cy - (rect.top + rect.height / 2);
+                const d = Math.hypot(dx, dy);
+                if (d > maxR) {
+                    dx = (dx / d) * maxR;
+                    dy = (dy / d) * maxR;
+                }
+                knob.style.transform = `translate(${dx}px, ${dy}px)`;
+                joyVec.x = dx / maxR;
+                joyVec.y = dy / maxR;
+            }
+
+            zone.addEventListener('pointerdown', (e) => {
+                e.stopPropagation();
+                joyActive = true;
+                joyPointerId = e.pointerId;
+                moveJoy(e.clientX, e.clientY);
+            });
+
+            const canvas = renderer.domElement;
+            canvas.style.touchAction = 'none';
+            canvas.addEventListener('pointerdown', (e) => {
+                canvas.setPointerCapture(e.pointerId);
+                activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                if (activePointers.size === 2) {
+                    const pts = Array.from(activePointers.values());
+                    lastPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+                }
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (joyActive && e.pointerId === joyPointerId) {
+                    moveJoy(e.clientX, e.clientY);
+                    return;
+                }
+                if (!activePointers.has(e.pointerId)) return;
+
+                const prev = activePointers.get(e.pointerId);
+                activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+                if (activePointers.size === 1) {
+                    const dx = e.clientX - prev.x;
+                    const dy = e.clientY - prev.y;
+                    camYaw -= dx * 0.0085;
+                    camPitch = Math.max(-0.20, Math.min(1.05, camPitch + dy * 0.0065));
+                } else if (activePointers.size === 2) {
+                    const pts = Array.from(activePointers.values());
+                    const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+                    if (lastPinchDist > 0) {
+                        const diff = lastPinchDist - dist;
+                        desiredDist = Math.max(0.85, Math.min(13.0, desiredDist + diff * 0.016));
+                    }
+                    lastPinchDist = dist;
+                }
+            });
+
+            function clearPointer(e) {
+                if (joyActive && e.pointerId === joyPointerId) {
+                    joyActive = false;
+                    joyPointerId = null;
+                    joyVec.x = 0;
+                    joyVec.y = 0;
+                    knob.style.transform = 'translate(0px, 0px)';
+                }
+                activePointers.delete(e.pointerId);
+                if (activePointers.size < 2) lastPinchDist = 0;
+            }
+
+            window.addEventListener('pointerup', clearPointer);
+            window.addEventListener('pointercancel', clearPointer);
+
+            window.addEventListener('wheel', (e) => {
+                desiredDist = Math.max(0.85, Math.min(13.0, desiredDist + e.deltaY * 0.0035));
+            });
+
+            window.addEventListener('keydown', (e) => {
+                const k = e.key.toLowerCase();
+                if (k === 'w' || e.key === 'ArrowUp') keys.w = true;
+                if (k === 's' || e.key === 'ArrowDown') keys.s = true;
+                if (k === 'a' || e.key === 'ArrowLeft') keys.a = true;
+                if (k === 'd' || e.key === 'ArrowRight') keys.d = true;
+            });
+            window.addEventListener('keyup', (e) => {
+                const k = e.key.toLowerCase();
+                if (k === 'w' || e.key === 'ArrowUp') keys.w = false;
+                if (k === 's' || e.key === 'ArrowDown') keys.s = false;
+                if (k === 'a' || e.key === 'ArrowLeft') keys.a = false;
+                if (k === 'd' || e.key === 'ArrowRight') keys.d = false;
+            });
+        }
+
+        function enterWorldWithCharacter() {
+            if (window.GameState && typeof window.GameState.teleportTo === 'function') {
+                window.GameState.teleportTo('mısır.html');
+            } else {
+                window.location.href = 'mısır.html';
+            }
+        }
+
+        function selectCharacter(idx) {
+            activeIndex = idx;
+            for (let i = 0; i < 13; i++) {
+                const el = document.getElementById(`pill-${i}`);
+                if (el) el.classList.toggle('active', i === idx);
+            }
+
+            const c = characters[idx];
+            if (c) {
+                const badgeTitle = document.getElementById('char-badge-title');
+                const badgeDesc = document.getElementById('char-badge-desc');
+                if (badgeTitle) badgeTitle.textContent = c.name;
+                if (badgeDesc) badgeDesc.textContent = c.desc;
+
+                if (window.GameState && typeof window.GameState.setCharacterRole === 'function') {
+                    window.GameState.setCharacterRole(c.role);
+                }
+            }
+            resetCameraView();
+        }
+
+        function toggleActionPose() {
+            actionPoseActive = !actionPoseActive;
+            const btn = document.getElementById('btn-wings');
+            if (btn) {
+                btn.classList.toggle('bg-amber-500/30', actionPoseActive);
+                btn.classList.toggle('border-yellow-300', actionPoseActive);
+            }
+        }
+
+        function resetCameraView() {
+            const c = characters[activeIndex];
+            if (!c) return;
+            desiredTargetY = 0.98 * c.scale;
+            desiredDist = 3.05 * c.scale;
+            camPitch = 0.03;
+        }
+
+        function focusBodySculpt() {
+            const c = characters[activeIndex];
+            if (!c) return;
+            desiredTargetY = 1.12 * c.scale;
+            desiredDist = 1.48 * c.scale;
+            camYaw = c.root.rotation.y + 0.36;
+            camPitch = 0.04;
+        }
+
+        function focusFace() {
+            const c = characters[activeIndex];
+            if (!c) return;
+            desiredTargetY = (c.isFemale ? 1.54 : 1.64) * c.scale;
+            desiredDist = 1.10 * c.scale;
+            camYaw = c.root.rotation.y + 0.08;
+            camPitch = 0.01;
+        }
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1);
+            const elapsed = clock.getElapsedTime();
+
+            const player = characters[activeIndex];
+            if (!player) return;
+
+            let ix = joyVec.x;
+            let iy = joyVec.y;
+            if (keys.w) iy = -1;
+            if (keys.s) iy = 1;
+            if (keys.a) ix = -1;
+            if (keys.d) ix = 1;
+
+            const mag = Math.min(1, Math.hypot(ix, iy));
+            const moving = mag > 0.05;
+
+            if (moving) {
+                const fwdX = -Math.sin(camYaw);
+                const fwdZ = -Math.cos(camYaw);
+                const rightX = Math.cos(camYaw);
+                const rightZ = -Math.sin(camYaw);
+
+                const dirX = rightX * ix + fwdX * (-iy);
+                const dirZ = rightZ * ix + fwdZ * (-iy);
+
+                const speed = (2.3 + player.scale * 0.6) * mag;
+                player.root.position.x += dirX * speed * delta;
+                player.root.position.z += dirZ * speed * delta;
+
+                const targetRot = Math.atan2(dirX, dirZ);
+                let diff = targetRot - player.root.rotation.y;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                player.root.rotation.y += diff * 0.18;
+            }
+
+            animateCharacter(player, moving, mag, delta, elapsed, true);
+
+            characters.forEach((c, idx) => {
+                if (idx === activeIndex) return;
+
+                if (idx >= 13) {
+                    if (c.aiTimer > 0) {
+                        c.aiTimer -= delta;
+                        animateCharacter(c, false, 0, delta, elapsed, false);
+                    } else {
+                        const dx = c.aiTarget.x - c.root.position.x;
+                        const dz = c.aiTarget.z - c.root.position.z;
+                        const dist = Math.hypot(dx, dz);
+
+                        if (dist < 0.35) {
+                            c.aiTimer = 2.5 + Math.random() * 3.5;
+                            const a = Math.random() * Math.PI * 2;
+                            const r = 13.5 + Math.random() * 5.0;
+                            c.aiTarget.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+                            animateCharacter(c, false, 0, delta, elapsed, false);
+                        } else {
+                            const spd = 1.55;
+                            c.root.position.x += (dx / dist) * spd * delta;
+                            c.root.position.z += (dz / dist) * spd * delta;
+
+                            const tRot = Math.atan2(dx, dz);
+                            let dRot = tRot - c.root.rotation.y;
+                            while (dRot > Math.PI) dRot -= Math.PI * 2;
+                            while (dRot < -Math.PI) dRot += Math.PI * 2;
+                            c.root.rotation.y += dRot * 0.12;
+
+                            animateCharacter(c, true, 0.72, delta, elapsed, false);
+                        }
+                    }
+                } else {
+                    animateCharacter(c, false, 0, delta, elapsed, false);
+                }
+            });
+
+            if (divineParticles) {
+                divineParticles.rotation.y = elapsed * 0.05;
+                divineParticles.position.y = Math.sin(elapsed * 0.8) * 0.25;
+            }
+
+            camTargetY = THREE.MathUtils.lerp(camTargetY, desiredTargetY, 0.12);
+            camDist = THREE.MathUtils.lerp(camDist, desiredDist, 0.12);
+
+            const cx = player.root.position.x + Math.sin(camYaw) * Math.cos(camPitch) * camDist;
+            const cz = player.root.position.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist;
+            const cy = Math.max(0.32, player.root.position.y + camTargetY + Math.sin(camPitch) * camDist * 0.75);
+
+            camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.24);
+            camera.lookAt(player.root.position.x, player.root.position.y + camTargetY, player.root.position.z);
+
+            if (frontKeyLight) {
+                frontKeyLight.position.set(camera.position.x, camera.position.y + 0.6, camera.position.z);
+            }
+            if (warmFillLight) {
+                warmFillLight.position.set(player.root.position.x + 1.5, player.root.position.y + 1.2, player.root.position.z + 1.5);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

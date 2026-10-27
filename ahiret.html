@@ -1,0 +1,2252 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gods of Egypt - Diyar 2: Ahiret (Duat), Ruhlar Nehri ve Ammit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="gameHud.css">
+    <script src="errorHandler.js"></script>
+    <script src="loadingScreen.js"></script>
+    <script src="svg-icons.js"></script>
+    <script src="gameState.js"></script>
+    <script src="gameAudio.js"></script>
+    <script src="tutorialSystem.js"></script>
+    <script src="npcSystem.js"></script>
+    <script src="gameHud.js"></script>
+    <script src="egyptCharacterEngine.js"></script>
+    <script src="collisionSystem.js"></script>
+    <script src="combatSystem.js"></script>
+    <script src="cameraSystem.js"></script>
+    <script src="mmoGatheringSystem.js"></script>
+    <script src="cinematicStudio.js"></script>
+    <script src="flightSystem.js"></script>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #04050a;
+            font-family: system-ui, -apple-system, sans-serif;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            width: 100vw;
+            min-height: 100dvh;
+            max-width: 100vw;
+            overscroll-behavior: none;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100dvh;
+            max-width: 100vw;
+            max-height: 100dvh;
+        }
+        .joy-glass {
+            background: rgba(10, 12, 20, 0.68);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(245, 158, 11, 0.48);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.85), 0 0 22px rgba(245, 158, 11, 0.2);
+        }
+    </style>
+</head>
+<body class="overflow-hidden">
+
+    <!-- SADECE MOBİL YÜRÜME JOYSTICK (EKSTRA HİÇBİR BUTON VEYA MENÜ YOK) -->
+    <div id="joystick-zone" class="fixed bottom-6 left-6 w-32 h-32 joy-glass rounded-full flex items-center justify-center z-20 touch-none">
+        <div class="w-20 h-20 rounded-full border border-amber-400/30 pointer-events-none"></div>
+        <div id="joystick-knob" class="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-700 via-amber-400 to-yellow-200 border-2 border-white/90 shadow-xl absolute pointer-events-none transition-transform duration-75"></div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, clock;
+        let player = null;
+        let soulsAndGuards = [];
+        let soulRiverMesh = null;
+        let soulRiverTex = null;
+        let riverPosAttr = null;
+        let lavaPitMesh = null;
+        let lavaPosAttr = null;
+        let soulBarges = [];
+        let scaleBeamGroup = null;
+        let leftPanGroup = null;
+        let rightPanGroup = null;
+        let heartMesh = null;
+        let featherGroup = null;
+        let ammitMonster = null;
+        let soulWispPoints = null;
+        let soulWispPositions = null;
+        let soulWispSpeeds = [];
+        let soulFlameInst = null;
+        let soulFlameData = [];
+        let hellFlameInst = null;
+        let hellFlameData = [];
+        let portalRings = [];
+
+        // Mobil Kontroller ve 360° Kamera (Yakınlaştırma / Uzaklaştırma)
+        let joyActive = false;
+        let joyPointerId = null;
+        let joyVec = { x: 0, y: 0 };
+        const keys = { w: false, a: false, s: false, d: false };
+
+        let camYaw = 0.0;
+        let camPitch = 0.22;
+        let camDist = 9.5;
+        let desiredDist = 9.5;
+        const activePointers = new Map();
+        let lastPinchDist = 0;
+
+        // ============================================================================
+        // 1. GERÇEK 24K ALTIN & SİYAH OBSİDYEN PBR DOKULARI (YEŞİL YANSIMA HATASI YOK!)
+        // ============================================================================
+        function buildDuatTextures(rendererInstance) {
+            // 1. Sıcak 24K Altın & Bronz Yansıma Haritası (Mavi/Camgöbeği Yok -> Yeşil Altın Hatası Sıfırlandı!)
+            const envC = document.createElement('canvas');
+            envC.width = 512; envC.height = 256;
+            const eCtx = envC.getContext('2d');
+            const skyGrad = eCtx.createLinearGradient(0, 0, 0, 256);
+            skyGrad.addColorStop(0.0, '#05060b');
+            skyGrad.addColorStop(0.28, '#1c140d');
+            skyGrad.addColorStop(0.46, '#92400e');
+            skyGrad.addColorStop(0.52, '#fde68a');
+            skyGrad.addColorStop(0.60, '#b45309');
+            skyGrad.addColorStop(0.80, '#271306');
+            skyGrad.addColorStop(1.0, '#040508');
+            eCtx.fillStyle = skyGrad;
+            eCtx.fillRect(0, 0, 512, 256);
+
+            const sunGlow = eCtx.createRadialGradient(256, 128, 8, 256, 128, 140);
+            sunGlow.addColorStop(0, 'rgba(255, 251, 235, 1.0)');
+            sunGlow.addColorStop(0.45, 'rgba(245, 158, 11, 0.75)');
+            sunGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            eCtx.fillStyle = sunGlow;
+            eCtx.fillRect(0, 0, 512, 256);
+
+            const rawEnv = new THREE.CanvasTexture(envC);
+            rawEnv.mapping = THREE.EquirectangularReflectionMapping;
+            const pmrem = new THREE.PMREMGenerator(rendererInstance);
+            pmrem.compileEquirectangularShader();
+            const envMap = pmrem.fromEquirectangular(rawEnv).texture;
+            rawEnv.dispose();
+            pmrem.dispose();
+
+            // 2. Kintsugi Altın Damarlı Koyu Siyah Obsidyen Mermer Zemin Dokusu
+            const obsFloorC = document.createElement('canvas');
+            obsFloorC.width = 512; obsFloorC.height = 512;
+            const ofCtx = obsFloorC.getContext('2d');
+            ofCtx.fillStyle = '#07090e';
+            ofCtx.fillRect(0, 0, 512, 512);
+
+            for (let y = 0; y < 512; y += 128) {
+                for (let x = 0; x < 512; x += 128) {
+                    ofCtx.fillStyle = ((x + y) / 128) % 2 === 0 ? 'rgba(16, 20, 30, 0.65)' : 'rgba(8, 10, 16, 0.75)';
+                    ofCtx.fillRect(x + 2, y + 2, 124, 124);
+                }
+            }
+            // Organik Altın Mermer Damarları
+            for (let v = 0; v < 16; v++) {
+                ofCtx.beginPath();
+                let vx = Math.random() * 512, vy = 0;
+                ofCtx.moveTo(vx, vy);
+                while (vy < 512) {
+                    vy += 28;
+                    vx += (Math.random() - 0.5) * 42;
+                    ofCtx.lineTo(vx, vy);
+                }
+                ofCtx.strokeStyle = 'rgba(217, 119, 6, 0.28)';
+                ofCtx.lineWidth = 1.4;
+                ofCtx.stroke();
+            }
+            ofCtx.strokeStyle = 'rgba(180, 83, 9, 0.32)';
+            ofCtx.lineWidth = 2;
+            for (let i = 0; i <= 512; i += 128) {
+                mLine(ofCtx, 0, i, 512, i);
+                mLine(ofCtx, i, 0, i, 512);
+            }
+            const obsFloorTex = new THREE.CanvasTexture(obsFloorC);
+            obsFloorTex.wrapS = THREE.RepeatWrapping;
+            obsFloorTex.wrapT = THREE.RepeatWrapping;
+            obsFloorTex.repeat.set(4, 28);
+
+            // 3. Pilon ve Tapınak Duvarları İçin Ağır Bazalt & Altın Rölyef Dokusu
+            const hieroC = document.createElement('canvas');
+            hieroC.width = 512; hieroC.height = 512;
+            const hCtx = hieroC.getContext('2d');
+            hCtx.fillStyle = '#0c0e14';
+            hCtx.fillRect(0, 0, 512, 512);
+
+            for (let y = 0; y < 512; y += 64) {
+                hCtx.fillStyle = (y / 64) % 2 === 0 ? '#11141d' : '#0a0c12';
+                hCtx.fillRect(0, y, 512, 62);
+                hCtx.strokeStyle = 'rgba(180, 83, 9, 0.28)';
+                hCtx.lineWidth = 2;
+                mLine(hCtx, 0, y, 512, y);
+            }
+            [128, 384].forEach(fy => {
+                hCtx.fillStyle = 'rgba(146, 64, 14, 0.35)';
+                hCtx.fillRect(0, fy, 512, 22);
+                hCtx.strokeStyle = '#d97706';
+                hCtx.lineWidth = 2;
+                mLine(hCtx, 0, fy, 512, fy);
+                mLine(hCtx, 0, fy + 22, 512, fy + 22);
+            });
+            for (let cx = 85; cx < 512; cx += 170) {
+                hCtx.strokeStyle = 'rgba(217, 119, 6, 0.32)';
+                hCtx.lineWidth = 2;
+                hCtx.strokeRect(cx - 24, 32, 48, 448);
+                for (let cy = 64; cy < 450; cy += 80) {
+                    hCtx.fillStyle = 'rgba(245, 158, 11, 0.38)';
+                    hCtx.beginPath();
+                    hCtx.arc(cx, cy, 9, 0, Math.PI * 2);
+                    hCtx.fill();
+                    hCtx.fillRect(cx - 12, cy + 15, 24, 5);
+                    hCtx.fillRect(cx - 3, cy + 24, 6, 20);
+                }
+            }
+            const hieroTex = new THREE.CanvasTexture(hieroC);
+            hieroTex.wrapS = THREE.RepeatWrapping;
+            hieroTex.wrapT = THREE.RepeatWrapping;
+            hieroTex.repeat.set(1, 2);
+
+            // 4. Derin Abis İçinde Kıvrımlı Ruhlar Nehri Dokusu (Çizgili Tekrar Hatası Yok!)
+            const riverC = document.createElement('canvas');
+            riverC.width = 512; riverC.height = 512;
+            const rCtx = riverC.getContext('2d');
+            rCtx.fillStyle = '#020611';
+            rCtx.fillRect(0, 0, 512, 512);
+
+            // Kıvrımlı Kozmik Ruh Nehir Akıntıları
+            for (let w = 0; w < 28; w++) {
+                rCtx.beginPath();
+                const startX = (w / 28) * 512;
+                rCtx.moveTo(startX, 0);
+                for (let y = 0; y <= 512; y += 32) {
+                    const waveX = startX + Math.sin(y * 0.025 + w * 0.8) * 34;
+                    rCtx.lineTo(waveX, y);
+                }
+                rCtx.strokeStyle = w % 4 === 0 ? 'rgba(245, 158, 11, 0.28)' : 'rgba(14, 165, 233, 0.38)';
+                rCtx.lineWidth = 10 + (w % 3) * 6;
+                rCtx.stroke();
+            }
+            for (let i = 0; i < 320; i++) {
+                const gx = Math.random() * 512;
+                const gy = Math.random() * 512;
+                rCtx.fillStyle = i % 5 === 0 ? 'rgba(253, 224, 71, 0.65)' : 'rgba(125, 211, 252, 0.65)';
+                rCtx.beginPath();
+                rCtx.arc(gx, gy, 2.2, 0, Math.PI * 2);
+                rCtx.fill();
+            }
+            soulRiverTex = new THREE.CanvasTexture(riverC);
+            soulRiverTex.wrapS = THREE.RepeatWrapping;
+            soulRiverTex.wrapT = THREE.RepeatWrapping;
+            soulRiverTex.repeat.set(4, 10);
+
+            // 5. Kanyon Kayalıkları İçin Organik Volkanik Bazalt Dokusu (Yatay Çizgi/Ekose Yok!)
+            const basaltC = document.createElement('canvas');
+            basaltC.width = 512; basaltC.height = 512;
+            const bCtx = basaltC.getContext('2d');
+            bCtx.fillStyle = '#08090d';
+            bCtx.fillRect(0, 0, 512, 512);
+            for (let i = 0; i < 900; i++) {
+                const rx = Math.random() * 512, ry = Math.random() * 512;
+                const rw = 12 + Math.random() * 36, rh = 12 + Math.random() * 36;
+                bCtx.fillStyle = i % 2 === 0 ? 'rgba(18, 22, 32, 0.45)' : 'rgba(5, 6, 10, 0.55)';
+                bCtx.fillRect(rx, ry, rw, rh);
+            }
+            // Kayalıklarda Doğal Magma ve Altın Cevheri Çatlakları
+            for (let c = 0; c < 18; c++) {
+                bCtx.beginPath();
+                let cx = Math.random() * 512, cy = Math.random() * 512;
+                bCtx.moveTo(cx, cy);
+                for (let s = 0; s < 8; s++) {
+                    cx += (Math.random() - 0.5) * 65;
+                    cy += (Math.random() - 0.5) * 65;
+                    bCtx.lineTo(cx, cy);
+                }
+                bCtx.strokeStyle = c % 2 === 0 ? 'rgba(217, 119, 6, 0.35)' : 'rgba(234, 88, 12, 0.32)';
+                bCtx.lineWidth = 2.0;
+                bCtx.stroke();
+            }
+            const basaltTex = new THREE.CanvasTexture(basaltC);
+            basaltTex.wrapS = THREE.RepeatWrapping;
+            basaltTex.wrapT = THREE.RepeatWrapping;
+            basaltTex.repeat.set(3, 3);
+
+            // 6. Gerçek 24K Sıcak Kraliyet Altını Dokusu
+            const goldC = document.createElement('canvas');
+            goldC.width = 256; goldC.height = 256;
+            const gCtx = goldC.getContext('2d');
+            const gGrad = gCtx.createLinearGradient(0, 0, 256, 256);
+            gGrad.addColorStop(0.0, '#fef3c7');
+            gGrad.addColorStop(0.30, '#f59e0b');
+            gGrad.addColorStop(0.68, '#b45309');
+            gGrad.addColorStop(1.0, '#fbbf24');
+            gCtx.fillStyle = gGrad;
+            gCtx.fillRect(0, 0, 256, 256);
+            const goldTex = new THREE.CanvasTexture(goldC);
+
+            // 7. Ammit Canavarı Koyu Pullu Sürüngen Derisi Dokusu
+            const crocC = document.createElement('canvas');
+            crocC.width = 256; crocC.height = 256;
+            const cCtx = crocC.getContext('2d');
+            cCtx.fillStyle = '#181c16';
+            cCtx.fillRect(0, 0, 256, 256);
+            for (let y = 0; y < 256; y += 16) {
+                for (let x = 0; x < 256; x += 16) {
+                    cCtx.fillStyle = ((x + y) / 16) % 2 === 0 ? '#10130f' : '#252b22';
+                    cCtx.beginPath();
+                    cCtx.roundRect(x + 1, y + 1, 14, 14, 4);
+                    cCtx.fill();
+                }
+            }
+            const ammitSkinTex = new THREE.CanvasTexture(crocC);
+            ammitSkinTex.wrapS = THREE.RepeatWrapping;
+            ammitSkinTex.wrapT = THREE.RepeatWrapping;
+            ammitSkinTex.repeat.set(4, 4);
+
+            // 8. Yumuşak Ruh Işığı Parçacığı (Sprite Glow) Dokusu
+            const glowC = document.createElement('canvas');
+            glowC.width = 64; glowC.height = 64;
+            const glCtx = glowC.getContext('2d');
+            const rGrad = glCtx.createRadialGradient(32, 32, 2, 32, 32, 30);
+            rGrad.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
+            rGrad.addColorStop(0.35, 'rgba(125, 211, 252, 0.85)');
+            rGrad.addColorStop(0.75, 'rgba(14, 165, 233, 0.22)');
+            rGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+            glCtx.fillStyle = rGrad;
+            glCtx.fillRect(0, 0, 64, 64);
+            const wispGlowTex = new THREE.CanvasTexture(glowC);
+
+            // 9. Keten ve Cilt Dokuları
+            const linenC = document.createElement('canvas');
+            linenC.width = 256; linenC.height = 256;
+            const lCtx = linenC.getContext('2d');
+            lCtx.fillStyle = '#f3ead8';
+            lCtx.fillRect(0, 0, 256, 256);
+            for (let x = 0; x < 256; x += 8) {
+                lCtx.fillStyle = x % 16 === 0 ? 'rgba(120, 90, 55, 0.22)' : 'rgba(255, 252, 245, 0.45)';
+                lCtx.fillRect(x, 0, 4, 256);
+            }
+            lCtx.fillStyle = '#d97706';
+            lCtx.fillRect(0, 226, 256, 14);
+            const linenTex = new THREE.CanvasTexture(linenC);
+
+            const torsoC = document.createElement('canvas');
+            torsoC.width = 256; torsoC.height = 256;
+            const tCtx = torsoC.getContext('2d');
+            tCtx.fillStyle = '#b8734b';
+            tCtx.fillRect(0, 0, 256, 256);
+            const skinTex = new THREE.CanvasTexture(torsoC);
+
+            return { envMap, obsFloorTex, hieroTex, soulRiverTex, basaltTex, goldTex, ammitSkinTex, wispGlowTex, linenTex, skinTex };
+        }
+
+        function mLine(ctx, x1, y1, x2, y2) {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+
+        // ============================================================================
+        // 2. OYUNCU (ÖLÜMLÜ KÖYLÜ), YARGILANAN RUHLAR VE ANUBİS MUHAFIZLARI MOTORU
+        // ============================================================================
+        let sharedCharGeos = null;
+        let sharedCharMats = null;
+
+        function initSharedCharacterAssets() {
+            const torsoGeo = new THREE.CylinderGeometry(1, 1, 0.62, 20, 12, false);
+            const pos = torsoGeo.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const vx = pos.getX(i), vy = pos.getY(i), vz = pos.getZ(i);
+                const t = (vy + 0.31) / 0.62;
+                const ang = Math.atan2(vx, vz);
+                let rx = 0.14, rz = 0.10;
+                if (t < 0.25) {
+                    rx = THREE.MathUtils.lerp(0.14, 0.13, t / 0.25);
+                    rz = THREE.MathUtils.lerp(0.10, 0.095, t / 0.25);
+                } else if (t < 0.74) {
+                    const k = (t - 0.25) / 0.49;
+                    rx = THREE.MathUtils.lerp(0.13, 0.185, Math.sin(k * Math.PI * 0.5));
+                    rz = THREE.MathUtils.lerp(0.095, 0.125, k);
+                } else {
+                    const k = (t - 0.74) / 0.26;
+                    rx = THREE.MathUtils.lerp(0.185, 0.062, k);
+                    rz = THREE.MathUtils.lerp(0.125, 0.060, k);
+                }
+                pos.setXYZ(i, Math.sin(ang) * rx, vy, Math.cos(ang) * rz);
+            }
+            torsoGeo.computeVertexNormals();
+
+            sharedCharGeos = {
+                torsoGeo,
+                beltGeo: new THREE.CylinderGeometry(0.140, 0.146, 0.075, 14),
+                kiltGeo: new THREE.CylinderGeometry(0.142, 0.19, 0.34, 16),
+                collarGeo: new THREE.CylinderGeometry(0.085, 0.195, 0.06, 14, 1, true),
+                craniumGeo: new THREE.SphereGeometry(0.102, 12, 10),
+                noseGeo: new THREE.ConeGeometry(0.017, 0.05, 5),
+                snoutGeo: new THREE.BoxGeometry(0.065, 0.065, 0.18),
+                earGeo: new THREE.ConeGeometry(0.022, 0.15, 5),
+                khatGeo: new THREE.SphereGeometry(0.108, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.58),
+                lappetGeo: new THREE.BoxGeometry(0.032, 0.16, 0.045),
+                heartOrbGeo: new THREE.OctahedronGeometry(0.065, 1),
+                deltoidGeo: new THREE.SphereGeometry(0.054, 8, 8),
+                upperArmGeo: new THREE.CylinderGeometry(0.046, 0.038, 0.26, 8),
+                foreArmGeo: new THREE.CylinderGeometry(0.038, 0.029, 0.25, 8),
+                handGeo: new THREE.SphereGeometry(0.03, 6, 6),
+                spearGeo: new THREE.CylinderGeometry(0.015, 0.015, 2.5, 6),
+                thighGeo: new THREE.CylinderGeometry(0.066, 0.048, 0.42, 8),
+                shinGeo: new THREE.CylinderGeometry(0.048, 0.033, 0.42, 8),
+                footGeo: new THREE.BoxGeometry(0.066, 0.036, 0.15)
+            };
+
+            sharedCharMats = {
+                skinMat: new THREE.MeshStandardMaterial({ map: window.textures.skinTex, roughness: 0.52 }),
+                linenMat: new THREE.MeshStandardMaterial({ map: window.textures.linenTex, roughness: 0.75 }),
+                leatherMat: new THREE.MeshStandardMaterial({ color: 0x6b3a19, roughness: 0.72 }),
+                obsidianMat: new THREE.MeshStandardMaterial({
+                    color: 0x0c0e14,
+                    envMap: window.textures.envMap,
+                    metalness: 0.85,
+                    roughness: 0.20
+                }),
+                goldMat: new THREE.MeshStandardMaterial({
+                    map: window.textures.goldTex,
+                    envMap: window.textures.envMap,
+                    color: 0xfbbf24,
+                    metalness: 0.88,
+                    roughness: 0.20
+                }),
+                soulBodyMat: new THREE.MeshStandardMaterial({
+                    color: 0x7dd3fc,
+                    emissive: 0x0284c7,
+                    emissiveIntensity: 0.55,
+                    roughness: 0.25,
+                    transparent: true,
+                    opacity: 0.82
+                }),
+                soulClothMat: new THREE.MeshStandardMaterial({
+                    color: 0xe0f2fe,
+                    emissive: 0x38bdf8,
+                    emissiveIntensity: 0.35,
+                    roughness: 0.4,
+                    transparent: true,
+                    opacity: 0.88
+                }),
+                heartGlowMat: new THREE.MeshBasicMaterial({ color: 0xe11d48 })
+            };
+        }
+
+        function createDuatCharacter(scale = 1.0, role = 'mortal', castShad = false) {
+            if (!sharedCharGeos) initSharedCharacterAssets();
+
+            const root = new THREE.Group();
+            root.scale.setScalar(scale);
+
+            const hips = new THREE.Group();
+            hips.position.y = 0.92;
+            root.add(hips);
+
+            const isSoul = role === 'soul';
+            const isAnubis = role === 'anubis_guard';
+
+            const bodyMat = isSoul ? sharedCharMats.soulBodyMat : (isAnubis ? sharedCharMats.obsidianMat : sharedCharMats.skinMat);
+            const kiltMat = isSoul ? sharedCharMats.soulClothMat : (isAnubis ? sharedCharMats.goldMat : sharedCharMats.linenMat);
+            const accMat = isAnubis ? sharedCharMats.goldMat : (isSoul ? sharedCharMats.soulClothMat : sharedCharMats.leatherMat);
+
+            const torso = new THREE.Mesh(sharedCharGeos.torsoGeo, bodyMat);
+            torso.position.y = 0.30;
+            torso.castShadow = castShad;
+            hips.add(torso);
+
+            const belt = new THREE.Mesh(sharedCharGeos.beltGeo, accMat);
+            belt.position.y = 0.01;
+            hips.add(belt);
+
+            const kilt = new THREE.Mesh(sharedCharGeos.kiltGeo, kiltMat);
+            kilt.scale.set(0.95, 1.0, 0.78);
+            kilt.position.y = -0.14;
+            kilt.castShadow = castShad;
+            hips.add(kilt);
+
+            const collar = new THREE.Mesh(sharedCharGeos.collarGeo, accMat);
+            collar.scale.set(1.0, 1.0, 0.72);
+            collar.position.y = 0.22;
+            torso.add(collar);
+
+            const headGroup = new THREE.Group();
+            headGroup.position.y = 0.33;
+            torso.add(headGroup);
+
+            const cranium = new THREE.Mesh(sharedCharGeos.craniumGeo, bodyMat);
+            cranium.scale.set(0.86, 1.08, 0.95);
+            cranium.position.y = 0.06;
+            headGroup.add(cranium);
+
+            if (isAnubis) {
+                const snout = new THREE.Mesh(sharedCharGeos.snoutGeo, sharedCharMats.obsidianMat);
+                snout.position.set(0, 0.04, 0.12);
+                headGroup.add(snout);
+
+                [-0.045, 0.045].forEach(ex => {
+                    const ear = new THREE.Mesh(sharedCharGeos.earGeo, sharedCharMats.goldMat);
+                    ear.position.set(ex, 0.19, -0.01);
+                    headGroup.add(ear);
+                });
+            } else {
+                const nose = new THREE.Mesh(sharedCharGeos.noseGeo, bodyMat);
+                nose.rotation.x = Math.PI * 0.12;
+                nose.position.set(0, 0.055, 0.096);
+                headGroup.add(nose);
+            }
+
+            const khatCap = new THREE.Mesh(sharedCharGeos.khatGeo, isAnubis ? sharedCharMats.goldMat : kiltMat);
+            khatCap.scale.set(0.88, 1.08, 0.98);
+            khatCap.position.y = 0.064;
+            headGroup.add(khatCap);
+
+            [-0.082, 0.082].forEach(lx => {
+                const lappet = new THREE.Mesh(sharedCharGeos.lappetGeo, isAnubis ? sharedCharMats.goldMat : kiltMat);
+                lappet.position.set(lx, 0.0, 0.01);
+                headGroup.add(lappet);
+            });
+
+            if (isSoul) {
+                const heartOrb = new THREE.Mesh(sharedCharGeos.heartOrbGeo, sharedCharMats.heartGlowMat);
+                heartOrb.position.set(0, 0.12, 0.24);
+                torso.add(heartOrb);
+            }
+
+            function makeArm(isRight) {
+                const shoulder = new THREE.Group();
+                shoulder.position.set(isRight ? 0.205 : -0.205, 0.21, 0);
+                torso.add(shoulder);
+
+                shoulder.add(new THREE.Mesh(sharedCharGeos.deltoidGeo, bodyMat));
+
+                const upper = new THREE.Mesh(sharedCharGeos.upperArmGeo, bodyMat);
+                upper.position.y = -0.13;
+                shoulder.add(upper);
+
+                const elbow = new THREE.Group();
+                elbow.position.y = -0.26;
+                shoulder.add(elbow);
+
+                const fore = new THREE.Mesh(sharedCharGeos.foreArmGeo, bodyMat);
+                fore.position.y = -0.125;
+                elbow.add(fore);
+
+                const hand = new THREE.Mesh(sharedCharGeos.handGeo, bodyMat);
+                hand.scale.set(0.8, 1.2, 0.55);
+                hand.position.y = -0.26;
+                elbow.add(hand);
+
+                if (isAnubis && isRight) {
+                    const spear = new THREE.Mesh(sharedCharGeos.spearGeo, sharedCharMats.goldMat);
+                    spear.position.set(0, -0.05, 0.12);
+                    spear.rotation.x = Math.PI * 0.06;
+                    elbow.add(spear);
+                }
+
+                return { shoulder, elbow };
+            }
+
+            function makeLeg(isRight) {
+                const hip = new THREE.Group();
+                hip.position.set(isRight ? 0.088 : -0.088, -0.04, 0);
+                hips.add(hip);
+
+                const thigh = new THREE.Mesh(sharedCharGeos.thighGeo, bodyMat);
+                thigh.position.y = -0.21;
+                hip.add(thigh);
+
+                const knee = new THREE.Group();
+                knee.position.y = -0.42;
+                hip.add(knee);
+
+                const shin = new THREE.Mesh(sharedCharGeos.shinGeo, bodyMat);
+                shin.position.y = -0.21;
+                knee.add(shin);
+
+                const foot = new THREE.Mesh(sharedCharGeos.footGeo, accMat);
+                foot.position.set(0, -0.44, 0.032);
+                knee.add(foot);
+
+                return { hip, knee };
+            }
+
+            return {
+                root,
+                hips,
+                torso,
+                role,
+                arms: { left: makeArm(false), right: makeArm(true) },
+                legs: { left: makeLeg(false), right: makeLeg(true) },
+                walkPhase: Math.random() * Math.PI * 2,
+                speed: isSoul ? 1.85 : 2.2
+            };
+        }
+
+        function animateCharacter(char, moving, speedMag, delta, elapsed) {
+            if (!char) return;
+            if (char.pelvis || (window.player === char && window.EgyptCharacterEngine)) {
+                window.EgyptCharacterEngine.animateEgyptCharacter(char, moving, speedMag, delta, elapsed);
+                return;
+            }
+            if (moving) {
+                char.walkPhase += delta * (6.8 * Math.max(0.45, speedMag));
+                const p = char.walkPhase;
+                const s = Math.sin(p);
+                const os = Math.sin(p + Math.PI);
+
+                char.hips.position.y = 0.92 + Math.abs(Math.cos(p)) * 0.026;
+                char.torso.rotation.y = -s * 0.09;
+                char.torso.rotation.x = 0.04;
+
+                char.legs.left.hip.rotation.x = s * 0.54;
+                char.legs.right.hip.rotation.x = os * 0.54;
+                char.legs.left.knee.rotation.x = Math.max(0, -Math.cos(p) * 0.62);
+                char.legs.right.knee.rotation.x = Math.max(0, -Math.cos(p + Math.PI) * 0.62);
+
+                if (char.role === 'soul') {
+                    char.arms.left.shoulder.rotation.x = -0.65;
+                    char.arms.right.shoulder.rotation.x = -0.65;
+                    char.arms.left.elbow.rotation.x = -1.15;
+                    char.arms.right.elbow.rotation.x = -1.15;
+                } else {
+                    char.arms.left.shoulder.rotation.x = os * 0.42;
+                    char.arms.right.shoulder.rotation.x = s * 0.42;
+                    char.arms.left.elbow.rotation.x = -0.22 - Math.max(0, os) * 0.2;
+                    char.arms.right.elbow.rotation.x = -0.22 - Math.max(0, s) * 0.2;
+                }
+            } else {
+                const breath = Math.sin(elapsed * 2.2 + char.walkPhase);
+                char.hips.position.y = THREE.MathUtils.lerp(char.hips.position.y, 0.92 + breath * 0.008, 0.15);
+                char.torso.rotation.y = THREE.MathUtils.lerp(char.torso.rotation.y, 0, 0.15);
+                char.torso.rotation.x = THREE.MathUtils.lerp(char.torso.rotation.x, breath * 0.015, 0.15);
+
+                char.legs.left.hip.rotation.x = THREE.MathUtils.lerp(char.legs.left.hip.rotation.x, 0, 0.15);
+                char.legs.right.hip.rotation.x = THREE.MathUtils.lerp(char.legs.right.hip.rotation.x, 0, 0.15);
+                char.legs.left.knee.rotation.x = THREE.MathUtils.lerp(char.legs.left.knee.rotation.x, 0, 0.15);
+                char.legs.right.knee.rotation.x = THREE.MathUtils.lerp(char.legs.right.knee.rotation.x, 0, 0.15);
+
+                char.arms.left.shoulder.rotation.x = THREE.MathUtils.lerp(char.arms.left.shoulder.rotation.x, 0.03, 0.15);
+                char.arms.right.shoulder.rotation.x = THREE.MathUtils.lerp(char.arms.right.shoulder.rotation.x, -0.03, 0.15);
+                char.arms.left.elbow.rotation.x = -0.16;
+                char.arms.right.elbow.rotation.x = -0.16;
+            }
+        }
+
+        // ============================================================================
+        // 3. DEVASA "DİYAR 2: AHİRET (DUAT), RUHLAR NEHRİ VE AMMİT" AÇIK DÜNYA HARİTASI
+        // ============================================================================
+        function buildGodsOfEgyptDuatWorld() {
+            const worldGroup = new THREE.Group();
+            worldGroup.name = "GodsOfEgypt_DuatUnderworld";
+            scene.add(worldGroup);
+
+            const dummy = new THREE.Object3D();
+
+            const obsFloorMat = new THREE.MeshStandardMaterial({
+                map: window.textures.obsFloorTex,
+                bumpMap: window.textures.obsFloorTex,
+                bumpScale: 0.02,
+                envMap: window.textures.envMap,
+                envMapIntensity: 1.35,
+                metalness: 0.65,
+                roughness: 0.24
+            });
+            const hieroMat = new THREE.MeshStandardMaterial({
+                map: window.textures.hieroTex,
+                bumpMap: window.textures.hieroTex,
+                bumpScale: 0.035,
+                envMap: window.textures.envMap,
+                envMapIntensity: 1.1,
+                metalness: 0.45,
+                roughness: 0.38
+            });
+            const basaltMat = new THREE.MeshStandardMaterial({
+                map: window.textures.basaltTex,
+                bumpMap: window.textures.basaltTex,
+                bumpScale: 0.08,
+                roughness: 0.88,
+                metalness: 0.12
+            });
+            // Sıcak 24K Altın Materyal (Yeşil Yansıma Oluşturmaz!)
+            const goldMat = new THREE.MeshStandardMaterial({
+                map: window.textures.goldTex,
+                envMap: window.textures.envMap,
+                envMapIntensity: 1.65,
+                color: 0xf59e0b,
+                emissive: 0x451a03,
+                emissiveIntensity: 0.18,
+                metalness: 0.86,
+                roughness: 0.22
+            });
+            const darkBronzeMat = new THREE.MeshStandardMaterial({
+                color: 0x78350f,
+                envMap: window.textures.envMap,
+                metalness: 0.80,
+                roughness: 0.28
+            });
+            const obsidianMat = new THREE.MeshStandardMaterial({
+                color: 0x0c0e14,
+                envMap: window.textures.envMap,
+                envMapIntensity: 1.4,
+                metalness: 0.82,
+                roughness: 0.20
+            });
+            const soulCyanMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+            const hellFireMat = new THREE.MeshBasicMaterial({ color: 0xf97316 });
+
+            soulFlameData = [];
+            hellFlameData = [];
+            function addSoulBrazier(x, y, z, scale = 1.0) {
+                soulFlameData.push({ x, y, z, scale, phase: Math.random() * Math.PI * 2 });
+            }
+            function addHellBrazier(x, y, z, scale = 1.0) {
+                hellFlameData.push({ x, y, z, scale, phase: Math.random() * Math.PI * 2 });
+            }
+
+            // ------------------------------------------------------------------------
+            // A. DERİN ABİS RUHLAR NEHRİ, RUH ŞELALELERİ VE ORGANİK BAZALT KANYONLAR
+            // ------------------------------------------------------------------------
+            const abyssBed = new THREE.Mesh(
+                new THREE.PlaneGeometry(980, 980),
+                new THREE.MeshBasicMaterial({ color: 0x020307 })
+            );
+            abyssBed.rotation.x = -Math.PI / 2;
+            abyssBed.position.set(0, -14.0, -40);
+            worldGroup.add(abyssBed);
+
+            const riverGeo = new THREE.PlaneGeometry(380, 860, 72, 160);
+            const riverMat = new THREE.MeshStandardMaterial({
+                map: window.textures.soulRiverTex,
+                emissiveMap: window.textures.soulRiverTex,
+                emissive: 0x0284c7,
+                emissiveIntensity: 0.72,
+                envMap: window.textures.envMap,
+                envMapIntensity: 1.2,
+                metalness: 0.75,
+                roughness: 0.16
+            });
+            soulRiverMesh = new THREE.Mesh(riverGeo, riverMat);
+            soulRiverMesh.rotation.x = -Math.PI / 2;
+            soulRiverMesh.position.set(0, -8.5, -40);
+            worldGroup.add(soulRiverMesh);
+            riverPosAttr = riverGeo.attributes.position;
+
+            // 3.000 Yumuşak Parlayan Ruh Parçacığı (THREE.Points + Sprite Glow)
+            const wispCount = 3000;
+            const wispGeo = new THREE.BufferGeometry();
+            soulWispPositions = new Float32Array(wispCount * 3);
+            const wispColors = new Float32Array(wispCount * 3);
+            soulWispSpeeds = [];
+
+            for (let i = 0; i < wispCount; i++) {
+                soulWispPositions[i * 3] = (Math.random() - 0.5) * 280;
+                soulWispPositions[i * 3 + 1] = -7.5 + Math.random() * 34.0;
+                soulWispPositions[i * 3 + 2] = 220 - Math.random() * 520;
+                soulWispSpeeds.push(2.0 + Math.random() * 4.5);
+
+                const isGold = i % 4 === 0;
+                wispColors[i * 3] = isGold ? 1.0 : 0.45;
+                wispColors[i * 3 + 1] = isGold ? 0.78 : 0.85;
+                wispColors[i * 3 + 2] = isGold ? 0.25 : 1.0;
+            }
+            wispGeo.setAttribute('position', new THREE.BufferAttribute(soulWispPositions, 3));
+            wispGeo.setAttribute('color', new THREE.BufferAttribute(wispColors, 3));
+
+            const wispMat = new THREE.PointsMaterial({
+                size: 1.4,
+                map: window.textures.wispGlowTex,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.88,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending
+            });
+            soulWispPoints = new THREE.Points(wispGeo, wispMat);
+            worldGroup.add(soulWispPoints);
+
+            // Katmanlı Bazalt Kanyon Kayalıkları (Ekose/Çizgi Hatası Olmayan Dodecahedron Kaya Kütleleri)
+            const rockMassGeo = new THREE.DodecahedronGeometry(18, 1);
+            const rockMassInst = new THREE.InstancedMesh(rockMassGeo, basaltMat, 180);
+            const obeliskShardInst = new THREE.InstancedMesh(new THREE.CylinderGeometry(1.5, 6.5, 48, 5), obsidianMat, 90);
+            let rIdx = 0, oIdx = 0;
+
+            for (let zC = 220; zC >= -300; zC -= 14) {
+                [-1, 1].forEach(side => {
+                    if (rIdx >= 180) return;
+                    const dist = 76 + (Math.abs(zC * 3) % 48);
+                    const cx = side * dist;
+                    const hScale = 1.2 + (rIdx % 4) * 0.55;
+
+                    dummy.position.set(cx, 12 * hScale - 10, zC);
+                    dummy.rotation.set(rIdx * 0.4, rIdx * 1.1, side * 0.2);
+                    dummy.scale.set(1.4, hScale * 1.8, 1.3);
+                    dummy.updateMatrix();
+                    rockMassInst.setMatrixAt(rIdx++, dummy.matrix);
+
+                    if (oIdx < 90 && rIdx % 2 === 0) {
+                        dummy.position.set(cx - side * 14, 14, zC + 5);
+                        dummy.rotation.set(0, oIdx * 0.7, -side * 0.12);
+                        dummy.scale.set(1, 0.9 + (oIdx % 3) * 0.35, 1);
+                        dummy.updateMatrix();
+                        obeliskShardInst.setMatrixAt(oIdx++, dummy.matrix);
+                    }
+                });
+            }
+            rockMassInst.count = rIdx;
+            obeliskShardInst.count = oIdx;
+            worldGroup.add(rockMassInst, obeliskShardInst);
+
+            // ------------------------------------------------------------------------
+            // B. KEMERLİ DEV KÖPRÜ AYAKLARI, 9 PİLON KAPISI VE GERÇEK HALKALI ASMA ZİNCİRLER
+            // ------------------------------------------------------------------------
+            const mainBridgeDeck = new THREE.Mesh(new THREE.BoxGeometry(22, 1.8, 400), obsFloorMat);
+            mainBridgeDeck.position.set(0, -0.9, -20);
+            mainBridgeDeck.receiveShadow = true;
+            worldGroup.add(mainBridgeDeck);
+
+            [-10.8, 10.8].forEach(bx => {
+                const goldCurb = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.05, 400), goldMat);
+                goldCurb.position.set(bx, 0.35, -20);
+                worldGroup.add(goldCurb);
+            });
+
+            // Köprünün Altında Ruhlar Nehrine İnen Anıtsal Taş Ayaklar (Havada Asılı Durmaz!)
+            const bridgePierInst = new THREE.InstancedMesh(new THREE.BoxGeometry(20, 9.0, 5.5), hieroMat, 22);
+            let bpIdx = 0;
+            for (let pz = 170; pz >= -210; pz -= 18) {
+                if (bpIdx >= 22) break;
+                dummy.position.set(0, -5.2, pz);
+                dummy.rotation.set(0, 0, 0);
+                dummy.scale.set(1, 1, 1);
+                dummy.updateMatrix();
+                bridgePierInst.setMatrixAt(bpIdx++, dummy.matrix);
+            }
+            bridgePierInst.count = bpIdx;
+            worldGroup.add(bridgePierInst);
+
+            // Gerçek Kavisli Altın Şahin Kanatlı Güneş Diski (Yeşil Jaluzi Çubuklar Kaldırıldı!)
+            function createRoyalWingedSunEmblem(isHellGate = false) {
+                const emblem = new THREE.Group();
+
+                const sunBacking = new THREE.Mesh(new THREE.CylinderGeometry(1.85, 1.85, 0.35, 24), goldMat);
+                sunBacking.rotation.x = Math.PI / 2;
+                emblem.add(sunBacking);
+
+                const coreOrb = new THREE.Mesh(
+                    new THREE.SphereGeometry(1.25, 16, 14),
+                    isHellGate ? hellFireMat : soulCyanMat
+                );
+                coreOrb.scale.set(1.0, 1.0, 0.55);
+                coreOrb.position.z = 0.15;
+                emblem.add(coreOrb);
+
+                // İki Yanda Şaha Kalkmış Altın Uraeus Kobraları
+                [-1.95, 1.95].forEach(ux => {
+                    const cobra = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.18, 8, 16, Math.PI * 1.25), goldMat);
+                    cobra.position.set(ux, -0.25, 0.25);
+                    cobra.rotation.y = ux > 0 ? 0.35 : -0.35;
+                    emblem.add(cobra);
+                });
+
+                // Kavisli Yelpaze Şahin Kanatları (Sıcak 24K Altın ve Koyu Bronz Katmanlı)
+                [-1, 1].forEach(dir => {
+                    const wingPivot = new THREE.Group();
+                    wingPivot.position.set(dir * 1.6, 0.2, 0);
+                    emblem.add(wingPivot);
+
+                    for (let f = 0; f < 10; f++) {
+                        const span = 6.8 - f * 0.48;
+                        const feather = new THREE.Mesh(
+                            new THREE.ConeGeometry(0.28, span, 4),
+                            f % 2 === 0 ? goldMat : darkBronzeMat
+                        );
+                        feather.scale.set(1.0, 1.0, 0.35);
+                        const ang = -dir * (Math.PI * 0.46 + f * 0.055);
+                        feather.rotation.z = ang;
+                        feather.position.set(
+                            dir * (span * 0.45 * Math.cos(f * 0.06)),
+                            0.65 - f * 0.24,
+                            -f * 0.02
+                        );
+                        wingPivot.add(feather);
+                    }
+                });
+
+                return emblem;
+            }
+
+            // Gerçek Halkalı Asma Zincirler İçin InstancedMesh Hazırlığı (Düz Sarı Borular Kaldırıldı!)
+            const chainLinkGeo = new THREE.TorusGeometry(0.85, 0.24, 8, 16);
+            const totalChainLinks = 9 * 2 * 22;
+            const chainLinkInst = new THREE.InstancedMesh(chainLinkGeo, goldMat, totalChainLinks);
+            let clIdx = 0;
+
+            const gateZPositions = [155, 115, 75, 35, -5, -45, -145, -175, -205];
+            gateZPositions.forEach((gz, gIdx) => {
+                const gGroup = new THREE.Group();
+                gGroup.position.set(0, 0, gz);
+                worldGroup.add(gGroup);
+
+                const isHellGate = gIdx === 4 || gIdx === 5;
+
+                [-15.2, 15.2].forEach(px => {
+                    const side = Math.sign(px);
+
+                    // Gerçek İçe Eğimli Mısır Pilon Kulesi (Nehre İnen Kaidesiyle)
+                    const pylonSub = new THREE.Mesh(new THREE.BoxGeometry(10.5, 9.0, 7.2), hieroMat);
+                    pylonSub.position.set(px, -4.5, 0);
+                    gGroup.add(pylonSub);
+
+                    const pylon = new THREE.Mesh(new THREE.CylinderGeometry(3.8, 5.8, 30.0, 4), hieroMat);
+                    pylon.rotation.y = Math.PI / 4;
+                    pylon.scale.set(1.35, 1.0, 0.92);
+                    pylon.position.set(px, 15.0, 0);
+                    pylon.castShadow = true;
+                    pylon.receiveShadow = true;
+                    gGroup.add(pylon);
+
+                    // Pilon Yatay Altın Kuşakları (İçten Çıkan Yeşil Üçgen Hatası Kaldırıldı!)
+                    [6.0, 14.0, 22.0].forEach(by => {
+                        const band = new THREE.Mesh(new THREE.BoxGeometry(9.6 - by * 0.12, 0.55, 6.2 - by * 0.08), goldMat);
+                        band.position.set(px, by, 0);
+                        gGroup.add(band);
+                    });
+
+                    // Boğazlı Altın Korniş Tacı (Cavetto Cornice)
+                    const corniceBase = new THREE.Mesh(new THREE.BoxGeometry(8.8, 0.65, 6.4), goldMat);
+                    corniceBase.position.set(px, 30.1, 0);
+                    gGroup.add(corniceBase);
+
+                    const corniceFlare = new THREE.Mesh(new THREE.CylinderGeometry(5.8, 4.6, 1.5, 4), goldMat);
+                    corniceFlare.rotation.y = Math.PI / 4;
+                    corniceFlare.scale.set(1.32, 1.0, 0.92);
+                    corniceFlare.position.set(px, 31.1, 0);
+                    gGroup.add(corniceFlare);
+
+                    // Pilon Tepesinden Uçurum Kulelerine Sarkarak Uzanan 22 Halkalı Gerçek Zincir (Catenary Curve)
+                    for (let lk = 0; lk < 22; lk++) {
+                        if (clIdx >= totalChainLinks) break;
+                        const t = lk / 21;
+                        const lx = px + side * (t * 48.0);
+                        const ly = 30.5 + t * 24.0 - Math.sin(t * Math.PI) * 5.2;
+                        const lz = gz;
+
+                        dummy.position.set(lx, ly, lz);
+                        dummy.rotation.set(lk % 2 === 0 ? Math.PI / 2 : 0, 0, -side * 0.45);
+                        dummy.scale.set(1, 1, 1.35);
+                        dummy.updateMatrix();
+                        chainLinkInst.setMatrixAt(clIdx++, dummy.matrix);
+                    }
+
+                    if (isHellGate) {
+                        addHellBrazier(px * 0.66, 0, gz + 4.8, 1.35);
+                    } else {
+                        addSoulBrazier(px * 0.66, 0, gz + 4.8, 1.25);
+                    }
+                });
+
+                const lintel = new THREE.Mesh(new THREE.BoxGeometry(24.6, 4.2, 5.4), obsidianMat);
+                lintel.position.set(0, 24.5, 0);
+                gGroup.add(lintel);
+
+                const lintelCornice = new THREE.Mesh(new THREE.BoxGeometry(25.8, 0.85, 6.2), goldMat);
+                lintelCornice.position.set(0, 26.9, 0);
+                gGroup.add(lintelCornice);
+
+                const frontEmblem = createRoyalWingedSunEmblem(isHellGate);
+                frontEmblem.position.set(0, 24.5, 2.85);
+                gGroup.add(frontEmblem);
+            });
+            chainLinkInst.count = clIdx;
+            worldGroup.add(chainLinkInst);
+
+            // Bulvar Boyunca Dizilmiş 24 Anatomik Çakal Sfenks Heykeli
+            function buildJackalSphinx(x, z, rotY) {
+                const sGroup = new THREE.Group();
+                sGroup.position.set(x, 0, z);
+                sGroup.rotation.y = rotY;
+                worldGroup.add(sGroup);
+
+                const plinth = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.95, 5.4), hieroMat);
+                plinth.position.y = 0.475;
+                sGroup.add(plinth);
+
+                const plinthTrim = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.18, 5.6), goldMat);
+                plinthTrim.position.y = 0.96;
+                sGroup.add(plinthTrim);
+
+                const body = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 0.98, 3.2, 12), obsidianMat);
+                body.rotation.x = Math.PI / 2;
+                body.position.set(0, 1.55, -0.2);
+                sGroup.add(body);
+
+                [-0.58, 0.58].forEach(px => {
+                    const paw = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.38, 1.9), goldMat);
+                    paw.position.set(px, 1.15, 1.45);
+                    sGroup.add(paw);
+                });
+
+                const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.95, 1.4, 12), goldMat);
+                chest.position.set(0, 1.95, 0.85);
+                sGroup.add(chest);
+
+                const nemesHood = new THREE.Mesh(new THREE.BoxGeometry(1.35, 1.25, 1.15), goldMat);
+                nemesHood.position.set(0, 2.75, 0.88);
+                sGroup.add(nemesHood);
+
+                const headSkull = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.85, 1.1), obsidianMat);
+                headSkull.position.set(0, 2.85, 1.1);
+                sGroup.add(headSkull);
+
+                const snout = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.42, 1.25), obsidianMat);
+                snout.position.set(0, 2.72, 1.75);
+                sGroup.add(snout);
+
+                [-0.32, 0.32].forEach(ex => {
+                    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.16, 1.15, 4), goldMat);
+                    ear.position.set(ex, 3.65, 0.95);
+                    sGroup.add(ear);
+                });
+            }
+
+            for (let sz = 140; sz >= -35; sz -= 16) {
+                if (Math.abs(sz - 115) < 6 || Math.abs(sz - 75) < 6 || Math.abs(sz - 35) < 6 || Math.abs(sz + 5) < 6) continue;
+                buildJackalSphinx(-9.0, sz, Math.PI / 2);
+                buildJackalSphinx(9.0, sz, -Math.PI / 2);
+                addSoulBrazier(-9.0, 0, sz + 4.5, 0.85);
+                addSoulBrazier(9.0, 0, sz + 4.5, 0.85);
+            }
+
+            // ------------------------------------------------------------------------
+            // C. İKİ HAKİKAT MAHKEMESİ SALONU, TAHTINDA OTURAN 42 YARGIÇ VE DEVASA TERAZİ (z = -95)
+            // ------------------------------------------------------------------------
+            const courtSubstructure = new THREE.Mesh(new THREE.CylinderGeometry(54, 58, 9.0, 32), hieroMat);
+            courtSubstructure.position.set(0, -5.5, -95);
+            worldGroup.add(courtSubstructure);
+
+            const courtPlatform = new THREE.Mesh(new THREE.CylinderGeometry(52, 54, 2.0, 32), obsFloorMat);
+            courtPlatform.position.set(0, -1.0, -95);
+            courtPlatform.receiveShadow = true;
+            worldGroup.add(courtPlatform);
+
+            const outerGoldRing = new THREE.Mesh(new THREE.TorusGeometry(51.8, 0.55, 10, 64), goldMat);
+            outerGoldRing.rotation.x = Math.PI / 2;
+            outerGoldRing.position.set(0, 0.05, -95);
+            worldGroup.add(outerGoldRing);
+
+            for (let st = 0; st < 3; st++) {
+                const r = 17.5 - st * 2.2;
+                const step = new THREE.Mesh(
+                    new THREE.CylinderGeometry(r, r + 0.6, 0.45, 16),
+                    st % 2 === 0 ? obsidianMat : goldMat
+                );
+                step.position.set(0, 0.22 + st * 0.45, -95);
+                step.receiveShadow = true;
+                worldGroup.add(step);
+            }
+
+            // Siyah Kalem/Mermi Gibi Duran Yargıçlar Kaldırıldı!
+            // Yerine: Tahtında Oturan 42 Ma'at Yargıcı + Papirüs Sütunlar + Üst Taş Arşitrav Kemeri!
+            const colShaftGeo = new THREE.CylinderGeometry(1.25, 1.55, 22.0, 16);
+            const colCapGeo = new THREE.CylinderGeometry(2.2, 1.25, 2.2, 16);
+            const colAbacusGeo = new THREE.BoxGeometry(3.8, 1.1, 3.8);
+
+            const colShaftInst = new THREE.InstancedMesh(colShaftGeo, hieroMat, 48);
+            const colCapInst = new THREE.InstancedMesh(colCapGeo, goldMat, 48);
+            const colAbacusInst = new THREE.InstancedMesh(colAbacusGeo, obsidianMat, 48);
+
+            // Tahtında Oturan 42 Yargıç Heykeli Parçaları (Taht Sırtlığı + Oturan Gövde + Dizler + Altın Nemes Başlığı)
+            const jThroneInst = new THREE.InstancedMesh(new THREE.BoxGeometry(2.6, 6.8, 2.4), hieroMat, 42);
+            const jTorsoInst = new THREE.InstancedMesh(new THREE.BoxGeometry(1.75, 3.4, 1.3), obsidianMat, 42);
+            const jLapInst = new THREE.InstancedMesh(new THREE.BoxGeometry(1.8, 1.8, 2.2), goldMat, 42);
+            const jHeadInst = new THREE.InstancedMesh(new THREE.BoxGeometry(1.35, 1.55, 1.25), goldMat, 42);
+
+            let colIdx = 0, jIdx = 0;
+            for (let i = 0; i < 48; i++) {
+                const ang = (i / 48) * Math.PI * 2;
+                const cx = Math.sin(ang) * 46.8;
+                const cz = -95 + Math.cos(ang) * 46.8;
+
+                if (Math.abs(cx) < 14.0) continue;
+
+                dummy.position.set(cx, 11.0, cz);
+                dummy.rotation.set(0, ang, 0);
+                dummy.scale.set(1, 1, 1);
+                dummy.updateMatrix();
+                colShaftInst.setMatrixAt(colIdx, dummy.matrix);
+
+                dummy.position.set(cx, 22.8, cz);
+                dummy.updateMatrix();
+                colCapInst.setMatrixAt(colIdx, dummy.matrix);
+
+                dummy.position.set(cx, 24.4, cz);
+                dummy.updateMatrix();
+                colAbacusInst.setMatrixAt(colIdx, dummy.matrix);
+                colIdx++;
+
+                if (jIdx < 42) {
+                    const jx = Math.sin(ang) * 41.2;
+                    const jz = -95 + Math.cos(ang) * 41.2;
+                    const rotToCenter = ang + Math.PI;
+
+                    // Yüksek Arkalıklı Taş Taht
+                    dummy.position.set(jx, 3.4, jz);
+                    dummy.rotation.set(0, rotToCenter, 0);
+                    dummy.scale.set(1, 1, 1);
+                    dummy.updateMatrix();
+                    jThroneInst.setMatrixAt(jIdx, dummy.matrix);
+
+                    // Oturan Yargıç Bacakları / Altın Eteği
+                    const lapX = Math.sin(ang) * 40.3;
+                    const lapZ = -95 + Math.cos(ang) * 40.3;
+                    dummy.position.set(lapX, 1.4, lapZ);
+                    dummy.updateMatrix();
+                    jLapInst.setMatrixAt(jIdx, dummy.matrix);
+
+                    // Oturan Yargıç Gövdesi
+                    dummy.position.set(lapX, 3.8, lapZ);
+                    dummy.updateMatrix();
+                    jTorsoInst.setMatrixAt(jIdx, dummy.matrix);
+
+                    // Altın Nemes Başlığı
+                    dummy.position.set(lapX, 6.1, lapZ);
+                    dummy.updateMatrix();
+                    jHeadInst.setMatrixAt(jIdx, dummy.matrix);
+
+                    jIdx++;
+                }
+            }
+            colShaftInst.count = colIdx;
+            colCapInst.count = colIdx;
+            colAbacusInst.count = colIdx;
+            jThroneInst.count = jIdx;
+            jLapInst.count = jIdx;
+            jTorsoInst.count = jIdx;
+            jHeadInst.count = jIdx;
+            worldGroup.add(colShaftInst, colCapInst, colAbacusInst, jThroneInst, jLapInst, jTorsoInst, jHeadInst);
+
+            // DEVASA MA'AT'IN HAKİKAT TERAZİSİ (THE SCALES OF MA'AT - z = -95)
+            const scalesRoot = new THREE.Group();
+            scalesRoot.position.set(0, 1.35, -95);
+            worldGroup.add(scalesRoot);
+
+            const scalePedestal1 = new THREE.Mesh(new THREE.BoxGeometry(6.8, 1.8, 6.8), obsidianMat);
+            scalePedestal1.position.y = 0.9;
+            scalesRoot.add(scalePedestal1);
+
+            const scalePedestal2 = new THREE.Mesh(new THREE.BoxGeometry(5.0, 1.4, 5.0), goldMat);
+            scalePedestal2.position.y = 2.5;
+            scalesRoot.add(scalePedestal2);
+
+            const scalePillar = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 1.38, 18.5, 16), goldMat);
+            scalePillar.position.y = 11.5;
+            scalePillar.castShadow = true;
+            scalesRoot.add(scalePillar);
+
+            [6.0, 11.0, 16.0].forEach(ry => {
+                const collarRing = new THREE.Mesh(new THREE.TorusGeometry(1.18, 0.22, 8, 24), obsidianMat);
+                collarRing.rotation.x = Math.PI / 2;
+                collarRing.position.y = ry;
+                scalesRoot.add(collarRing);
+            });
+
+            const pivotRing = new THREE.Mesh(new THREE.TorusGeometry(1.95, 0.32, 10, 28), goldMat);
+            pivotRing.position.y = 21.2;
+            scalesRoot.add(pivotRing);
+
+            const pivotSunCenter = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.45, 20), goldMat);
+            pivotSunCenter.rotation.x = Math.PI / 2;
+            pivotSunCenter.position.y = 21.2;
+            scalesRoot.add(pivotSunCenter);
+
+            scaleBeamGroup = new THREE.Group();
+            scaleBeamGroup.position.y = 21.2;
+            scalesRoot.add(scaleBeamGroup);
+
+            const mainBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 24.5, 14), goldMat);
+            mainBeam.rotation.z = Math.PI / 2;
+            scaleBeamGroup.add(mainBeam);
+
+            [-12.2, 12.2].forEach(bx => {
+                const finial = new THREE.Mesh(new THREE.ConeGeometry(0.75, 2.4, 8), goldMat);
+                finial.rotation.z = bx > 0 ? -Math.PI / 2 : Math.PI / 2;
+                finial.position.x = bx;
+                scaleBeamGroup.add(finial);
+            });
+
+            leftPanGroup = new THREE.Group();
+            leftPanGroup.position.set(-11.6, 0, 0);
+            scaleBeamGroup.add(leftPanGroup);
+
+            rightPanGroup = new THREE.Group();
+            rightPanGroup.position.set(11.6, 0, 0);
+            scaleBeamGroup.add(rightPanGroup);
+
+            // Gerçek 3B Kavisli ve Telli Ma'at Devekuşu Tüyü
+            function buildSculptedMaatFeather() {
+                const fGroup = new THREE.Group();
+
+                const quill = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.15, 5.8, 10), goldMat);
+                quill.position.y = 0.2;
+                quill.rotation.z = 0.10;
+                fGroup.add(quill);
+
+                const featherMat = new THREE.MeshStandardMaterial({
+                    color: 0xfef3c7,
+                    emissive: 0xd97706,
+                    emissiveIntensity: 0.32,
+                    metalness: 0.45,
+                    roughness: 0.20
+                });
+
+                // 18 Çift Kavisli Devekuşu Tüyü Teli (Barbs) - Düz Sörf Tahtası Görünümü Yok!
+                for (let b = 0; b < 18; b++) {
+                    const t = b / 17;
+                    const yPos = -1.9 + t * 4.4;
+                    const span = Math.sin(t * Math.PI) * 1.45 + 0.25;
+                    [-1, 1].forEach(side => {
+                        const barb = new THREE.Mesh(new THREE.BoxGeometry(span, 0.14, 0.12), b % 3 === 0 ? goldMat : featherMat);
+                        barb.position.set(side * (span * 0.48), yPos, 0);
+                        barb.rotation.z = side * 0.32 + 0.10;
+                        fGroup.add(barb);
+                    });
+                }
+
+                return fGroup;
+            }
+
+            // Pembe Yumurta Görünümü Kaldırıldı! -> Koyu Kızıl Anatomik Kalp ve Altın Damar Kafesi
+            function buildSculptedHeart() {
+                const hGroup = new THREE.Group();
+                const heartMat = new THREE.MeshStandardMaterial({
+                    color: 0x881337,
+                    emissive: 0x9f1239,
+                    emissiveIntensity: 0.45,
+                    roughness: 0.28,
+                    metalness: 0.25
+                });
+
+                // Çift Ventriküllü Asimetrik Anatomik Kalp Kütleleri
+                const leftVentricle = new THREE.Mesh(new THREE.SphereGeometry(1.15, 16, 14), heartMat);
+                leftVentricle.scale.set(0.95, 1.35, 0.88);
+                leftVentricle.position.set(-0.22, 0, 0);
+                leftVentricle.rotation.z = 0.18;
+                hGroup.add(leftVentricle);
+
+                const rightVentricle = new THREE.Mesh(new THREE.SphereGeometry(0.98, 16, 14), heartMat);
+                rightVentricle.scale.set(0.90, 1.22, 0.84);
+                rightVentricle.position.set(0.35, 0.12, 0.1);
+                rightVentricle.rotation.z = -0.15;
+                hGroup.add(rightVentricle);
+
+                // Kalbi Saran Altın Telkari Damar Ağları (Golden Filigree Veins)
+                for (let v = 0; v < 3; v++) {
+                    const veinRing = new THREE.Mesh(new THREE.TorusGeometry(1.12, 0.08, 8, 24), goldMat);
+                    veinRing.rotation.set(v * 0.6, v * 0.8, 0.4);
+                    hGroup.add(veinRing);
+                }
+
+                // Üst Aort Kemeri ve Ib Kulpları
+                const aortaArch = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.20, 8, 16, Math.PI), goldMat);
+                aortaArch.position.set(0, 1.35, 0);
+                hGroup.add(aortaArch);
+
+                return hGroup;
+            }
+
+            [leftPanGroup, rightPanGroup].forEach((panG, pIdx) => {
+                for (let c = 0; c < 4; c++) {
+                    const ang = (c / 4) * Math.PI * 2;
+                    const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 9.8, 6), goldMat);
+                    chain.position.set(Math.cos(ang) * 1.6, -4.8, Math.sin(ang) * 1.6);
+                    chain.rotation.z = Math.cos(ang) * 0.30;
+                    chain.rotation.x = -Math.sin(ang) * 0.30;
+                    panG.add(chain);
+                }
+
+                const dish = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 2.4, 0.72, 24), goldMat);
+                dish.position.y = -9.6;
+                dish.castShadow = true;
+                panG.add(dish);
+
+                const dishRim = new THREE.Mesh(new THREE.TorusGeometry(3.6, 0.18, 8, 24), obsidianMat);
+                dishRim.rotation.x = Math.PI / 2;
+                dishRim.position.y = -9.25;
+                panG.add(dishRim);
+
+                if (pIdx === 0) {
+                    heartMesh = buildSculptedHeart();
+                    heartMesh.position.y = -7.6;
+                    panG.add(heartMesh);
+                } else {
+                    featherGroup = buildSculptedMaatFeather();
+                    featherGroup.position.y = -6.8;
+                    panG.add(featherGroup);
+                }
+            });
+
+            // ------------------------------------------------------------------------
+            // D. ANATOMİK BAŞ YARGIÇ ANUBİS HEYKELLERİ (ABAJUR KAFA HATASI TAMAMEN GİDERİLDİ!)
+            // ------------------------------------------------------------------------
+            function buildColossalAnubisStatue(x, y, z, rotY, scale = 1.0) {
+                const aGroup = new THREE.Group();
+                aGroup.position.set(x, y, z);
+                aGroup.rotation.y = rotY;
+                aGroup.scale.setScalar(scale);
+                worldGroup.add(aGroup);
+
+                const plinth1 = new THREE.Mesh(new THREE.BoxGeometry(8.5, 2.6, 11.0), hieroMat);
+                plinth1.position.y = 1.3;
+                aGroup.add(plinth1);
+
+                const plinth2 = new THREE.Mesh(new THREE.BoxGeometry(6.8, 1.8, 9.2), goldMat);
+                plinth2.position.y = 3.5;
+                aGroup.add(plinth2);
+
+                [-1.35, 1.35].forEach((lx, lIdx) => {
+                    const zOff = lIdx === 0 ? 1.2 : -0.9;
+                    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 0.82, 4.6, 12), obsidianMat);
+                    thigh.position.set(lx, 10.2, zOff);
+                    aGroup.add(thigh);
+
+                    const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.65, 4.6, 12), goldMat);
+                    shin.position.set(lx, 6.2, zOff);
+                    aGroup.add(shin);
+
+                    const kneeGuard = new THREE.Mesh(new THREE.OctahedronGeometry(0.75, 1), goldMat);
+                    kneeGuard.scale.set(0.8, 1.3, 0.6);
+                    kneeGuard.position.set(lx, 8.4, zOff + 0.72);
+                    aGroup.add(kneeGuard);
+
+                    const foot = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.65, 2.6), goldMat);
+                    foot.position.set(lx, 4.5, zOff + 0.55);
+                    aGroup.add(foot);
+                });
+
+                const kilt = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.75, 4.0, 16), goldMat);
+                kilt.scale.set(0.95, 1.0, 0.82);
+                kilt.position.y = 13.0;
+                aGroup.add(kilt);
+
+                const frontApron = new THREE.Mesh(new THREE.BoxGeometry(1.6, 3.8, 0.35), obsidianMat);
+                frontApron.position.set(0, 12.8, 2.15);
+                frontApron.rotation.x = -0.12;
+                aGroup.add(frontApron);
+
+                const torso = new THREE.Mesh(new THREE.CylinderGeometry(3.35, 2.0, 7.2, 16), obsidianMat);
+                torso.scale.set(1.22, 1.0, 0.74);
+                torso.position.y = 17.8;
+                torso.castShadow = true;
+                aGroup.add(torso);
+
+                [-1.25, 1.25].forEach(px => {
+                    const pecPlate = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.6, 0.45), goldMat);
+                    pecPlate.position.set(px, 19.2, 2.15);
+                    pecPlate.rotation.y = px > 0 ? -0.22 : 0.22;
+                    aGroup.add(pecPlate);
+                });
+
+                const collarM = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 4.2, 1.3, 18), goldMat);
+                collarM.scale.set(1.18, 1.0, 0.78);
+                collarM.position.y = 21.0;
+                aGroup.add(collarM);
+
+                // Yuvarlak Top Omuzlar Yerine Köşeli Kraliyet Omuz Zırhları
+                [-3.85, 3.85].forEach((armX, armIdx) => {
+                    const pauldron = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.6, 1.6, 6), goldMat);
+                    pauldron.position.set(armX, 21.0, 0);
+                    pauldron.rotation.z = armX > 0 ? -0.35 : 0.35;
+                    aGroup.add(pauldron);
+
+                    const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.62, 4.2, 10), obsidianMat);
+                    upperArm.position.set(armX, 18.2, 0.2);
+                    aGroup.add(upperArm);
+
+                    const foreArm = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.52, 4.0, 10), goldMat);
+                    foreArm.position.set(armX, 15.0, armIdx === 0 ? 1.2 : 0.4);
+                    if (armIdx === 0) foreArm.rotation.x = -0.45;
+                    aGroup.add(foreArm);
+                });
+
+                const scepter = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 25.0, 8), goldMat);
+                scepter.position.set(-3.85, 15.5, 2.8);
+                aGroup.add(scepter);
+
+                const ankhLoop = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.22, 8, 20), goldMat);
+                ankhLoop.position.set(3.85, 12.2, 0.8);
+                aGroup.add(ankhLoop);
+
+                // YENİ HEYKELTIRAŞ ANUBİS ÇAKAL BAŞI VE NEMES BAŞÖRTÜSÜ (Abajur Şapka Yok!)
+                const headGroup = new THREE.Group();
+                headGroup.position.set(0, 23.2, 0.2);
+                aGroup.add(headGroup);
+
+                // Nemes Başörtüsü Yan Kanatları (Octagonal Pharaonic Nemes Hood)
+                const nemesBack = new THREE.Mesh(new THREE.BoxGeometry(4.4, 3.2, 2.4), goldMat);
+                nemesBack.position.set(0, 0.1, -0.4);
+                headGroup.add(nemesBack);
+
+                [-1.85, 1.85].forEach(lx => {
+                    const lappet = new THREE.Mesh(new THREE.BoxGeometry(0.95, 4.0, 0.95), goldMat);
+                    lappet.position.set(lx, -1.6, 0.45);
+                    lappet.rotation.z = lx > 0 ? -0.10 : 0.10;
+                    headGroup.add(lappet);
+                });
+
+                // Öne Doğru İncelen Anatomik Çakal Kafatası ve Burun Köprüsü
+                const cranium = new THREE.Mesh(new THREE.SphereGeometry(1.55, 14, 12), obsidianMat);
+                cranium.scale.set(0.92, 1.05, 1.25);
+                cranium.position.set(0, 0.45, 0.5);
+                headGroup.add(cranium);
+
+                const muzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 1.15, 3.6, 8), obsidianMat);
+                muzzle.rotation.x = Math.PI * 0.46;
+                muzzle.position.set(0, 0.15, 2.45);
+                headGroup.add(muzzle);
+
+                const lowerJaw = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.88, 3.1, 8), obsidianMat);
+                lowerJaw.rotation.x = Math.PI * 0.48;
+                lowerJaw.position.set(0, -0.55, 2.2);
+                headGroup.add(lowerJaw);
+
+                const noseGoldRidge = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.22, 3.2), goldMat);
+                noseGoldRidge.position.set(0, 0.68, 2.35);
+                noseGoldRidge.rotation.x = 0.08;
+                headGroup.add(noseGoldRidge);
+
+                [-0.82, 0.82].forEach(ex => {
+                    const eye = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.22, 0.62), soulCyanMat);
+                    eye.position.set(ex, 0.72, 1.55);
+                    eye.rotation.y = ex > 0 ? -0.35 : 0.35;
+                    headGroup.add(eye);
+                });
+
+                [-0.95, 0.95].forEach(ex => {
+                    const earOuter = new THREE.Mesh(new THREE.ConeGeometry(0.52, 4.8, 4), obsidianMat);
+                    earOuter.rotation.y = Math.PI / 4;
+                    earOuter.rotation.x = -0.16;
+                    earOuter.position.set(ex, 3.5, 0.0);
+                    headGroup.add(earOuter);
+
+                    const earInner = new THREE.Mesh(new THREE.ConeGeometry(0.32, 4.2, 4), goldMat);
+                    earInner.rotation.y = Math.PI / 4;
+                    earInner.rotation.x = -0.16;
+                    earInner.position.set(ex, 3.4, 0.18);
+                    headGroup.add(earInner);
+                });
+            }
+
+            // Terazinin Arkasında 44 Metrelik Baş Yargıç Anubis Kolosu ve 4 Köşe Muhafızı
+            buildColossalAnubisStatue(0, -1.0, -126, 0, 1.55);
+            buildColossalAnubisStatue(-32, -1.0, -68, Math.PI * 0.25, 0.92);
+            buildColossalAnubisStatue(32, -1.0, -68, -Math.PI * 0.25, 0.92);
+            buildColossalAnubisStatue(-32, -1.0, -120, Math.PI * 0.75, 0.92);
+            buildColossalAnubisStatue(32, -1.0, -120, -Math.PI * 0.75, 0.92);
+
+            // ------------------------------------------------------------------------
+            // E. CEHENNEM MAGMA ÇUKURU VE YIRTICI CANAVAR "AMMİT"
+            // ------------------------------------------------------------------------
+            const pitRim = new THREE.Mesh(new THREE.TorusGeometry(9.8, 1.35, 12, 32), basaltMat);
+            pitRim.rotation.x = Math.PI / 2;
+            pitRim.position.set(-25, 0.15, -95);
+            worldGroup.add(pitRim);
+
+            const lavaGeo = new THREE.CircleGeometry(9.4, 32);
+            const lavaMat = new THREE.MeshStandardMaterial({
+                color: 0xea580c,
+                emissive: 0xdc2626,
+                emissiveIntensity: 1.0,
+                roughness: 0.25
+            });
+            lavaPitMesh = new THREE.Mesh(lavaGeo, lavaMat);
+            lavaPitMesh.rotation.x = -Math.PI / 2;
+            lavaPitMesh.position.set(-25, 0.32, -95);
+            worldGroup.add(lavaPitMesh);
+            lavaPosAttr = lavaGeo.attributes.position;
+
+            for (let a = 0; a < 8; a++) {
+                const ang = (a / 8) * Math.PI * 2;
+                addHellBrazier(-25 + Math.cos(ang) * 10.2, 0.5, -95 + Math.sin(ang) * 10.2, 1.15);
+            }
+
+            ammitMonster = new THREE.Group();
+            ammitMonster.position.set(-23.0, 0.45, -95);
+            ammitMonster.rotation.y = Math.PI * 0.44;
+            worldGroup.add(ammitMonster);
+
+            const ammitSkinMat = new THREE.MeshStandardMaterial({
+                map: window.textures.ammitSkinTex,
+                bumpMap: window.textures.ammitSkinTex,
+                bumpScale: 0.06,
+                roughness: 0.62,
+                metalness: 0.18
+            });
+            const maneFurMat = new THREE.MeshStandardMaterial({ color: 0x291509, roughness: 0.88 });
+            const osteodermMat = new THREE.MeshStandardMaterial({ color: 0x111610, metalness: 0.5, roughness: 0.4 });
+            const toothMat = new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.25 });
+
+            const chestMass = new THREE.Mesh(new THREE.SphereGeometry(2.15, 16, 14), ammitSkinMat);
+            chestMass.scale.set(1.15, 1.12, 1.25);
+            chestMass.position.set(0, 2.75, 0.85);
+            chestMass.castShadow = true;
+            ammitMonster.add(chestMass);
+
+            const hindMass = new THREE.Mesh(new THREE.SphereGeometry(2.35, 16, 14), ammitSkinMat);
+            hindMass.scale.set(1.22, 1.05, 1.45);
+            hindMass.position.set(0, 2.55, -2.0);
+            hindMass.castShadow = true;
+            ammitMonster.add(hindMass);
+
+            const maneGroup = new THREE.Group();
+            maneGroup.position.set(0, 3.25, 1.65);
+            ammitMonster.add(maneGroup);
+
+            for (let ring = 0; ring < 3; ring++) {
+                const count = 14;
+                const rad = 2.05 - ring * 0.22;
+                for (let m = 0; m < count; m++) {
+                    const ang = (m / count) * Math.PI * 2;
+                    const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.55, 2.1, 5), m % 3 === 0 ? goldMat : maneFurMat);
+                    tuft.position.set(Math.cos(ang) * rad, Math.sin(ang) * rad, ring * 0.45 - 0.3);
+                    tuft.rotation.z = ang - Math.PI / 2;
+                    tuft.rotation.x = -0.42;
+                    maneGroup.add(tuft);
+                }
+            }
+
+            for (let sp = 0; sp < 9; sp++) {
+                const zPos = 1.0 - sp * 0.62;
+                const yPos = 4.55 - Math.abs(sp - 3) * 0.14;
+
+                const centerSpike = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.25, 4), goldMat);
+                centerSpike.position.set(0, yPos, zPos);
+                centerSpike.rotation.x = -0.35;
+                ammitMonster.add(centerSpike);
+
+                [-0.85, 0.85].forEach(sx => {
+                    const sidePlate = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.75, 4), osteodermMat);
+                    sidePlate.position.set(sx, yPos - 0.35, zPos);
+                    sidePlate.rotation.z = sx > 0 ? -0.45 : 0.45;
+                    ammitMonster.add(sidePlate);
+                });
+            }
+
+            [
+                [-1.65, 1.35, true], [1.65, 1.35, true],
+                [-1.80, -2.35, false], [1.80, -2.35, false]
+            ].forEach(([lx, lz, isFront]) => {
+                const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 0.58, 1.8, 10), ammitSkinMat);
+                upperLeg.position.set(lx, 2.0, lz);
+                upperLeg.rotation.x = isFront ? 0.18 : -0.22;
+                ammitMonster.add(upperLeg);
+
+                const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.45, 1.5, 10), ammitSkinMat);
+                lowerLeg.position.set(lx, 0.85, lz + (isFront ? 0.25 : -0.15));
+                ammitMonster.add(lowerLeg);
+
+                const paw = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.48, 1.45), osteodermMat);
+                paw.position.set(lx, 0.24, lz + 0.45);
+                ammitMonster.add(paw);
+
+                [-0.34, 0, 0.34].forEach(cx => {
+                    const claw = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.62, 5), goldMat);
+                    claw.rotation.x = Math.PI * 0.45;
+                    claw.position.set(lx + cx, 0.20, lz + 1.28);
+                    ammitMonster.add(claw);
+                });
+            });
+
+            const headPivot = new THREE.Group();
+            headPivot.position.set(0, 3.45, 2.55);
+            ammitMonster.add(headPivot);
+
+            const craniumRear = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.15, 1.6), ammitSkinMat);
+            craniumRear.position.set(0, 0.42, 0.4);
+            headPivot.add(craniumRear);
+
+            const upperSnoutBridge = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.78, 3.2), ammitSkinMat);
+            upperSnoutBridge.position.set(0, 0.28, 2.2);
+            headPivot.add(upperSnoutBridge);
+
+            const snoutTip = new THREE.Mesh(new THREE.SphereGeometry(0.82, 10, 8), osteodermMat);
+            snoutTip.scale.set(1.0, 0.55, 0.9);
+            snoutTip.position.set(0, 0.42, 3.65);
+            headPivot.add(snoutTip);
+
+            [-0.82, 0.82].forEach(ex => {
+                const brow = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.32, 0.85), osteodermMat);
+                brow.position.set(ex, 0.98, 0.65);
+                headPivot.add(brow);
+
+                const eye = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 8), hellFireMat);
+                eye.position.set(ex, 0.78, 0.68);
+                headPivot.add(eye);
+            });
+
+            const throatGlow = new THREE.Mesh(new THREE.SphereGeometry(0.68, 10, 8), hellFireMat);
+            throatGlow.position.set(0, 0.05, 0.85);
+            headPivot.add(throatGlow);
+
+            const lowerJaw = new THREE.Group();
+            lowerJaw.position.set(0, -0.05, 0.25);
+            headPivot.add(lowerJaw);
+
+            const jawBone = new THREE.Mesh(new THREE.BoxGeometry(1.32, 0.52, 3.5), ammitSkinMat);
+            jawBone.position.set(0, -0.22, 1.85);
+            lowerJaw.add(jawBone);
+
+            for (let tz = 0.5; tz <= 3.4; tz += 0.42) {
+                [-0.64, 0.64].forEach(tx => {
+                    const isFang = tz > 2.8 || Math.abs(tz - 1.76) < 0.2;
+                    const hTooth = isFang ? 0.52 : 0.34;
+                    const uTooth = new THREE.Mesh(new THREE.ConeGeometry(0.09, hTooth, 5), toothMat);
+                    uTooth.rotation.x = Math.PI;
+                    uTooth.position.set(tx, -0.14, tz);
+                    headPivot.add(uTooth);
+
+                    const lTooth = new THREE.Mesh(new THREE.ConeGeometry(0.08, hTooth * 0.9, 5), toothMat);
+                    lTooth.position.set(tx * 0.88, 0.14, tz - 0.15);
+                    lowerJaw.add(lTooth);
+                });
+            }
+
+            const tailPivot = new THREE.Group();
+            tailPivot.position.set(0, 1.9, -4.1);
+            ammitMonster.add(tailPivot);
+
+            const tailMesh = new THREE.Mesh(new THREE.ConeGeometry(1.25, 6.8, 10), ammitSkinMat);
+            tailMesh.rotation.x = -Math.PI * 0.46;
+            tailMesh.position.set(0, -0.35, -3.1);
+            tailPivot.add(tailMesh);
+
+            for (let ts = 0; ts < 5; ts++) {
+                const tSpike = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.75, 4), goldMat);
+                tSpike.position.set(0, 0.35 - ts * 0.12, -0.8 - ts * 1.1);
+                tSpike.rotation.x = -0.4;
+                tailPivot.add(tSpike);
+            }
+
+            ammitMonster.userData = { headPivot, lowerJaw, tailPivot };
+
+            // ------------------------------------------------------------------------
+            // F. RUHLAR NEHRİNDE SÜZÜLEN 14 DUAT RUH TEKNESİ VE AARU (CENNET) PORTALI
+            // ------------------------------------------------------------------------
+            soulBarges = [];
+            for (let i = 0; i < 14; i++) {
+                const side = i % 2 === 0 ? -1 : 1;
+                const bx = side * (36 + (i % 4) * 14);
+                const bz = 180 - i * 32;
+
+                const bGroup = new THREE.Group();
+                bGroup.position.set(bx, -8.3, bz);
+                worldGroup.add(bGroup);
+
+                const hull = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 0.78, 12.0, 12), obsidianMat);
+                hull.rotation.x = Math.PI / 2;
+                hull.scale.set(1.25, 1.0, 0.5);
+                bGroup.add(hull);
+
+                [-1, 1].forEach(dir => {
+                    const prow = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.50, 3.6, 8), goldMat);
+                    prow.position.set(0, 1.35, dir * 5.8);
+                    prow.rotation.x = dir * 0.42;
+                    bGroup.add(prow);
+                });
+
+                const shrine = new THREE.Mesh(new THREE.BoxGeometry(2.1, 2.2, 3.8), hieroMat);
+                shrine.position.y = 1.15;
+                bGroup.add(shrine);
+
+                const soulLantern = new THREE.Mesh(new THREE.OctahedronGeometry(0.58, 1), soulCyanMat);
+                soulLantern.position.set(0, 2.8, 0);
+                bGroup.add(soulLantern);
+
+                soulBarges.push({
+                    group: bGroup,
+                    baseZ: bz,
+                    speed: 2.2 + (i % 4) * 0.45,
+                    phase: i * 1.3
+                });
+            }
+
+            const aaruGroup = new THREE.Group();
+            aaruGroup.position.set(0, 0, -212);
+            worldGroup.add(aaruGroup);
+
+            for (let st = 0; st < 6; st++) {
+                const step = new THREE.Mesh(new THREE.BoxGeometry(26 - st * 2.4, 0.8, 14 - st * 1.4), goldMat);
+                step.position.set(0, st * 0.8 + 0.4, 0);
+                aaruGroup.add(step);
+            }
+
+            portalRings = [];
+            [9.5, 13.0, 16.5].forEach((rad, rIdx) => {
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(rad, 0.52, 10, 40), goldMat);
+                ring.position.y = 18.0;
+                aaruGroup.add(ring);
+                portalRings.push({ mesh: ring, speed: (rIdx % 2 === 0 ? 1 : -1) * (0.65 + rIdx * 0.2) });
+            });
+
+            const portalCore = new THREE.Mesh(
+                new THREE.CircleGeometry(8.8, 32),
+                new THREE.MeshBasicMaterial({ color: 0xfef3c7, side: THREE.DoubleSide })
+            );
+            portalCore.position.y = 18.0;
+            aaruGroup.add(portalCore);
+
+            // Tüm Ruh ve Cehennem Meşalelerini Tek GPU InstancedMesh Olarak Oluştur
+            const standGeo = new THREE.CylinderGeometry(0.35, 0.58, 1.9, 6);
+            standGeo.translate(0, 0.95, 0);
+            const flameGeo = new THREE.OctahedronGeometry(0.55, 1);
+
+            const totalBraziers = soulFlameData.length + hellFlameData.length;
+            const standInst = new THREE.InstancedMesh(standGeo, goldMat, totalBraziers);
+            soulFlameInst = new THREE.InstancedMesh(flameGeo, soulCyanMat, soulFlameData.length);
+            hellFlameInst = new THREE.InstancedMesh(flameGeo, hellFireMat, hellFlameData.length);
+
+            let bIdx = 0;
+            soulFlameData.forEach((b, i) => {
+                dummy.position.set(b.x, b.y, b.z);
+                dummy.scale.setScalar(b.scale);
+                dummy.updateMatrix();
+                standInst.setMatrixAt(bIdx++, dummy.matrix);
+
+                dummy.position.set(b.x, b.y + 2.1 * b.scale, b.z);
+                dummy.updateMatrix();
+                soulFlameInst.setMatrixAt(i, dummy.matrix);
+            });
+            hellFlameData.forEach((b, i) => {
+                dummy.position.set(b.x, b.y, b.z);
+                dummy.scale.setScalar(b.scale);
+                dummy.updateMatrix();
+                standInst.setMatrixAt(bIdx++, dummy.matrix);
+
+                dummy.position.set(b.x, b.y + 2.1 * b.scale, b.z);
+                dummy.updateMatrix();
+                hellFlameInst.setMatrixAt(i, dummy.matrix);
+            });
+            worldGroup.add(standInst, soulFlameInst, hellFlameInst);
+        }
+
+        // ============================================================================
+        // 4. SAHNE KURULUMU, DUAT ATMOSFERİ VE 84 YÜRÜYEN RUH / ANUBİS MUHAFIZI
+        // ============================================================================
+        function init() {
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.05;
+            document.body.appendChild(renderer.domElement);
+
+            window.textures = buildDuatTextures(renderer);
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x04050a);
+            scene.environment = window.textures.envMap;
+            scene.fog = new THREE.FogExp2(0x04050a, 0.0022);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.3, 1200);
+            clock = new THREE.Clock();
+
+            // Duat Gökyüzü Kubbesi
+            const skyC = document.createElement('canvas');
+            skyC.width = 512; skyC.height = 256;
+            const sCtx = skyC.getContext('2d');
+            const sGrad = sCtx.createLinearGradient(0, 0, 0, 256);
+            sGrad.addColorStop(0.0, '#020306');
+            sGrad.addColorStop(0.40, '#070b16');
+            sGrad.addColorStop(0.72, '#1e1b2e');
+            sGrad.addColorStop(1.0, '#04050a');
+            sCtx.fillStyle = sGrad;
+            sCtx.fillRect(0, 0, 512, 256);
+
+            for (let i = 0; i < 600; i++) {
+                sCtx.fillStyle = i % 3 === 0 ? 'rgba(253, 224, 71, 0.8)' : 'rgba(125, 211, 252, 0.75)';
+                sCtx.fillRect(Math.random() * 512, Math.random() * 190, 1.5, 1.5);
+            }
+
+            const skyDome = new THREE.Mesh(
+                new THREE.SphereGeometry(950, 28, 20),
+                new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(skyC), side: THREE.BackSide, depthWrite: false })
+            );
+            scene.add(skyDome);
+
+            // Sıcak Kehribar/Altın Gökyüzü Işığı (Altın Zırhların Yeşile Dönmesini Önler!)
+            const hemiLight = new THREE.HemisphereLight(0xfde68a, 0x090d16, 0.75);
+            scene.add(hemiLight);
+
+            const mainDirLight = new THREE.DirectionalLight(0xfffbeb, 1.45);
+            mainDirLight.position.set(55, 115, 45);
+            mainDirLight.castShadow = true;
+            mainDirLight.shadow.mapSize.set(2048, 2048);
+            const d = 110;
+            mainDirLight.shadow.camera.left = -d;
+            mainDirLight.shadow.camera.right = d;
+            mainDirLight.shadow.camera.top = d;
+            mainDirLight.shadow.camera.bottom = -d;
+            mainDirLight.shadow.camera.far = 340;
+            mainDirLight.shadow.bias = -0.0005;
+            scene.add(mainDirLight);
+
+            const scaleLight = new THREE.PointLight(0xf59e0b, 2.4, 75);
+            scaleLight.position.set(0, 18, -95);
+            scene.add(scaleLight);
+
+            const hellLight = new THREE.PointLight(0xf97316, 3.0, 60);
+            hellLight.position.set(-24, 7, -95);
+            scene.add(hellLight);
+
+            buildGodsOfEgyptDuatWorld();
+
+            // Oyuncunun Kontrol Ettiği Karakter (karaktertanrilar.html'den Entegre Gerçek 3B PBR Modeller)
+            window.updatePlayerModelScale = () => {
+                player = window.spawnPlayerCharacter(scene, renderer, new THREE.Vector3(0, 0, -56), Math.PI);
+            };
+            window.updatePlayerModelScale();
+
+            for (let i = 0; i < 60; i++) {
+                const soul = createDuatCharacter(0.96 + (i % 3) * 0.03, 'soul', false);
+                const laneX = ((i % 4) - 1.5) * 2.4;
+                const startZ = 150 - i * 5.2;
+                soul.root.position.set(laneX, 0, startZ);
+                soul.root.rotation.y = Math.PI;
+                scene.add(soul.root);
+                soulsAndGuards.push(soul);
+            }
+
+            for (let i = 0; i < 24; i++) {
+                const guard = createDuatCharacter(1.22, 'anubis_guard', false);
+                const side = i % 2 === 0 ? -1 : 1;
+                const gz = 135 - Math.floor(i / 2) * 28;
+                guard.root.position.set(side * 8.2, 0, gz);
+                guard.root.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+                scene.add(guard.root);
+                soulsAndGuards.push(guard);
+            }
+
+            // 3D Diriliş Kapısı (Mortal World Resurrection Gate)
+            const resGroup = new THREE.Group();
+            resGroup.position.set(0, 0.05, -98.0);
+            const ringGeo = new THREE.RingGeometry(2.0, 2.8, 32);
+            ringGeo.rotateX(-Math.PI / 2);
+            const ringMesh = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xa855f7, side: THREE.DoubleSide }));
+            resGroup.add(ringMesh);
+
+            const cylGeo = new THREE.CylinderGeometry(2.4, 2.4, 3.8, 16, 1, true);
+            const cylMesh = new THREE.Mesh(cylGeo, new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.35, side: THREE.DoubleSide }));
+            cylMesh.position.y = 1.9;
+            resGroup.add(cylMesh);
+            scene.add(resGroup);
+            window.duatResurrectionPortal = { group: resGroup, cyl: cylMesh };
+
+            // Oyuncu Rolü ve Tanrı Boyutu
+            window.updatePlayerModelScale = function() {
+                if (!player) return;
+                const state = window.GameState ? window.GameState.state : null;
+                const role = state ? state.player.role : 'mortal';
+                const scale = (role === 'god_horus' || role === 'god_set') ? 2.5 : 1.0;
+                player.root.scale.setScalar(scale);
+            };
+            window.updatePlayerModelScale();
+
+            window.scene = scene;
+            window.camera = camera;
+            window.renderer = renderer;
+
+            if (window.EgyptCollisionEngine) {
+                window.EgyptCollisionEngine.clearColliders();
+                // Hakikatler Salonu Sütunları
+                [-8.5, 8.5].forEach(colX => {
+                    [-40, -60, -80, -100].forEach(colZ => {
+                        window.EgyptCollisionEngine.addCylinderCollider(colX, colZ, 1.8);
+                    });
+                });
+                // Anubis Tartı Kaidesi
+                window.EgyptCollisionEngine.addCylinderCollider(0, -95, 3.5);
+                // Canavar Ammit Çevresi
+                window.EgyptCollisionEngine.addCylinderCollider(-24, -95, 4.2);
+            }
+
+            if (window.EgyptCombatEngine) {
+                window.EgyptCombatEngine.clearTargets();
+                // Canavar Ammit Boss Hedefi
+                if (ammitMonster) {
+                    window.EgyptCombatEngine.registerTarget(ammitMonster, 950, 950, 4.5, 'Ruh Yiyici Ammit', (dmg, remHp) => {
+                        if (window.GameHUD) window.GameHUD.showToast(`🔥 AMMİT KÜKREDİ! Kalan Can: ${remHp}`, 'danger');
+                    });
+                }
+                // Anubis Muhafızları
+                soulsAndGuards.forEach((ch, idx) => {
+                    if (ch.role === 'anubis_guard') {
+                        window.EgyptCombatEngine.registerTarget(ch.root, 120, 120, 1.5, 'Ahiret Muhafızı');
+                    }
+                });
+            }
+
+            bindDuatControls();
+            window.addEventListener('resize', onResize);
+            animate();
+        }
+
+        // ============================================================================
+        // 5. MOBİL DOKUNMATİK KONTROLLER (JOYSTICK, 360° KAMERA VE KUŞBAKIŞI UZAKLAŞTIRMA)
+        // ============================================================================
+        function bindDuatControls() {
+            const zone = document.getElementById('joystick-zone');
+            const knob = document.getElementById('joystick-knob');
+            const maxR = 40;
+
+            function updateJoy(cx, cy) {
+                const rect = zone.getBoundingClientRect();
+                let dx = cx - (rect.left + rect.width / 2);
+                let dy = cy - (rect.top + rect.height / 2);
+                const dist = Math.hypot(dx, dy);
+                if (dist > maxR) {
+                    dx = (dx / dist) * maxR;
+                    dy = (dy / dist) * maxR;
+                }
+                knob.style.transform = `translate(${dx}px, ${dy}px)`;
+                joyVec.x = dx / maxR;
+                joyVec.y = dy / maxR;
+            }
+
+            zone.addEventListener('pointerdown', (e) => {
+                e.stopPropagation();
+                joyActive = true;
+                joyPointerId = e.pointerId;
+                updateJoy(e.clientX, e.clientY);
+            });
+
+            const canvas = renderer.domElement;
+            canvas.style.touchAction = 'none';
+            canvas.addEventListener('pointerdown', (e) => {
+                canvas.setPointerCapture(e.pointerId);
+                activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                if (activePointers.size === 2) {
+                    const pts = Array.from(activePointers.values());
+                    lastPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+                }
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (joyActive && e.pointerId === joyPointerId) {
+                    updateJoy(e.clientX, e.clientY);
+                    return;
+                }
+                if (!activePointers.has(e.pointerId)) return;
+
+                const prev = activePointers.get(e.pointerId);
+                activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+                if (activePointers.size === 1) {
+                    camYaw -= (e.clientX - prev.x) * 0.008;
+                    const isFpv = window.EgyptCameraSystem && window.EgyptCameraSystem.isFirstPerson;
+                    if (isFpv) {
+                        camPitch = Math.max(-1.42, Math.min(1.42, camPitch - (e.clientY - prev.y) * 0.0075));
+                    } else {
+                        camPitch = Math.max(0.04, Math.min(1.38, camPitch + (e.clientY - prev.y) * 0.0065));
+                    }
+                } else if (activePointers.size === 2) {
+                    const pts = Array.from(activePointers.values());
+                    const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+                    if (lastPinchDist > 0) {
+                        desiredDist = Math.max(2.2, Math.min(280.0, desiredDist + (lastPinchDist - dist) * 0.18));
+                    }
+                    lastPinchDist = dist;
+                }
+            });
+
+            function endPointer(e) {
+                if (joyActive && e.pointerId === joyPointerId) {
+                    joyActive = false;
+                    joyPointerId = null;
+                    joyVec.x = 0;
+                    joyVec.y = 0;
+                    knob.style.transform = 'translate(0px, 0px)';
+                }
+                activePointers.delete(e.pointerId);
+                if (activePointers.size < 2) lastPinchDist = 0;
+            }
+
+            window.addEventListener('pointerup', endPointer);
+            window.addEventListener('pointercancel', endPointer);
+
+            window.addEventListener('wheel', (e) => {
+                desiredDist = Math.max(2.2, Math.min(280.0, desiredDist + e.deltaY * 0.07));
+            });
+
+            window.addEventListener('keydown', (e) => {
+                const k = e.key.toLowerCase();
+                if (k === 'w' || e.key === 'ArrowUp') keys.w = true;
+                if (k === 's' || e.key === 'ArrowDown') keys.s = true;
+                if (k === 'a' || e.key === 'ArrowLeft') keys.a = true;
+                if (k === 'd' || e.key === 'ArrowRight') keys.d = true;
+            });
+            window.addEventListener('keyup', (e) => {
+                const k = e.key.toLowerCase();
+                if (k === 'w' || e.key === 'ArrowUp') keys.w = false;
+                if (k === 's' || e.key === 'ArrowDown') keys.s = false;
+                if (k === 'a' || e.key === 'ArrowLeft') keys.a = false;
+                if (k === 'd' || e.key === 'ArrowRight') keys.d = false;
+            });
+        }
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // ============================================================================
+        // 6. CANLI DUAT ANİMASYON DÖNGÜSÜ (60 FPS OPTİMİZASYONLU)
+        // ============================================================================
+        const animDummy = new THREE.Object3D();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1);
+            const elapsed = clock.getElapsedTime();
+
+            let ix = joyVec.x;
+            let iy = joyVec.y;
+            if (keys.w) iy = -1;
+            if (keys.s) iy = 1;
+            if (keys.a) ix = -1;
+            if (keys.d) ix = 1;
+
+            const mag = Math.min(1, Math.hypot(ix, iy));
+            const moving = mag > 0.05;
+
+            if (moving && player) {
+                const fwdX = -Math.sin(camYaw);
+                const fwdZ = -Math.cos(camYaw);
+                const rightX = Math.cos(camYaw);
+                const rightZ = -Math.sin(camYaw);
+
+                const dirX = rightX * ix + fwdX * (-iy);
+                const dirZ = rightZ * ix + fwdZ * (-iy);
+
+                const walkSpeed = 8.4 * mag;
+                let nextX = player.root.position.x + dirX * walkSpeed * delta;
+                let nextZ = Math.max(-208, Math.min(175, player.root.position.z + dirZ * walkSpeed * delta));
+
+                const inCourtZ = nextZ < -50 && nextZ > -140;
+                const maxAllowedX = inCourtZ ? 44.0 : 9.8;
+                // Hakikatler Salonu Sütunları ve Anubis Heykelleriyle Çarpışma
+                if (window.EgyptCollisionEngine) {
+                    const resolved = window.EgyptCollisionEngine.resolvePosition(
+                        player.root.position,
+                        { x: nextX, z: nextZ },
+                        (player.scale || 1) * 0.45,
+                        player.root.position.y
+                    );
+                    player.root.position.x = resolved.x;
+                    player.root.position.z = resolved.z;
+                } else {
+                    player.root.position.x = nextX;
+                    player.root.position.z = nextZ;
+                }
+
+                const targetRot = Math.atan2(dirX, dirZ);
+                let diff = targetRot - player.root.rotation.y;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                player.root.rotation.y += diff * 0.18;
+            }
+
+            // Yerçekimi, Zıplama ve Manyetik Altın Eşyaları Güncelle
+            if (player && window.EgyptCollisionEngine) {
+                window.EgyptCollisionEngine.updatePhysics(player, delta);
+                window.EgyptCollisionEngine.updateMagneticDrops(player.root.position, delta, elapsed);
+            }
+
+            // Savaş Efektleri & Hasar Yazılarını Güncelle
+            if (window.EgyptCombatEngine) {
+                window.EgyptCombatEngine.update(delta, camera);
+            }
+
+            if (player) {
+                if (window.EgyptCharacterEngine && window.EgyptCharacterEngine.animateEgyptCharacter) {
+                    window.EgyptCharacterEngine.animateEgyptCharacter(player, moving, mag, delta, elapsed);
+                } else {
+                    animateVillagerOrDuat(player, moving, mag, delta, elapsed);
+                }
+            }
+
+            const pz = player ? player.root.position.z : 0;
+            for (let i = 0; i < soulsAndGuards.length; i++) {
+                const ch = soulsAndGuards[i];
+                if (ch.role === 'soul') {
+                    ch.root.position.z -= ch.speed * delta;
+                    if (ch.root.position.z < -205) {
+                        ch.root.position.z = 165;
+                    }
+                    if (Math.abs(ch.root.position.z - pz) < 95) {
+                        animateCharacter(ch, true, 0.72, delta, elapsed);
+                    }
+                } else {
+                    if (Math.abs(ch.root.position.z - pz) < 95) {
+                        animateCharacter(ch, false, 0, delta, elapsed);
+                    }
+                }
+            }
+
+            if (scaleBeamGroup && leftPanGroup && rightPanGroup) {
+                const tilt = Math.sin(elapsed * 1.15) * 0.14;
+                scaleBeamGroup.rotation.z = tilt;
+                leftPanGroup.rotation.z = -tilt;
+                rightPanGroup.rotation.z = -tilt;
+            }
+            if (heartMesh) {
+                const beat = 1.0 + Math.pow(Math.sin(elapsed * 4.2), 4) * 0.22;
+                heartMesh.scale.set(beat, beat, beat);
+            }
+            if (featherGroup) {
+                featherGroup.rotation.y = Math.sin(elapsed * 1.4) * 0.25;
+            }
+
+            if (ammitMonster && ammitMonster.userData) {
+                const ud = ammitMonster.userData;
+                ud.headPivot.rotation.y = Math.sin(elapsed * 1.3) * 0.20;
+                ud.headPivot.rotation.x = Math.sin(elapsed * 2.1) * 0.08;
+                ud.lowerJaw.rotation.x = Math.max(0, Math.sin(elapsed * 3.4) * 0.46);
+                ud.tailPivot.rotation.y = Math.sin(elapsed * 2.8) * 0.30;
+            }
+
+            if (soulRiverTex) {
+                soulRiverTex.offset.y = -elapsed * 0.10;
+            }
+            if (riverPosAttr) {
+                for (let i = 0; i < riverPosAttr.count; i++) {
+                    const wx = riverPosAttr.getX(i);
+                    const wy = riverPosAttr.getY(i);
+                    const waveZ = Math.sin(wx * 0.14 + elapsed * 1.8) * 0.32 + Math.cos(wy * 0.08 + elapsed * 1.5) * 0.25;
+                    riverPosAttr.setZ(i, waveZ);
+                }
+                riverPosAttr.needsUpdate = true;
+            }
+            if (lavaPosAttr) {
+                for (let i = 0; i < lavaPosAttr.count; i++) {
+                    const lx = lavaPosAttr.getX(i);
+                    const ly = lavaPosAttr.getY(i);
+                    lavaPosAttr.setZ(i, Math.sin(lx * 0.8 + elapsed * 3.5) * Math.cos(ly * 0.8 + elapsed * 3.0) * 0.18);
+                }
+                lavaPosAttr.needsUpdate = true;
+            }
+
+            if (soulWispPoints && soulWispPositions) {
+                const posArr = soulWispPoints.geometry.attributes.position.array;
+                for (let i = 0; i < soulWispSpeeds.length; i++) {
+                    posArr[i * 3 + 2] -= soulWispSpeeds[i] * delta;
+                    posArr[i * 3 + 1] += Math.sin(elapsed * 2.0 + i) * 0.015;
+                    if (posArr[i * 3 + 2] < -300) {
+                        posArr[i * 3 + 2] = 220;
+                    }
+                }
+                soulWispPoints.geometry.attributes.position.needsUpdate = true;
+            }
+
+            for (let i = 0; i < soulBarges.length; i++) {
+                const b = soulBarges[i];
+                let bz = ((b.baseZ - elapsed * b.speed + 260) % 480);
+                if (bz < 0) bz += 480;
+                b.group.position.z = bz - 260;
+                b.group.position.y = -8.3 + Math.sin(elapsed * 2.0 + b.phase) * 0.18;
+                b.group.rotation.z = Math.sin(elapsed * 1.5 + b.phase) * 0.04;
+            }
+
+            if (soulFlameInst) {
+                for (let i = 0; i < soulFlameData.length; i++) {
+                    const f = soulFlameData[i];
+                    const s = f.scale * (0.85 + Math.sin(elapsed * 10.0 + f.phase) * 0.18);
+                    animDummy.position.set(f.x, f.y + 2.1 * f.scale, f.z);
+                    animDummy.rotation.set(0, elapsed * 3.2 + f.phase, 0);
+                    animDummy.scale.set(s, s * 1.4, s);
+                    animDummy.updateMatrix();
+                    soulFlameInst.setMatrixAt(i, animDummy.matrix);
+                }
+                soulFlameInst.instanceMatrix.needsUpdate = true;
+            }
+            if (hellFlameInst) {
+                for (let i = 0; i < hellFlameData.length; i++) {
+                    const f = hellFlameData[i];
+                    const s = f.scale * (0.85 + Math.cos(elapsed * 11.0 + f.phase) * 0.20);
+                    animDummy.position.set(f.x, f.y + 2.1 * f.scale, f.z);
+                    animDummy.rotation.set(0, -elapsed * 3.5 + f.phase, 0);
+                    animDummy.scale.set(s, s * 1.45, s);
+                    animDummy.updateMatrix();
+                    hellFlameInst.setMatrixAt(i, animDummy.matrix);
+                }
+                hellFlameInst.instanceMatrix.needsUpdate = true;
+            }
+            for (let i = 0; i < portalRings.length; i++) {
+                const r = portalRings[i];
+                r.mesh.rotation.z = elapsed * r.speed;
+                r.mesh.rotation.x = Math.sin(elapsed * 0.7 + i) * 0.25;
+            }
+
+            // 3D Diriliş Kapısı Dönüşü ve Yakınlık Kontrolü
+            if (window.duatResurrectionPortal) {
+                window.duatResurrectionPortal.cyl.rotation.y += delta * 1.2;
+                if (player) {
+                    const dist = Math.hypot(player.root.position.x, player.root.position.z - (-98.0));
+                    if (dist < 3.0) {
+                        if (!window.teleportingActive) {
+                            window.teleportingActive = true;
+                            if (window.GameHUD) window.GameHUD.showToast('Ebedi Kapıdan Geçildi! Nil Dünyasına Diriliyorsun...', 'gold');
+                            setTimeout(() => {
+                                window.GameState.resurrectPlayer('Ebedi kapıdan geçerek dünyaya dirildin.');
+                            }, 600);
+                        }
+                    }
+                }
+            }
+
+            // MMORPG Hasat, Madencilik ve Otomatik Görev Motoru
+            if (window.EgyptGatheringEngine && player) {
+                window.EgyptGatheringEngine.update(player, delta, elapsed);
+            }
+
+            // Evrensel 1. Şahıs / 3. Şahıs Kamera Motoru
+            if (window.EgyptCameraSystem && player) {
+                window.EgyptCameraSystem.camYaw = camYaw;
+                window.EgyptCameraSystem.camPitch = camPitch;
+                window.EgyptCameraSystem.camDist = camDist;
+                window.EgyptCameraSystem.desiredDist = desiredDist;
+                window.EgyptCameraSystem.updateCamera(camera, player, moving, mag, delta, elapsed);
+            } else if (player) {
+                camDist = THREE.MathUtils.lerp(camDist, desiredDist, 0.12);
+                const focusX = player.root.position.x;
+                const focusY = player.root.position.y + 1.25;
+                const focusZ = player.root.position.z;
+
+                const cx = focusX + Math.sin(camYaw) * Math.cos(camPitch) * camDist;
+                const cz = focusZ + Math.cos(camYaw) * Math.cos(camPitch) * camDist;
+                const cy = Math.max(0.5, focusY + Math.sin(camPitch) * camDist);
+
+                camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.22);
+                camera.lookAt(focusX, focusY, focusZ);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function animateVillagerOrDuat(char, moving, mag, delta, elapsed) {
+            animateCharacter(char, moving, mag, delta, elapsed);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
