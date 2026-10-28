@@ -3,7 +3,7 @@
  * Dev Güncelleme: Procedural Hollywood Web Audio (Braams, Whooshes, Clashes, Drones),
  * 5 Profesyonel Sinematik Kurgu (30-45s), Anamorfik Mercek Parlaması, Kesme Flaşları,
  * Altın Tapınak Tozları, Dinamik Hız Değişimi (Slow-Motion Ramping),
- * %100 Tıklanabilir Engellenemez [✕ DURDUR] Butonu ve Kristal Netliğinde WebM/MP4 Video Kaydı.
+ * %100 Tıklanabilir Engellenemez [✕ DURDUR] Butonu ve MP4 Video Kaydı.
  */
 
 (function(window) {
@@ -293,6 +293,8 @@
             this.lastRecordedBlob = null;
             this.lastRecordedUrl = null;
             this.lastRecordedFileName = '';
+            this.ffmpegPromise = null;
+            this.isPreparingRecording = false;
 
             // DOM Referansları
             this.dom = {};
@@ -1122,10 +1124,14 @@
         }
 
         // =====================================================================
-        // KRİSTAL NETLİĞİNDE WEBM / MP4 CANVAS VİDEO KAYDEDİCİ
+        // MP4 canvas kaydedici; MP4 kaydı yoksa yerel WebM -> MP4 dönüşümü kullanır.
         // =====================================================================
         startCanvasRecording() {
             try {
+                if (this.isPreparingRecording) {
+                    if (window.GameHUD) window.GameHUD.showToast('Önceki video hazırlanıyor; lütfen birkaç saniye bekle.', 'system');
+                    return;
+                }
                 const sourceCanvas = (window.renderer && window.renderer.domElement)
                     || document.querySelector('body > canvas');
                 if (!sourceCanvas || typeof sourceCanvas.captureStream !== 'function' || typeof MediaRecorder === 'undefined') {
@@ -1164,10 +1170,12 @@
                 this.closeSharePanel();
 
                 const supportedTypes = [
+                    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+                    'video/mp4;codecs=avc1',
+                    'video/mp4',
                     'video/webm;codecs=vp9',
                     'video/webm;codecs=vp8',
-                    'video/webm',
-                    'video/mp4'
+                    'video/webm'
                 ];
                 const mimeType = supportedTypes.find(type => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type));
                 this.mediaRecorder = mimeType
@@ -1179,9 +1187,10 @@
                     }
                 };
 
-                this.mediaRecorder.onstop = () => {
+                this.mediaRecorder.onstop = async () => {
+                    this.isPreparingRecording = true;
                     try {
-                        this.saveRecordedVideoFile();
+                        await this.saveRecordedVideoFile();
                     } catch (error) {
                         console.error('Kayıt sonlandırılırken video hazırlanamadı:', error);
                         if (window.GameHUD) window.GameHUD.showToast('Kayıt tamamlandı ancak paylaşım paneli hazırlanamadı.', 'danger');
@@ -1191,6 +1200,7 @@
                         this.recordCanvas = null;
                         this.recordContext = null;
                         this.isRecording = false;
+                        this.isPreparingRecording = false;
                         if (this.audio) this.audio.recordDestination = null;
                         if (window.GameAudio) window.GameAudio.recordDestination = null;
                     }
@@ -1280,7 +1290,7 @@
                 this.isRecording = false;
                 if (this.audio) this.audio.recordDestination = null;
                 if (window.GameAudio) window.GameAudio.recordDestination = null;
-                if (window.GameHUD) window.GameHUD.showToast('Video kaydı başlatılamadı. Tarayıcı izinlerini ve WebM desteğini kontrol et.', 'danger');
+                if (window.GameHUD) window.GameHUD.showToast('Video kaydı başlatılamadı. Tarayıcı izinlerini ve MP4/WebM kayıt desteğini kontrol et.', 'danger');
             }
         }
 
@@ -1293,7 +1303,68 @@
             this.recordFrameId = null;
         }
 
-        saveRecordedVideoFile() {
+        async loadFFmpeg() {
+            if (!this.ffmpegPromise) {
+                this.ffmpegPromise = (async () => {
+                    if (!window.FFmpeg) {
+                        await new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.src = 'https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js';
+                            script.onload = resolve;
+                            script.onerror = () => reject(new Error('MP4 dönüştürme motoru yüklenemedi.'));
+                            document.head.appendChild(script);
+                        });
+                    }
+                    if (!window.FFmpeg || typeof window.FFmpeg.createFFmpeg !== 'function') {
+                        throw new Error('MP4 dönüştürme motoru bu tarayıcıda kullanılamıyor.');
+                    }
+                    const ffmpeg = window.FFmpeg.createFFmpeg({
+                        log: false,
+                        corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js'
+                    });
+                    await ffmpeg.load();
+                    return ffmpeg;
+                })();
+            }
+            try {
+                return await this.ffmpegPromise;
+            } catch (error) {
+                this.ffmpegPromise = null;
+                throw error;
+            }
+        }
+
+        async convertWebmToMp4(webmBlob) {
+            const ffmpeg = await this.loadFFmpeg();
+            const inputPath = `recording-${Date.now()}.webm`;
+            const outputPath = `recording-${Date.now()}.mp4`;
+            try {
+                ffmpeg.FS('writeFile', inputPath, new Uint8Array(await webmBlob.arrayBuffer()));
+                await ffmpeg.run(
+                    '-i', inputPath,
+                    '-c:v', 'libx264',
+                    '-preset', 'ultrafast',
+                    '-crf', '23',
+                    '-c:a', 'aac',
+                    '-b:a', '128k',
+                    '-movflags', '+faststart',
+                    outputPath
+                );
+                const output = ffmpeg.FS('readFile', outputPath);
+                if (!output.length) throw new Error('MP4 dönüştürme boş dosya oluşturdu.');
+                return new Blob([output], { type: 'video/mp4' });
+            } finally {
+                for (const path of [inputPath, outputPath]) {
+                    try {
+                        ffmpeg.FS('unlink', path);
+                    } catch (error) {
+                        console.warn(`Geçici video dosyası temizlenemedi (${path}):`, error);
+                    }
+                }
+            }
+        }
+
+        async saveRecordedVideoFile() {
             if (this.recordedChunks.length === 0) {
                 if (window.GameHUD) window.GameHUD.showToast('Kayıt verisi alınamadı; kayıt indirme paneli oluşturulmadı.', 'danger');
                 return;
@@ -1301,10 +1372,24 @@
             const mimeType = (this.mediaRecorder && this.mediaRecorder.mimeType)
                 || this.recordedChunks.find(chunk => chunk.type)?.type
                 || 'video/webm';
-            this.lastRecordedBlob = new Blob(this.recordedChunks, { type: mimeType });
-            const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+            const originalBlob = new Blob(this.recordedChunks, { type: mimeType });
+            let outputBlob = originalBlob;
+            let extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+            let conversionFailed = false;
+            if (extension === 'webm') {
+                if (window.GameHUD) window.GameHUD.showToast('MP4 video hazırlanıyor; ilk dönüşüm biraz sürebilir.', 'system');
+                try {
+                    outputBlob = await this.convertWebmToMp4(originalBlob);
+                    extension = 'mp4';
+                } catch (error) {
+                    conversionFailed = true;
+                    console.error('WebM kaydı MP4’e dönüştürülemedi:', error);
+                }
+            }
+            this.lastRecordedBlob = outputBlob;
             const safePreset = String(this.currentPreset).replace(/[^a-z0-9_-]/gi, '_');
             this.lastRecordedFileName = `GodsOfEgypt_${safePreset}_${this.format.replace(':', 'x').replace('.', '_')}.${extension}`;
+            if (this.lastRecordedUrl) URL.revokeObjectURL(this.lastRecordedUrl);
             this.lastRecordedUrl = URL.createObjectURL(this.lastRecordedBlob);
 
             if (this.dom.sharePreview) this.dom.sharePreview.src = this.lastRecordedUrl;
@@ -1314,7 +1399,13 @@
                 this.dom.shareFileDetails.textContent = `${this.format} · ${this.outputQuality}p · ${sizeMb} MB · ${this.lastRecordedFileName}`;
             }
             if (this.dom.sharePanel) this.dom.sharePanel.style.display = 'flex';
-            if (window.GameHUD) window.GameHUD.showToast('Klip hazır. Önizleyebilir, indirebilir veya cihazının paylaşım menüsünü açabilirsin.', 'gold');
+            if (window.GameHUD) {
+                if (conversionFailed) {
+                    window.GameHUD.showToast('MP4 dönüştürülemedi; WebM yedeği hazır. İnternet bağlantını kontrol edip tekrar deneyebilirsin.', 'danger');
+                } else {
+                    window.GameHUD.showToast('MP4 klip hazır. Önizleyebilir, indirebilir veya cihazının paylaşım menüsünü açabilirsin.', 'gold');
+                }
+            }
         }
 
         // =====================================================================
