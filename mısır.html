@@ -760,7 +760,7 @@
                 foot.position.set(0, -0.44, 0.032);
                 knee.add(foot);
 
-                return { hip, knee };
+                return { hip, knee, groundContact: foot };
             }
 
             return {
@@ -820,6 +820,7 @@
                 char.arms.left.elbow.rotation.x = -0.16;
                 char.arms.right.elbow.rotation.x = -0.16;
             }
+            window.EgyptCharacterEngine.keepCharacterFeetOnGround(char);
         }
 
         // ============================================================================

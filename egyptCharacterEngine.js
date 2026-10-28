@@ -10,7 +10,7 @@
     let heroicPoseActive = false;
     const groundProbeCenter = new THREE.Vector3();
     const groundProbePosition = new THREE.Vector3();
-    const groundProbeScale = new THREE.Vector3();
+    const FOOT_GROUND_CLEARANCE = 0.015;
 
 function buildTextures(rendererInstance) {
             // 1. Stüdyo & Mısır Tapınağı HDR Yansıma Haritası
@@ -1408,8 +1408,10 @@ function buildTextures(rendererInstance) {
         }
 
         function keepCharacterFeetOnGround(char) {
-            if (!char || !char.root || !char.pelvis || !char.legs) return;
+            const pelvis = char && (char.pelvis || char.hips);
+            if (!char || !char.root || !pelvis || !char.legs) return;
             if (char === window.player && window.EgyptCollisionEngine && !window.EgyptCollisionEngine.isGrounded) return;
+            if (char === window.player && window.EgyptFlightEngine && window.EgyptFlightEngine.isFlying) return;
 
             let lowestFootY = Infinity;
             for (const side of ['left', 'right']) {
@@ -1439,11 +1441,14 @@ function buildTextures(rendererInstance) {
 
             if (!Number.isFinite(lowestFootY)) return;
             char.root.getWorldPosition(groundProbePosition);
-            char.root.getWorldScale(groundProbeScale);
-            const penetration = groundProbePosition.y - lowestFootY;
-            if (penetration > 0.001) {
-                char.pelvis.position.y += penetration / (Math.abs(groundProbeScale.y) || 1);
-            }
+            const lift = groundProbePosition.y + FOOT_GROUND_CLEARANCE - lowestFootY;
+            if (lift <= 0) return;
+
+            if (!pelvis.parent) return;
+            pelvis.parent.updateWorldMatrix(true, false);
+            const worldUpPerLocalY = pelvis.parent.matrixWorld.elements[5];
+            if (Math.abs(worldUpPerLocalY) < 1e-5) return;
+            pelvis.position.y += lift / worldUpPerLocalY;
         }
 
         function animateFemaleCharacter(char, isWalking, speedRatio, delta, elapsed) {
@@ -2333,6 +2338,7 @@ function buildTextures(rendererInstance) {
         animateCharacter: animateCharacter,
         animateFemaleCharacter: animateFemaleCharacter,
         animateEgyptCharacter: animateCharacter,
+        keepCharacterFeetOnGround: keepCharacterFeetOnGround,
         spawnPlayerCharacter: window.spawnPlayerCharacter
     };
 })(window);
