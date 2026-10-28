@@ -1461,22 +1461,40 @@
             const originalBlob = new Blob(this.recordedChunks, { type: mimeType });
             let outputBlob = originalBlob;
             let extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+            let conversionFailed = false;
+            let originalDownloaded = false;
+            const safePreset = String(this.currentPreset).replace(/[^a-z0-9_-]/gi, '_');
+            const makeFileName = fileExtension =>
+                `GodsOfEgypt_${safePreset}_${this.format.replace(':', 'x').replace('.', '_')}.${fileExtension}`;
+
             if (extension === 'webm') {
+                this.lastRecordedBlob = originalBlob;
+                this.lastRecordedFileName = makeFileName(extension);
+                if (this.lastRecordedUrl) URL.revokeObjectURL(this.lastRecordedUrl);
+                this.lastRecordedUrl = URL.createObjectURL(originalBlob);
+                this.downloadRecordedVideo();
+                originalDownloaded = true;
+
                 if (window.GameHUD) window.GameHUD.showToast('MP4 video hazırlanıyor; ilk dönüşüm biraz sürebilir.', 'system');
                 try {
                     outputBlob = await this.convertWebmToMp4(originalBlob);
                     extension = 'mp4';
                 } catch (error) {
                     console.error('WebM kaydı MP4’e dönüştürülemedi:', error);
-                    throw new Error('MP4 dönüştürme başarısız oldu. Tekrar denemeden önce internet bağlantını kontrol et.');
+                    conversionFailed = true;
                 }
             }
             this.lastRecordedBlob = outputBlob;
-            const safePreset = String(this.currentPreset).replace(/[^a-z0-9_-]/gi, '_');
-            this.lastRecordedFileName = `GodsOfEgypt_${safePreset}_${this.format.replace(':', 'x').replace('.', '_')}.${extension}`;
-            if (this.lastRecordedUrl) URL.revokeObjectURL(this.lastRecordedUrl);
-            this.lastRecordedUrl = URL.createObjectURL(this.lastRecordedBlob);
-
+            this.lastRecordedFileName = makeFileName(extension);
+            if (originalDownloaded && outputBlob !== originalBlob) {
+                const originalUrl = this.lastRecordedUrl;
+                this.lastRecordedUrl = URL.createObjectURL(outputBlob);
+                setTimeout(() => URL.revokeObjectURL(originalUrl), 60000);
+            } else if (!originalDownloaded) {
+                if (this.lastRecordedUrl) URL.revokeObjectURL(this.lastRecordedUrl);
+                this.lastRecordedUrl = URL.createObjectURL(this.lastRecordedBlob);
+                this.downloadRecordedVideo();
+            }
             if (this.dom.sharePreview) this.dom.sharePreview.src = this.lastRecordedUrl;
             if (this.dom.shareCaption) this.dom.shareCaption.value = this.getShareCaption();
             if (this.dom.shareFileDetails) {
@@ -1485,7 +1503,11 @@
             }
             if (this.dom.sharePanel) this.dom.sharePanel.style.display = 'flex';
             if (window.GameHUD) {
-                window.GameHUD.showToast('MP4 klip hazır. Önizleyebilir, indirebilir veya cihazının paylaşım menüsünü açabilirsin.', 'gold');
+                window.GameHUD.showToast(conversionFailed
+                    ? 'MP4 dönüşümü yapılamadı; WebM kaydı cihaza indirildi ve paylaşım panelinde hazır.'
+                    : originalDownloaded
+                        ? 'WebM kayıt cihaza indirildi; MP4 sürümü paylaşım panelinde hazır.'
+                        : 'Kayıt cihaza indiriliyor; önizleme ve paylaşım panelinde de hazır.', conversionFailed ? 'system' : 'gold');
             }
         }
 
