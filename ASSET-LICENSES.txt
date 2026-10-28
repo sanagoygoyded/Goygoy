@@ -22,3 +22,13 @@ https://ambientcg.com/a/Metal048A
 Downloaded 1K JPG map sets. The runtime downsamples detail maps and mobile
 albedo maps to reduce GPU memory use. Each asset is attributed under CC0;
 attribution is appreciated but not required.
+
+Runtime map channels:
+- Color: albedo (sRGB)
+- NormalGL: tangent-space normal
+- Roughness: roughness
+- Displacement: bump
+- Metalness: metallic response for the gold set
+
+Ambient-occlusion maps are not bundled because the current meshes do not
+provide the secondary UV coordinates required by Three.js aoMap.
