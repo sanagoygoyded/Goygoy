@@ -2415,8 +2415,11 @@ function buildTextures(rendererInstance) {
             if (scn) scn.remove(window.player.root);
         }
 
+        const femaleCharacterFactory = window.KizCharacterEngine
+            ? window.KizCharacterEngine.createCharacter
+            : createFemaleCharacter;
         const char = femaleProfile
-            ? createFemaleCharacter({ name, role, scale, skinTone: femaleProfile.skinTone })
+            ? femaleCharacterFactory({ name, role, scale, skinTone: femaleProfile.skinTone, renderer: rnd })
             : createCharacter({ name, role, scale });
 
         if (prevPos) {

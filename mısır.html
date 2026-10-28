@@ -17,6 +17,7 @@
     <script src="npcSystem.js"></script>
     <script src="gameHud.js"></script>
     <script src="egyptCharacterEngine.js"></script>
+    <script src="kizCharacterEngine.js"></script>
     <script src="collisionSystem.js"></script>
     <script src="combatSystem.js"></script>
     <script src="cameraSystem.js"></script>
@@ -2960,7 +2961,8 @@
                     name: profile.name,
                     role: profile.role,
                     scale: profile.scale || (profile.role === 'horus_god' || profile.role === 'set_god' ? 1.08 : 0.96 + (profile.id.length % 4) * 0.025),
-                    skinTone: profile.skinTone
+                    skinTone: profile.skinTone,
+                    renderer
                 });
                 npc.id = profile.id;
                 npc.title = profile.title;
