@@ -296,6 +296,7 @@
             this.ffmpegPromise = null;
             this.isPreparingRecording = false;
             this.hiddenRecordingElements = new Map();
+            this.recordingRenderState = null;
 
             // DOM Referansları
             this.dom = {};
@@ -889,6 +890,28 @@
             };
         }
 
+        lowerRenderCostForRecording() {
+            const renderer = window.renderer;
+            if (!renderer || typeof renderer.getPixelRatio !== 'function'
+                || typeof renderer.setPixelRatio !== 'function' || typeof renderer.setSize !== 'function') return;
+
+            const pixelRatio = renderer.getPixelRatio();
+            const recordingPixelRatio = Math.min(pixelRatio, Math.max(0.8, pixelRatio * 0.8));
+            if (recordingPixelRatio >= pixelRatio) return;
+
+            this.recordingRenderState = { renderer, pixelRatio };
+            renderer.setPixelRatio(recordingPixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        restoreRenderCostAfterRecording() {
+            if (!this.recordingRenderState) return;
+            const { renderer, pixelRatio } = this.recordingRenderState;
+            this.recordingRenderState = null;
+            renderer.setPixelRatio(pixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
         getShareCaption() {
             const customCaption = document.getElementById('cine-custom-caption');
             const caption = customCaption && customCaption.value.trim();
@@ -1194,7 +1217,7 @@
                 const { aspect, width, height } = this.getOutputDimensions();
                 outputCanvas.width = width;
                 outputCanvas.height = height;
-                const outputContext = outputCanvas.getContext('2d');
+                const outputContext = outputCanvas.getContext('2d', { alpha: false, desynchronized: true });
                 if (!outputContext) throw new Error('Video kompozisyon tuvali başlatılamadı.');
 
                 this.audio.init();
@@ -1240,6 +1263,7 @@
 
                 this.mediaRecorder.onstop = async () => {
                     this.isPreparingRecording = true;
+                    this.restoreRenderCostAfterRecording();
                     try {
                         await this.saveRecordedVideoFile();
                     } catch (error) {
@@ -1261,21 +1285,29 @@
                     if (window.GameHUD) window.GameHUD.showToast('Video kaydı sırasında hata oluştu; cihaz depolamasını kontrol et.', 'danger');
                 };
 
-                this.mediaRecorder.start(250);
+                this.lowerRenderCostForRecording();
+                this.mediaRecorder.start(1000);
                 this.isRecording = true;
                 this.recordStartedAt = performance.now();
+                let lastDrawTime = 0;
                 const drawFrame = () => {
                     if (!this.isRecording || !this.recordCanvas || !this.recordContext) return;
-                    const elapsedSeconds = Math.floor((performance.now() - this.recordStartedAt) / 1000);
+                    const now = performance.now();
+                    const elapsedSeconds = Math.floor((now - this.recordStartedAt) / 1000);
                     const pad = (value) => String(value).padStart(2, '0');
+                    if (this.isGameplayRecording && elapsedSeconds >= 60) {
+                        this.stopCinematic('Serbest kayıt 60 saniye sınırına ulaştı');
+                        return;
+                    }
+                    if (now - lastDrawTime < 1000 / 30) {
+                        this.recordFrameId = requestAnimationFrame(drawFrame);
+                        return;
+                    }
+                    lastDrawTime = now;
                     if (this.dom.recStatus) {
                         this.dom.recStatus.textContent = this.active
                             ? `REC [00:${pad(Math.floor(this.sequenceTimer))} / 00:${pad(Math.floor(this.totalDuration))}] • ${this.format}`
                             : `REC [${pad(Math.floor(elapsedSeconds / 60))}:${pad(elapsedSeconds % 60)}] • ${this.format}`;
-                    }
-                    if (this.isGameplayRecording && elapsedSeconds >= 60) {
-                        this.stopCinematic('Serbest kayıt 60 saniye sınırına ulaştı');
-                        return;
                     }
                     const sourceWidth = sourceCanvas.width;
                     const sourceHeight = sourceCanvas.height;
@@ -1333,6 +1365,7 @@
             } catch (err) {
                 console.error('Canvas recorder init error:', err);
                 if (this.recordFrameId) cancelAnimationFrame(this.recordFrameId);
+                this.restoreRenderCostAfterRecording();
                 if (this.recordStream) this.recordStream.getTracks().forEach(track => track.stop());
                 this.recordFrameId = null;
                 this.recordStream = null;

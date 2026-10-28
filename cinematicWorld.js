@@ -170,6 +170,21 @@
         }
     ];
 
+    function getPerformanceProfile() {
+        const nav = window.navigator || {};
+        const isMobile = window.innerWidth < 720;
+        const lowPower = isMobile
+            || (nav.hardwareConcurrency > 0 && nav.hardwareConcurrency <= 4)
+            || (nav.deviceMemory > 0 && nav.deviceMemory <= 4);
+        return {
+            pixelRatio: isMobile ? 1.15 : lowPower ? 1.25 : 1.5,
+            shadowMapSize: lowPower ? 512 : 1024,
+            surfaceSize: lowPower ? 128 : 256,
+            moteScale: lowPower ? 0.55 : 1,
+            maxAnisotropy: lowPower ? 4 : 8
+        };
+    }
+
     function chooseProfile() {
         const path = decodeURIComponent(window.location.pathname.toLowerCase());
         return WORLD_PROFILES.find(profile => profile.match.test(path)) || WORLD_PROFILES[WORLD_PROFILES.length - 1];
@@ -243,8 +258,8 @@
         return texture;
     }
 
-    function createMotes(scene, camera, profile) {
-        const count = Math.max(60, Math.round(profile.moteCount * (window.innerWidth < 720 ? 0.55 : 1)));
+    function createMotes(scene, camera, profile, quality) {
+        const count = Math.max(40, Math.round(profile.moteCount * quality.moteScale));
         const positions = new Float32Array(count * 3);
         const velocities = new Float32Array(count * 3);
         const colors = new Float32Array(count * 3);
@@ -338,8 +353,8 @@
         };
     }
 
-    function createSurfaceMaps(kind, maxAnisotropy, profile) {
-        const size = window.innerWidth < 720 ? 256 : 512;
+    function createSurfaceMaps(kind, maxAnisotropy, profile, quality) {
+        const size = quality.surfaceSize;
         const heights = new Uint8Array(size * size);
         const roughness = new Uint8Array(size * size);
         const albedo = new Uint8Array(size * size * 4);
@@ -526,7 +541,7 @@
                     }
                 }
                 const kind = getSurfaceKind(material);
-                const maps = surfaceMaps[kind] || (surfaceMaps[kind] = createSurfaceMaps(kind, maxAnisotropy, profile));
+                const maps = surfaceMaps[kind] || (surfaceMaps[kind] = createSurfaceMaps(kind, maxAnisotropy, profile, quality));
                 const fallbackMaps = {};
                 if (!material.map) material.map = fallbackMaps.map = maps.map;
                 if (!material.normalMap) material.normalMap = fallbackMaps.normalMap = maps.normalMap;
@@ -566,11 +581,10 @@
         scene.userData.cinematicWorldInstalled = true;
 
         const profile = chooseProfile();
+        const quality = getPerformanceProfile();
         const skyTexture = createSkyTexture(profile);
         scene.background = skyTexture;
-        const pixelRatio = window.innerWidth < 720
-            ? Math.min(window.devicePixelRatio || 1, 1.35)
-            : Math.min(window.devicePixelRatio || 1, 1.85);
+        const pixelRatio = Math.min(window.devicePixelRatio || 1, quality.pixelRatio);
         renderer.setPixelRatio(pixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
         if ('outputEncoding' in renderer && THREE.sRGBEncoding !== undefined) {
@@ -580,7 +594,7 @@
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         const maxAnisotropy = renderer.capabilities && renderer.capabilities.getMaxAnisotropy
-            ? Math.min(renderer.capabilities.getMaxAnisotropy(), 8)
+            ? Math.min(renderer.capabilities.getMaxAnisotropy(), quality.maxAnisotropy)
             : 1;
         skyTexture.anisotropy = maxAnisotropy;
 
@@ -590,11 +604,12 @@
             scene.fog = new THREE.FogExp2(profile.fog, profile.fogDensity);
         }
         scene.add(new THREE.HemisphereLight(profile.sky, profile.ground, profile.moteCount > 200 ? 0.12 : 0.16));
-        const updateMotes = createMotes(scene, camera, profile);
+        const updateMotes = createMotes(scene, camera, profile, quality);
         addFrame();
 
         const render = renderer.render.bind(renderer);
         let lastFrameTime = 0;
+        let shadowQualityApplied = false;
         let surfaceDetailReady = false;
         const initializeSurfaceDetail = () => {
             if (surfaceDetailReady) return;
@@ -608,6 +623,17 @@
         }
         renderer.render = function(activeScene, activeCamera) {
             if (activeScene === scene && activeCamera) {
+                if (!shadowQualityApplied) {
+                    activeScene.traverse(object => {
+                        if (!object.isLight || !object.castShadow || !object.shadow || !object.shadow.mapSize) return;
+                        if (object.shadow.mapSize.x > quality.shadowMapSize
+                            || object.shadow.mapSize.y > quality.shadowMapSize) {
+                            object.shadow.mapSize.set(quality.shadowMapSize, quality.shadowMapSize);
+                            object.shadow.needsUpdate = true;
+                        }
+                    });
+                    shadowQualityApplied = true;
+                }
                 const now = performance.now() / 1000;
                 const delta = lastFrameTime ? Math.min(now - lastFrameTime, 0.05) : 0;
                 lastFrameTime = now;
