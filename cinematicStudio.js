@@ -271,7 +271,7 @@
             
             // Format & VFX Ayarları
             this.format = '9:16'; // '16:9' | '9:16' | '1:1' | '2.39:1'
-            this.outputQuality = 1080;
+            this.outputQuality = 720;
             this.showTitles = true;
             this.showFlares = true;
             this.allowShake = true;
@@ -592,8 +592,8 @@
                         <label class="flex flex-col gap-1 text-xs font-bold text-amber-200">
                             <span>🎞️ Çıktı kalitesi</span>
                             <select onchange="window.EgyptCinematicStudio.setOutputQuality(this.value)" class="rounded-xl border border-amber-500/40 bg-black/60 px-3 py-2 text-amber-100">
-                                <option value="1080" selected>1080p HD · Önerilen</option>
-                                <option value="720">720p · Daha hafif kayıt</option>
+                                <option value="720" selected>720p · Akıcı kayıt</option>
+                                <option value="1080">1080p HD · Daha yüksek yük</option>
                             </select>
                         </label>
                         <label class="flex flex-col gap-1 text-xs font-bold text-amber-200">
@@ -896,7 +896,7 @@
                 || typeof renderer.setPixelRatio !== 'function' || typeof renderer.setSize !== 'function') return;
 
             const pixelRatio = renderer.getPixelRatio();
-            const recordingPixelRatio = Math.min(pixelRatio, Math.max(0.8, pixelRatio * 0.8));
+            const recordingPixelRatio = Math.min(pixelRatio, Math.max(0.65, pixelRatio * 0.7));
             if (recordingPixelRatio >= pixelRatio) return;
 
             this.recordingRenderState = { renderer, pixelRatio };
@@ -1233,7 +1233,7 @@
                         return destination;
                     });
 
-                const videoStream = outputCanvas.captureStream(30);
+                const videoStream = outputCanvas.captureStream(24);
                 const tracks = [...videoStream.getVideoTracks()];
                 audioDestinations.forEach(destination => tracks.push(...destination.stream.getAudioTracks()));
                 this.recordStream = new MediaStream(tracks);
@@ -1263,13 +1263,13 @@
 
                 this.mediaRecorder.onstop = async () => {
                     this.isPreparingRecording = true;
-                    this.restoreRenderCostAfterRecording();
                     try {
                         await this.saveRecordedVideoFile();
                     } catch (error) {
                         console.error('Kayıt sonlandırılırken video hazırlanamadı:', error);
-                        if (window.GameHUD) window.GameHUD.showToast('Kayıt tamamlandı ancak paylaşım paneli hazırlanamadı.', 'danger');
+                        if (window.GameHUD) window.GameHUD.showToast(error.message || 'Kayıt tamamlandı ancak MP4 dosyası hazırlanamadı.', 'danger');
                     } finally {
+                        this.restoreRenderCostAfterRecording();
                         if (this.recordStream) this.recordStream.getTracks().forEach(track => track.stop());
                         this.recordStream = null;
                         this.recordCanvas = null;
@@ -1299,7 +1299,7 @@
                         this.stopCinematic('Serbest kayıt 60 saniye sınırına ulaştı');
                         return;
                     }
-                    if (now - lastDrawTime < 1000 / 30) {
+                    if (now - lastDrawTime < 1000 / 24) {
                         this.recordFrameId = requestAnimationFrame(drawFrame);
                         return;
                     }
@@ -1404,7 +1404,7 @@
                     }
                     const ffmpeg = window.FFmpeg.createFFmpeg({
                         log: false,
-                        corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js'
+                        corePath: 'https://unpkg.com/@ffmpeg/core-st@0.11.0/dist/ffmpeg-core.js'
                     });
                     await ffmpeg.load();
                     return ffmpeg;
@@ -1426,6 +1426,8 @@
                 ffmpeg.FS('writeFile', inputPath, new Uint8Array(await webmBlob.arrayBuffer()));
                 await ffmpeg.run(
                     '-i', inputPath,
+                    '-map', '0:v:0',
+                    '-map', '0:a:0?',
                     '-c:v', 'libx264',
                     '-preset', 'ultrafast',
                     '-crf', '23',
@@ -1459,15 +1461,14 @@
             const originalBlob = new Blob(this.recordedChunks, { type: mimeType });
             let outputBlob = originalBlob;
             let extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
-            let conversionFailed = false;
             if (extension === 'webm') {
                 if (window.GameHUD) window.GameHUD.showToast('MP4 video hazırlanıyor; ilk dönüşüm biraz sürebilir.', 'system');
                 try {
                     outputBlob = await this.convertWebmToMp4(originalBlob);
                     extension = 'mp4';
                 } catch (error) {
-                    conversionFailed = true;
                     console.error('WebM kaydı MP4’e dönüştürülemedi:', error);
+                    throw new Error('MP4 dönüştürme başarısız oldu. Tekrar denemeden önce internet bağlantını kontrol et.');
                 }
             }
             this.lastRecordedBlob = outputBlob;
@@ -1484,11 +1485,7 @@
             }
             if (this.dom.sharePanel) this.dom.sharePanel.style.display = 'flex';
             if (window.GameHUD) {
-                if (conversionFailed) {
-                    window.GameHUD.showToast('MP4 dönüştürülemedi; WebM yedeği hazır. İnternet bağlantını kontrol edip tekrar deneyebilirsin.', 'danger');
-                } else {
-                    window.GameHUD.showToast('MP4 klip hazır. Önizleyebilir, indirebilir veya cihazının paylaşım menüsünü açabilirsin.', 'gold');
-                }
+                window.GameHUD.showToast('MP4 klip hazır. Önizleyebilir, indirebilir veya cihazının paylaşım menüsünü açabilirsin.', 'gold');
             }
         }
 

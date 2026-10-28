@@ -2780,7 +2780,11 @@
 
             // 2. Çöl Rüzgarı ve Uçuşan Altın Toz Parçacıkları (Golden Sand Dust Swarm - 1.200 Parçacık)
             const dustGeo = new THREE.BufferGeometry();
-            const dustCount = 1200;
+            const nav = window.navigator || {};
+            const lowPowerDustProfile = window.innerWidth < 720
+                || (nav.hardwareConcurrency > 0 && nav.hardwareConcurrency <= 4)
+                || (nav.deviceMemory > 0 && nav.deviceMemory <= 4);
+            const dustCount = lowPowerDustProfile ? 420 : 800;
             const dustPositions = new Float32Array(dustCount * 3);
             const dustVelocities = [];
             for (let i = 0; i < dustCount; i++) {
@@ -3136,6 +3140,8 @@
         // 6. CANLI AÇIK DÜNYA ANİMASYON DÖNGÜSÜ (60 FPS OPTİMİZASYONLU)
         // ============================================================================
         const animDummy = new THREE.Object3D();
+        let lastDustUpdate = 0;
+        let lastWaterUpdate = 0;
 
         function animate() {
             requestAnimationFrame(animate);
@@ -3307,7 +3313,9 @@
             // ==========================================
             // ULTRA-GERÇEKÇİ NİL NEHRİ GERSTNER DALGALARI VE AKIŞI
             // ==========================================
-            if (waterPosAttr) {
+            if (waterPosAttr && elapsed - lastWaterUpdate >= 1 / 30) {
+                const waveDelta = Math.min(elapsed - lastWaterUpdate, 0.1);
+                lastWaterUpdate = elapsed;
                 const wCount = waterPosAttr.count;
                 const positions = waterPosAttr.array;
                 for (let i = 0; i < wCount; i++) {
@@ -3328,7 +3336,7 @@
 
                 // Akıntı Normal ve Kostik Haritalarının Yönlü Akışı
                 if (nileWaterMesh && nileWaterMesh.material.normalMap) {
-                    nileWaterMesh.material.normalMap.offset.y -= delta * 0.18;
+                    nileWaterMesh.material.normalMap.offset.y -= waveDelta * 0.18;
                     nileWaterMesh.material.normalMap.offset.x = Math.sin(elapsed * 0.4) * 0.04;
                 }
             }
@@ -3600,19 +3608,24 @@
             }
 
             // Altın Çöl Tozu Sürüklenişi ve Güneş Korona Halesi
-            if (window.dustParticles && window.dustVelocities) {
-                const pos = window.dustParticles.geometry.attributes.position;
+            if (window.dustParticles && window.dustVelocities && elapsed - lastDustUpdate >= 1 / 30) {
+                const frameScale = Math.min(elapsed - lastDustUpdate, 0.1) * 60;
+                lastDustUpdate = elapsed;
+                const positions = window.dustParticles.geometry.attributes.position.array;
                 for (let i = 0; i < window.dustVelocities.length; i++) {
                     const vel = window.dustVelocities[i];
-                    let x = pos.getX(i) + vel.vx;
-                    let y = pos.getY(i) + Math.sin(elapsed + i) * 0.04;
-                    let z = pos.getZ(i) + vel.vz;
+                    const offset = i * 3;
+                    let x = positions[offset] + vel.vx * frameScale;
+                    let y = positions[offset + 1] + Math.sin(elapsed + i) * 0.04 * frameScale;
+                    let z = positions[offset + 2] + vel.vz * frameScale;
                     if (x > 290) x = -290;
                     if (z > 290) z = -290;
                     if (z < -290) z = 290;
-                    pos.setXYZ(i, x, y, z);
+                    positions[offset] = x;
+                    positions[offset + 1] = y;
+                    positions[offset + 2] = z;
                 }
-                pos.needsUpdate = true;
+                window.dustParticles.geometry.attributes.position.needsUpdate = true;
             }
             if (window.sunFlareGroup) {
                 window.sunFlareGroup.rotation.z += delta * 0.04;
