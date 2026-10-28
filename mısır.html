@@ -763,7 +763,7 @@
                 return { hip, knee, groundContact: foot };
             }
 
-            return {
+            const char = {
                 root,
                 hips,
                 torso,
@@ -775,6 +775,8 @@
                 aiWait: 0,
                 zoneBounds: { minX: -95, maxX: 22, minZ: -115, maxZ: 95 }
             };
+            window.EgyptCharacterEngine.keepCharacterFeetOnGround(char);
+            return char;
         }
 
         function animateVillager(char, moving, speedMag, delta, elapsed) {

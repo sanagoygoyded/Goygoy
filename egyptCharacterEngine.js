@@ -1389,7 +1389,7 @@ function buildTextures(rendererInstance) {
                 propGroup.add(handle);
             }
 
-            return {
+            const char = {
                 name,
                 role,
                 scale,
@@ -1405,6 +1405,8 @@ function buildTextures(rendererInstance) {
                 aiTarget: new THREE.Vector3(),
                 aiTimer: Math.random() * 3
             };
+            keepCharacterFeetOnGround(char);
+            return char;
         }
 
         function keepCharacterFeetOnGround(char) {
@@ -2057,6 +2059,7 @@ function buildTextures(rendererInstance) {
                 aiTarget: new THREE.Vector3(),
                 aiTimer: Math.random() * 3
             };
+            keepCharacterFeetOnGround(charObj);
             return charObj;
         }
 

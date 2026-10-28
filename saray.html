@@ -610,7 +610,7 @@
                 return { hip, knee, groundContact: foot };
             }
 
-            return {
+            const char = {
                 root,
                 hips,
                 torso,
@@ -621,6 +621,8 @@
                 patrolStartZ: 0,
                 patrolDist: 0
             };
+            window.EgyptCharacterEngine.keepCharacterFeetOnGround(char);
+            return char;
         }
 
         function animateCharacter(char, moving, speedMag, delta, elapsed) {

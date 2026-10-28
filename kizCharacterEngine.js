@@ -2142,7 +2142,7 @@
                 spine.add(wings);
             }
 
-            return {
+            const char = {
                 name,
                 desc,
                 role,
@@ -2165,6 +2165,8 @@
                 aiTarget: new THREE.Vector3(),
                 aiTimer: Math.random() * 3
             };
+            keepCharacterFeetAboveGround(char);
+            return char;
         }
 
         // ==========================================
