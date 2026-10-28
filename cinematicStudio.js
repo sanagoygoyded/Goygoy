@@ -295,6 +295,7 @@
             this.lastRecordedFileName = '';
             this.ffmpegPromise = null;
             this.isPreparingRecording = false;
+            this.hiddenRecordingElements = new Map();
 
             // DOM Referansları
             this.dom = {};
@@ -1039,6 +1040,12 @@
             // İsteğe bağlı canvas video kaydını başlat
             if (recordVideo) {
                 this.startCanvasRecording();
+                if (this.isRecording) {
+                    this.hideRecordingInterface();
+                } else if (this.dom.exitBtnContainer) {
+                    this.dom.exitBtnContainer.style.display = 'none';
+                    this.showGameHUD();
+                }
             }
             if (!this.isRecording && this.dom.recBanner) this.dom.recBanner.style.display = 'none';
 
@@ -1084,7 +1091,7 @@
                 if (this.dom.exitBtnContainer) this.dom.exitBtnContainer.style.display = 'none';
                 return;
             }
-            if (window.GameHUD) window.GameHUD.showToast('Serbest kayıt başladı · En fazla 60 saniye. Durdurmak için [ESC] veya sağ üstteki düğmeyi kullan.', 'gold');
+            this.hideRecordingInterface();
         }
 
         applyFormatOverlay() {
@@ -1121,6 +1128,50 @@
                 const joy = document.getElementById('joystick-zone');
                 if (joy) joy.style.display = 'flex';
             }
+        }
+
+        hideRecordingInterface() {
+            const sourceCanvas = (window.renderer && window.renderer.domElement)
+                || document.querySelector('body > canvas');
+            const preservedElements = new Set();
+            [sourceCanvas, this.dom.exitBtnContainer].forEach(element => {
+                for (let current = element; current && current !== document.body; current = current.parentElement) {
+                    preservedElements.add(current);
+                }
+            });
+            if (this.dom.exitBtnContainer) {
+                this.dom.exitBtnContainer.querySelectorAll('*').forEach(element => preservedElements.add(element));
+            }
+
+            document.body.querySelectorAll('*').forEach(element => {
+                if (preservedElements.has(element) || this.hiddenRecordingElements.has(element)) return;
+                const style = element.style;
+                this.hiddenRecordingElements.set(element, {
+                    visibility: style.getPropertyValue('visibility'),
+                    visibilityPriority: style.getPropertyPriority('visibility'),
+                    pointerEvents: style.getPropertyValue('pointer-events'),
+                    pointerEventsPriority: style.getPropertyPriority('pointer-events')
+                });
+                style.setProperty('visibility', 'hidden', 'important');
+                style.setProperty('pointer-events', 'none', 'important');
+            });
+        }
+
+        restoreRecordingInterface() {
+            this.hiddenRecordingElements.forEach((previousStyle, element) => {
+                if (!element.isConnected) return;
+                if (previousStyle.visibility) {
+                    element.style.setProperty('visibility', previousStyle.visibility, previousStyle.visibilityPriority);
+                } else {
+                    element.style.removeProperty('visibility');
+                }
+                if (previousStyle.pointerEvents) {
+                    element.style.setProperty('pointer-events', previousStyle.pointerEvents, previousStyle.pointerEventsPriority);
+                } else {
+                    element.style.removeProperty('pointer-events');
+                }
+            });
+            this.hiddenRecordingElements.clear();
         }
 
         // =====================================================================
@@ -1250,7 +1301,7 @@
 
                     const titleText = this.dom.mainTitle && this.dom.mainTitle.textContent.trim();
                     const subtitleText = this.dom.subTitle && this.dom.subTitle.textContent.trim();
-                    if (this.showTitles && (titleText || subtitleText)) {
+                    if (!this.isGameplayRecording && this.showTitles && (titleText || subtitleText)) {
                         const baseY = outputCanvas.height * (aspect < 1 ? 0.72 : 0.82);
                         outputContext.textAlign = 'center';
                         outputContext.shadowColor = '#000000';
@@ -1433,6 +1484,7 @@
             if (this.dom.lensFlare) this.dom.lensFlare.style.opacity = '0';
             if (this.dom.cutFlash) this.dom.cutFlash.style.opacity = '0';
 
+            this.restoreRecordingInterface();
             this.showGameHUD();
 
             if (window.GameHUD) {

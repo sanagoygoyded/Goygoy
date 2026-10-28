@@ -1407,8 +1407,9 @@ function buildTextures(rendererInstance) {
             };
         }
 
-        function keepNpcFeetOnGround(char) {
-            if (!char || char === window.player || !char.root || !char.pelvis || !char.legs) return;
+        function keepCharacterFeetOnGround(char) {
+            if (!char || !char.root || !char.pelvis || !char.legs) return;
+            if (char === window.player && window.EgyptCollisionEngine && !window.EgyptCollisionEngine.isGrounded) return;
 
             let lowestFootY = Infinity;
             for (const side of ['left', 'right']) {
@@ -1439,7 +1440,10 @@ function buildTextures(rendererInstance) {
             if (!Number.isFinite(lowestFootY)) return;
             char.root.getWorldPosition(groundProbePosition);
             char.root.getWorldScale(groundProbeScale);
-            char.pelvis.position.y += (groundProbePosition.y - lowestFootY) / (groundProbeScale.y || 1);
+            const penetration = groundProbePosition.y - lowestFootY;
+            if (penetration > 0.001) {
+                char.pelvis.position.y += penetration / (Math.abs(groundProbeScale.y) || 1);
+            }
         }
 
         function animateFemaleCharacter(char, isWalking, speedRatio, delta, elapsed) {
@@ -1523,7 +1527,7 @@ function buildTextures(rendererInstance) {
                 legs.left.knee.rotation.x = THREE.MathUtils.lerp(legs.left.knee.rotation.x, 0, 0.15);
                 legs.right.knee.rotation.x = THREE.MathUtils.lerp(legs.right.knee.rotation.x, 0, 0.15);
             }
-            keepNpcFeetOnGround(char);
+            keepCharacterFeetOnGround(char);
             if (wings) {
                 const flap = Math.sin(elapsed * (isWalking ? 3.2 : 1.5) + phase) * (isWalking ? 0.16 : 0.06);
                 wings.left.rotation.y = -flap;
@@ -2141,67 +2145,7 @@ function buildTextures(rendererInstance) {
                 char.elbowR = THREE.MathUtils.lerp(char.elbowR, -0.35, 0.15);
                 arms.right.continuousArm.updateBend(char.elbowR);
             } else if (char.isGathering) {
-                // ULTRA GERÇEKÇİ İNSANSI HASAT VE MADENCİLİK ANİMASYONLARI
-                const gType = char.gatherType || 'harvest';
-                const gCycle = (elapsed * 5.2) % (Math.PI * 2);
-                const gPhase = Math.sin(gCycle);
-
-                if (gType === 'mine') {
-                    // Madencilik: Kazmayı havaya kaldırıp sertçe kayaya indirme vuruş döngüsü
-                    const isStrikeDown = gPhase < -0.2;
-                    pelvis.position.y = THREE.MathUtils.lerp(pelvis.position.y, isStrikeDown ? 0.82 : 0.96, 0.22);
-                    pelvis.rotation.y = THREE.MathUtils.lerp(pelvis.rotation.y, isStrikeDown ? 0.12 : -0.15, 0.2);
-
-                    spine.rotation.x = THREE.MathUtils.lerp(spine.rotation.x, isStrikeDown ? 0.45 : -0.22, 0.26);
-                    head.rotation.x = THREE.MathUtils.lerp(head.rotation.x, isStrikeDown ? 0.42 : -0.1, 0.22);
-
-                    // Kazmayı iki elle kavrayıp indirme
-                    const armStrikeX = isStrikeDown ? -1.85 : 0.85;
-                    arms.right.shoulder.rotation.x = THREE.MathUtils.lerp(arms.right.shoulder.rotation.x, armStrikeX, 0.32);
-                    arms.right.shoulder.rotation.z = THREE.MathUtils.lerp(arms.right.shoulder.rotation.z, 0.25, 0.2);
-                    char.elbowR = isStrikeDown ? -0.35 : -1.25;
-                    arms.right.continuousArm.updateBend(char.elbowR);
-
-                    arms.left.shoulder.rotation.x = THREE.MathUtils.lerp(arms.left.shoulder.rotation.x, armStrikeX * 0.9, 0.32);
-                    arms.left.shoulder.rotation.z = THREE.MathUtils.lerp(arms.left.shoulder.rotation.z, -0.25, 0.2);
-                    char.elbowL = isStrikeDown ? -0.35 : -1.25;
-                    arms.left.continuousArm.updateBend(char.elbowL);
-
-                    // Bacaklar dengeli duruşta dizler bükük
-                    legs.left.hip.rotation.x = THREE.MathUtils.lerp(legs.left.hip.rotation.x, 0.25, 0.2);
-                    legs.right.hip.rotation.x = THREE.MathUtils.lerp(legs.right.hip.rotation.x, -0.25, 0.2);
-                    char.kneeL = isStrikeDown ? 0.42 : 0.2;
-                    char.kneeR = isStrikeDown ? 0.38 : 0.18;
-                    legs.left.continuousLeg.updateBend(char.kneeL);
-                    legs.right.continuousLeg.updateBend(char.kneeR);
-                } else {
-                    // Nil Buğdayı ve Papirüs Hasadı: Öne eğilip orakla biçme ve sol elle başak toplama
-                    pelvis.position.y = THREE.MathUtils.lerp(pelvis.position.y, isNpc ? 0.86 : 0.70, 0.18); // Diz çökme / eğilme
-                    spine.rotation.x = THREE.MathUtils.lerp(spine.rotation.x, 0.58, 0.2);  // Gövde öne eğik
-                    spine.rotation.y = THREE.MathUtils.lerp(spine.rotation.y, gPhase * 0.18, 0.18);
-                    head.rotation.x = THREE.MathUtils.lerp(head.rotation.x, 0.52, 0.2);   // Yere / buğdaya odaklanma
-
-                    // Sağ Kol: Orakla biçme salınımı (Reaping Sweep)
-                    const reapSweep = Math.sin(gCycle);
-                    arms.right.shoulder.rotation.x = -0.75 + reapSweep * 0.48;
-                    arms.right.shoulder.rotation.z = 0.32 + reapSweep * 0.22;
-                    char.elbowR = -0.65 + reapSweep * 0.35;
-                    arms.right.continuousArm.updateBend(char.elbowR);
-
-                    // Sol Kol: Buğday demetini tutma
-                    arms.left.shoulder.rotation.x = -0.82;
-                    arms.left.shoulder.rotation.z = -0.28;
-                    char.elbowL = -0.85;
-                    arms.left.continuousArm.updateBend(char.elbowL);
-
-                    // Bacaklar: Derin çömelme
-                    legs.left.hip.rotation.x = isNpc ? 0.24 : 0.58;
-                    legs.right.hip.rotation.x = isNpc ? 0.18 : 0.42;
-                    char.kneeL = isNpc ? 0.32 : 0.72;
-                    char.kneeR = isNpc ? 0.28 : 0.65;
-                    legs.left.continuousLeg.updateBend(char.kneeL);
-                    legs.right.continuousLeg.updateBend(char.kneeR);
-                }
+                // The shared action animator applies the same timed harvest and mining poses to every rig.
             } else {
                 // Nefes Alma & Dinlenme (Idle)
                 const breath = Math.sin(elapsed * 2.1 + char.phase);
@@ -2261,70 +2205,8 @@ function buildTextures(rendererInstance) {
                 char.hitStagger = Math.max(0, char.hitStagger - delta * 3.8);
             }
 
-            // ==========================================
-            // SAVAŞ SALDIRI KOMBOSU ANİMASYONLARI (3 AŞAMALI SİLAH SAVURMA)
-            // ==========================================
-            if (char.isAttacking) {
-                char.attackProgress = (char.attackProgress || 0) + delta * 3.8;
-                if (char.attackProgress >= 1.0) {
-                    char.isAttacking = false;
-                    char.attackProgress = 0;
-                } else {
-                    const prog = char.attackProgress;
-                    const combo = char.attackCombo || 1;
-
-                    if (combo === 1) {
-                        // 1. KOMBO: Yatay Kılıç/Asa Savurması (Geniş Altın Kavis)
-                        if (prog < 0.28) {
-                            const t = prog / 0.28;
-                            arms.right.shoulder.rotation.x = THREE.MathUtils.lerp(arms.right.shoulder.rotation.x, -0.45, t);
-                            arms.right.shoulder.rotation.y = THREE.MathUtils.lerp(0, -0.85, t);
-                            arms.right.shoulder.rotation.z = THREE.MathUtils.lerp(arms.right.shoulder.rotation.z, 0.65, t);
-                            char.elbowR = -0.55;
-                            spine.rotation.y = THREE.MathUtils.lerp(spine.rotation.y, -0.25, t);
-                        } else {
-                            const t = (prog - 0.28) / 0.72;
-                            arms.right.shoulder.rotation.x = THREE.MathUtils.lerp(-0.45, -1.25, Math.sin(t * Math.PI * 0.5));
-                            arms.right.shoulder.rotation.y = THREE.MathUtils.lerp(-0.85, 1.15, Math.sin(t * Math.PI * 0.5));
-                            arms.right.shoulder.rotation.z = THREE.MathUtils.lerp(0.65, 0.15, t);
-                            char.elbowR = THREE.MathUtils.lerp(-0.55, -0.15, t);
-                            spine.rotation.y = THREE.MathUtils.lerp(-0.25, 0.40, t);
-                        }
-                    } else if (combo === 2) {
-                        // 2. KOMBO: Çapraz Yükselen Kılıç Vuruşu
-                        if (prog < 0.25) {
-                            const t = prog / 0.25;
-                            arms.right.shoulder.rotation.x = THREE.MathUtils.lerp(arms.right.shoulder.rotation.x, 0.35, t);
-                            arms.right.shoulder.rotation.z = THREE.MathUtils.lerp(arms.right.shoulder.rotation.z, 0.45, t);
-                            char.elbowR = -0.42;
-                            spine.rotation.x = THREE.MathUtils.lerp(spine.rotation.x, 0.12, t);
-                        } else {
-                            const t = (prog - 0.25) / 0.75;
-                            arms.right.shoulder.rotation.x = THREE.MathUtils.lerp(0.35, -1.75, Math.sin(t * Math.PI * 0.5));
-                            arms.right.shoulder.rotation.z = THREE.MathUtils.lerp(0.45, -0.32, t);
-                            char.elbowR = -0.25;
-                            spine.rotation.x = THREE.MathUtils.lerp(0.12, -0.18, t);
-                            spine.rotation.y = THREE.MathUtils.lerp(0, 0.32, t);
-                        }
-                    } else {
-                        // 3. KOMBO: Tepeden Ağır İlahi İndiriş (Devastating Overhead Cleave)
-                        if (prog < 0.32) {
-                            const t = prog / 0.32;
-                            arms.right.shoulder.rotation.x = THREE.MathUtils.lerp(arms.right.shoulder.rotation.x, -2.45, t);
-                            arms.right.shoulder.rotation.z = THREE.MathUtils.lerp(arms.right.shoulder.rotation.z, 0.22, t);
-                            char.elbowR = -0.75;
-                            spine.rotation.x = THREE.MathUtils.lerp(spine.rotation.x, -0.22, t);
-                        } else {
-                            const t = (prog - 0.32) / 0.68;
-                            arms.right.shoulder.rotation.x = THREE.MathUtils.lerp(-2.45, -0.55, Math.sin(t * Math.PI * 0.5));
-                            arms.right.shoulder.rotation.z = 0.12;
-                            char.elbowR = -0.10;
-                            spine.rotation.x = THREE.MathUtils.lerp(-0.22, 0.38, t);
-                            pelvis.position.y -= Math.sin(t * Math.PI) * 0.06;
-                        }
-                    }
-                    arms.right.continuousArm.updateBend(char.elbowR);
-                }
+            if (window.EgyptCharacterEngine && window.EgyptCharacterEngine.applyActionAnimation) {
+                window.EgyptCharacterEngine.applyActionAnimation(char, delta, elapsed);
             }
 
             // Biyomekanik Altın Kanatlar (Horus / Set)
@@ -2343,7 +2225,7 @@ function buildTextures(rendererInstance) {
                 wings.leftOuter.rotation.z = THREE.MathUtils.lerp(wings.leftOuter.rotation.z, -outerSpreadZ, 0.12);
                 wings.rightOuter.rotation.z = THREE.MathUtils.lerp(wings.rightOuter.rotation.z, outerSpreadZ, 0.12);
             }
-            keepNpcFeetOnGround(char);
+            keepCharacterFeetOnGround(char);
         }
 
         // ==========================================

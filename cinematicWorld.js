@@ -366,7 +366,8 @@
         const baseColor = profile.surfaces[kind] || (kind === 'sand' ? [239, 222, 194]
             : kind === 'cloth' ? [234, 224, 204]
                 : kind === 'organic' ? [218, 226, 194]
-                    : kind === 'metal' ? [238, 230, 207] : [222, 217, 207]);
+                    : kind === 'metal' ? [238, 230, 207]
+                        : kind === 'skin' ? [218, 183, 157] : [222, 217, 207]);
         for (let y = 0; y < size; y++) {
             for (let x = 0; x < size; x++) {
                 const u = x / size;
@@ -391,14 +392,19 @@
                     detail = grain * 0.4 + fibers;
                 } else if (kind === 'stone') {
                     const fissure = Math.pow(Math.max(0, 0.18 - Math.abs(medium + broad * 0.28)), 2);
-                    detail = grain * 0.55 - fissure * 0.7;
+                    const toolMarks = Math.sin(tau * (u * 54 + v * 0.16 + medium * 0.035));
+                    detail = grain * 0.55 - fissure * 0.7 + toolMarks * 0.025;
+                } else if (kind === 'skin') {
+                    const pores = Math.sin(tau * (u * 192 + fine * 0.1))
+                        * Math.sin(tau * (v * 184 + medium * 0.08));
+                    detail = grain * 0.22 + pores * 0.018;
                 }
 
                 const index = y * size + x;
                 heights[index] = Math.max(0, Math.min(255, Math.round(128 + detail * 72)));
                 const roughBase = kind === 'metal' ? 148
                     : kind === 'cloth' ? 228
-                        : kind === 'organic' ? 198 : kind === 'sand' ? 232 : 216;
+                        : kind === 'organic' ? 198 : kind === 'sand' ? 232 : kind === 'skin' ? 194 : 216;
                 roughness[index] = Math.max(0, Math.min(255, Math.round(roughBase + grain * 34)));
                 const albedoOffset = index * 4;
                 const colorVariation = detail * 27;
@@ -471,7 +477,8 @@
         return {
             map: createTexture(albedo, true),
             normalMap,
-            roughnessMap: createTexture(roughness)
+            roughnessMap: createTexture(roughness),
+            bumpMap: createTexture(heights)
         };
     }
 
@@ -480,6 +487,9 @@
         const color = material.color;
         if (!color) return 'stone';
         const hsl = color.getHSL({ h: 0, s: 0, l: 0 });
+        if (hsl.h >= 0.015 && hsl.h <= 0.12 && hsl.s >= 0.18 && hsl.s <= 0.72 && hsl.l >= 0.28 && hsl.l <= 0.78) {
+            return 'skin';
+        }
         if (hsl.h > 0.19 && hsl.h < 0.43 && hsl.s > 0.14) return 'organic';
         if (hsl.s > 0.36 && (hsl.h < 0.72 || hsl.h > 0.88)) return 'cloth';
         if (hsl.l > 0.53 && (hsl.h < 0.16 || hsl.h > 0.88)) return 'sand';
@@ -520,6 +530,13 @@
                 if (!material.map) material.map = maps.map;
                 if (!material.normalMap) material.normalMap = maps.normalMap;
                 if (!material.roughnessMap) material.roughnessMap = maps.roughnessMap;
+                if (!material.bumpMap) {
+                    material.bumpMap = maps.bumpMap;
+                    material.bumpScale = kind === 'skin' ? 0.0015
+                        : kind === 'sand' ? 0.012
+                            : kind === 'metal' ? 0.004
+                                : kind === 'cloth' ? 0.006 : 0.009;
+                }
                 if (!material.normalScale) material.normalScale = new THREE.Vector2(0.13, 0.13);
                 else material.normalScale.multiplyScalar(0.82);
                 material.needsUpdate = true;

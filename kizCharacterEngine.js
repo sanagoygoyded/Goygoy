@@ -2263,6 +2263,8 @@
                 arms.right.continuousArm.updateBend(char.elbowR);
             }
 
+            applyActionAnimation(char, delta, elapsed);
+
             // HER KAREDE ETEK KUMAŞ FİZİĞİNİ VE BACAK ÇARPIŞMA ÖNLEYİCİSİNİ ÇALIŞTIR
             if (char.updateSkirtClothPhysics) {
                 char.updateSkirtClothPhysics(
@@ -2289,6 +2291,194 @@
                 wings.leftOuter.rotation.z = THREE.MathUtils.lerp(wings.leftOuter.rotation.z, -outerSpreadZ, 0.1);
                 wings.rightOuter.rotation.z = THREE.MathUtils.lerp(wings.rightOuter.rotation.z, outerSpreadZ, 0.1);
             }
+        }
+
+        function applyActionAnimation(char, delta, elapsed) {
+            if (!char || !char.pelvis || !char.spine || !char.arms || !char.legs) return;
+            const { pelvis, spine, head, arms, legs } = char;
+            const blend = 1 - Math.exp(-delta * 16);
+            const ease = value => {
+                const t = THREE.MathUtils.clamp(value, 0, 1);
+                return t * t * (3 - 2 * t);
+            };
+            const sample = (frames, time) => {
+                for (let i = 1; i < frames.length; i++) {
+                    if (time <= frames[i][0]) {
+                        const [startTime, startValue] = frames[i - 1];
+                        const [endTime, endValue] = frames[i];
+                        const t = ease((time - startTime) / (endTime - startTime));
+                        return startValue + (endValue - startValue) * t;
+                    }
+                }
+                return frames[frames.length - 1][1];
+            };
+            const setRotation = (node, axis, target) => {
+                node.rotation[axis] = THREE.MathUtils.lerp(node.rotation[axis], target, blend);
+            };
+            const setBend = (limb, value) => {
+                limb.updateBend(value);
+            };
+            const pose = (time, tracks) => {
+                pelvis.position.y = THREE.MathUtils.lerp(pelvis.position.y, sample(tracks.pelvisY, time), blend);
+                setRotation(pelvis, 'x', sample(tracks.pelvisX, time));
+                setRotation(pelvis, 'y', sample(tracks.pelvisZ, time));
+                setRotation(pelvis, 'z', sample(tracks.pelvisRoll, time));
+                setRotation(spine, 'x', sample(tracks.spineX, time));
+                setRotation(spine, 'y', sample(tracks.spineY, time));
+                setRotation(spine, 'z', sample(tracks.spineRoll, time));
+                if (head) {
+                    setRotation(head, 'x', sample(tracks.headX, time));
+                    setRotation(head, 'y', sample(tracks.headY, time));
+                }
+                setRotation(arms.right.shoulder, 'x', sample(tracks.rightX, time));
+                setRotation(arms.right.shoulder, 'y', sample(tracks.rightY, time));
+                setRotation(arms.right.shoulder, 'z', sample(tracks.rightZ, time));
+                char.elbowR = THREE.MathUtils.lerp(char.elbowR, sample(tracks.rightElbow, time), blend);
+                setBend(arms.right.continuousArm, char.elbowR);
+                setRotation(arms.left.shoulder, 'x', sample(tracks.leftX, time));
+                setRotation(arms.left.shoulder, 'y', sample(tracks.leftY, time));
+                setRotation(arms.left.shoulder, 'z', sample(tracks.leftZ, time));
+                char.elbowL = THREE.MathUtils.lerp(char.elbowL, sample(tracks.leftElbow, time), blend);
+                setBend(arms.left.continuousArm, char.elbowL);
+                setRotation(legs.left.hip, 'x', sample(tracks.hipL, time));
+                setRotation(legs.right.hip, 'x', sample(tracks.hipR, time));
+                char.kneeL = THREE.MathUtils.lerp(char.kneeL, sample(tracks.kneeL, time), blend);
+                char.kneeR = THREE.MathUtils.lerp(char.kneeR, sample(tracks.kneeR, time), blend);
+                setBend(legs.left.continuousLeg, char.kneeL);
+                setBend(legs.right.continuousLeg, char.kneeR);
+            };
+            const frames = values => values.map((value, index) => [index / (values.length - 1), value]);
+
+            if (char.isAttacking) {
+                const duration = 0.72;
+                char.attackProgress = (char.attackProgress || 0) + delta / duration;
+                const time = Math.min(1, char.attackProgress);
+                const combo = char.attackCombo || 1;
+                const attackTracks = combo === 2 ? {
+                    pelvisY: frames([0.94, 0.91, 0.88, 0.91, 0.94]),
+                    pelvisX: frames([0, 0, 0, 0, 0]),
+                    pelvisZ: frames([0, -0.12, 0.10, 0.06, 0]),
+                    pelvisRoll: frames([0, -0.025, 0.04, 0.015, 0]),
+                    spineX: frames([0, -0.10, 0.24, 0.10, 0]),
+                    spineY: frames([0, -0.18, 0.22, 0.10, 0]),
+                    spineRoll: frames([0, 0.025, -0.02, 0, 0]),
+                    headX: frames([0, -0.12, 0.08, 0.04, 0]),
+                    headY: frames([0, -0.08, 0.08, 0.04, 0]),
+                    rightX: frames([-0.08, -1.95, -0.45, -0.18, -0.08]),
+                    rightY: frames([0, -0.22, 0.48, 0.22, 0]),
+                    rightZ: frames([0.12, 0.28, -0.26, -0.10, 0.12]),
+                    rightElbow: frames([-0.24, -0.82, -0.28, -0.18, -0.24]),
+                    leftX: frames([0.02, -0.18, -0.22, -0.08, 0.02]),
+                    leftY: frames([0, 0.04, -0.04, 0, 0]),
+                    leftZ: frames([-0.09, -0.22, -0.18, -0.12, -0.09]),
+                    leftElbow: frames([-0.20, -0.38, -0.42, -0.28, -0.20]),
+                    hipL: frames([-0.03, -0.16, 0.08, 0.02, -0.03]),
+                    hipR: frames([0.03, 0.10, -0.12, -0.02, 0.03]),
+                    kneeL: frames([0.05, 0.18, 0.12, 0.08, 0.05]),
+                    kneeR: frames([0.05, 0.12, 0.18, 0.08, 0.05])
+                } : combo === 3 ? {
+                    pelvisY: frames([0.94, 0.90, 0.84, 0.90, 0.94]),
+                    pelvisX: frames([0, 0, 0, 0, 0]),
+                    pelvisZ: frames([0, -0.10, 0.16, 0.06, 0]),
+                    pelvisRoll: frames([0, 0.02, -0.035, -0.01, 0]),
+                    spineX: frames([0, -0.16, 0.32, 0.12, 0]),
+                    spineY: frames([0, -0.22, 0.32, 0.14, 0]),
+                    spineRoll: frames([0, 0.03, -0.04, -0.01, 0]),
+                    headX: frames([0, -0.18, 0.14, 0.05, 0]),
+                    headY: frames([0, -0.1, 0.12, 0.04, 0]),
+                    rightX: frames([-0.08, -0.55, -1.72, -0.55, -0.08]),
+                    rightY: frames([0, -0.18, 0.25, 0.14, 0]),
+                    rightZ: frames([0.12, 0.48, -0.18, 0.08, 0.12]),
+                    rightElbow: frames([-0.24, -0.70, -0.18, -0.16, -0.24]),
+                    leftX: frames([0.02, -0.12, -0.28, -0.08, 0.02]),
+                    leftY: frames([0, 0.04, -0.06, 0, 0]),
+                    leftZ: frames([-0.09, -0.22, -0.18, -0.12, -0.09]),
+                    leftElbow: frames([-0.20, -0.36, -0.45, -0.28, -0.20]),
+                    hipL: frames([-0.03, -0.16, 0.12, 0.02, -0.03]),
+                    hipR: frames([0.03, 0.12, -0.18, -0.02, 0.03]),
+                    kneeL: frames([0.05, 0.18, 0.14, 0.08, 0.05]),
+                    kneeR: frames([0.05, 0.12, 0.20, 0.08, 0.05])
+                } : {
+                    pelvisY: frames([0.94, 0.91, 0.88, 0.92, 0.94]),
+                    pelvisX: frames([0, 0, 0, 0, 0]),
+                    pelvisZ: frames([0, -0.12, 0.12, 0.05, 0]),
+                    pelvisRoll: frames([0, 0.02, -0.025, -0.01, 0]),
+                    spineX: frames([0, -0.12, 0.20, 0.06, 0]),
+                    spineY: frames([0, -0.28, 0.32, 0.12, 0]),
+                    spineRoll: frames([0, 0.025, -0.025, -0.01, 0]),
+                    headX: frames([0, -0.12, 0.08, 0.02, 0]),
+                    headY: frames([0, -0.10, 0.12, 0.04, 0]),
+                    rightX: frames([-0.08, -0.62, -1.28, -0.48, -0.08]),
+                    rightY: frames([0, -0.95, 0.82, 0.32, 0]),
+                    rightZ: frames([0.12, 0.58, 0.18, 0.08, 0.12]),
+                    rightElbow: frames([-0.24, -0.72, -0.35, -0.20, -0.24]),
+                    leftX: frames([0.02, -0.12, -0.24, -0.08, 0.02]),
+                    leftY: frames([0, 0.04, -0.08, 0, 0]),
+                    leftZ: frames([-0.09, -0.24, -0.18, -0.12, -0.09]),
+                    leftElbow: frames([-0.20, -0.38, -0.44, -0.28, -0.20]),
+                    hipL: frames([-0.03, -0.14, 0.10, 0.02, -0.03]),
+                    hipR: frames([0.03, 0.10, -0.14, -0.02, 0.03]),
+                    kneeL: frames([0.05, 0.16, 0.12, 0.08, 0.05]),
+                    kneeR: frames([0.05, 0.12, 0.16, 0.08, 0.05])
+                };
+                pose(time, attackTracks);
+                if (char.attackProgress >= 1) {
+                    char.isAttacking = false;
+                    char.attackProgress = 0;
+                }
+                return;
+            }
+
+            if (!char.isGathering) return;
+            char.gatherCycle = (char.gatherCycle || 0) + delta / (char.gatherType === 'mine' ? 1.35 : 1.55);
+            const time = char.gatherCycle % 1;
+            const harvesting = char.gatherType !== 'mine';
+            const tracks = harvesting ? {
+                pelvisY: frames([0.94, 0.88, 0.84, 0.86, 0.92, 0.94]),
+                pelvisX: frames([0, 0, 0, 0, 0, 0]),
+                pelvisZ: frames([0, -0.04, -0.08, 0.10, 0.04, 0]),
+                pelvisRoll: frames([0, 0.04, 0.02, -0.03, -0.02, 0]),
+                spineX: frames([0.02, 0.28, 0.38, 0.34, 0.16, 0.02]),
+                spineY: frames([0, -0.08, -0.18, 0.16, 0.08, 0]),
+                spineRoll: frames([0, -0.03, -0.02, 0.03, 0.02, 0]),
+                headX: frames([0, 0.18, 0.30, 0.28, 0.12, 0]),
+                headY: frames([0, -0.04, -0.12, 0.10, 0.05, 0]),
+                rightX: frames([-0.08, -0.46, -0.90, -0.72, -0.34, -0.08]),
+                rightY: frames([0, -0.10, -0.34, 0.28, 0.12, 0]),
+                rightZ: frames([0.12, 0.24, 0.38, 0.24, 0.14, 0.12]),
+                rightElbow: frames([-0.24, -0.52, -0.70, -0.58, -0.38, -0.24]),
+                leftX: frames([0.02, -0.36, -0.62, -0.82, -0.48, 0.02]),
+                leftY: frames([0, 0.04, -0.08, 0.12, 0.08, 0]),
+                leftZ: frames([-0.09, -0.16, -0.20, -0.24, -0.14, -0.09]),
+                leftElbow: frames([-0.20, -0.42, -0.58, -0.72, -0.46, -0.20]),
+                hipL: frames([-0.03, 0.08, 0.18, 0.14, 0.02, -0.03]),
+                hipR: frames([0.03, 0.14, 0.08, 0.02, -0.02, 0.03]),
+                kneeL: frames([0.05, 0.22, 0.34, 0.30, 0.12, 0.05]),
+                kneeR: frames([0.05, 0.16, 0.24, 0.28, 0.10, 0.05])
+            } : {
+                pelvisY: frames([0.94, 0.90, 0.86, 0.88, 0.94]),
+                pelvisX: frames([0, 0, 0, 0, 0]),
+                pelvisZ: frames([0, -0.05, 0.10, 0.04, 0]),
+                pelvisRoll: frames([0, 0.03, -0.03, -0.01, 0]),
+                spineX: frames([0.02, -0.16, 0.44, 0.22, 0.02]),
+                spineY: frames([0, -0.08, 0.14, 0.06, 0]),
+                spineRoll: frames([0, 0.02, -0.03, 0, 0]),
+                headX: frames([0, -0.10, 0.38, 0.16, 0]),
+                headY: frames([0, 0, 0.06, 0, 0]),
+                rightX: frames([-0.08, -1.65, -1.90, -0.50, -0.08]),
+                rightY: frames([0, -0.20, 0.12, 0.08, 0]),
+                rightZ: frames([0.12, 0.36, 0.24, 0.16, 0.12]),
+                rightElbow: frames([-0.24, -1.10, -0.42, -0.30, -0.24]),
+                leftX: frames([0.02, -1.32, -1.72, -0.44, 0.02]),
+                leftY: frames([0, 0.08, -0.08, 0, 0]),
+                leftZ: frames([-0.09, -0.28, -0.20, -0.14, -0.09]),
+                leftElbow: frames([-0.20, -1.08, -0.40, -0.30, -0.20]),
+                hipL: frames([-0.03, 0.12, 0.22, 0.12, -0.03]),
+                hipR: frames([0.03, -0.10, -0.18, -0.08, 0.03]),
+                kneeL: frames([0.05, 0.20, 0.36, 0.20, 0.05]),
+                kneeR: frames([0.05, 0.18, 0.30, 0.18, 0.05])
+            };
+            pose(time, tracks);
         }
 
         function keepCharacterFeetAboveGround(char) {
@@ -2832,12 +3022,14 @@
         window.KizCharacterEngine = {
             buildTextures,
             createCharacter: createSharedCharacter,
-            animateCharacter
+            animateCharacter,
+            applyActionAnimation
         };
 
         if (window.EgyptCharacterEngine) {
             window.EgyptCharacterEngine.createFemaleCharacter = createSharedCharacter;
             window.EgyptCharacterEngine.animateFemaleCharacter = animateCharacter;
+            window.EgyptCharacterEngine.applyActionAnimation = applyActionAnimation;
         }
 
         const isCharacterShowcase = window.location.pathname.split('/').pop() === 'kiz.html';

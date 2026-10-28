@@ -110,6 +110,7 @@
 
         performAttack() {
             if (!window.player) return;
+            if (window.player.isAttacking) return;
             const now = performance.now() / 1000;
             if (now - this.lastAttackTime < 0.22) return; // Saldırı cooldown
             this.lastAttackTime = now;
