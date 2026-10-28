@@ -1825,6 +1825,7 @@
 
             if (window.EgyptCollisionEngine) {
                 window.EgyptCollisionEngine.clearColliders();
+                window.EgyptCollisionEngine.setGroundElevation(getSolarDeckGroundHeight);
                 // Geminin Güneş Sunağı ve Direk Engelleri
                 window.EgyptCollisionEngine.addCylinderCollider(0, 2.0, 3.2); // Sun Altar
                 window.EgyptCollisionEngine.addCylinderCollider(0, -38.0, 1.8); // Bow Mast
@@ -1958,6 +1959,12 @@
         // ============================================================================
         const animDummy = new THREE.Object3D();
 
+        function getSolarDeckGroundHeight(x, z) {
+            if (z < -37.5) return 1.95;
+            if (Math.abs(x) < 5.3 && z > -5.5 && z < 9.5) return 0.85;
+            return Math.pow(Math.abs(z) / 43, 2.4) * 1.6;
+        }
+
         function animate() {
             requestAnimationFrame(animate);
             const delta = Math.min(clock.getDelta(), 0.1);
@@ -1989,9 +1996,7 @@
 
                 const walkSpeed = 8.4 * mag;
                 let nextZ = Math.max(-40.0, Math.min(39.0, player.root.position.z + dirZ * walkSpeed * delta));
-                const zn = Math.abs(nextZ) / 43.0;
                 let candX = Math.max(-maxDeckX, Math.min(maxDeckX, player.root.position.x + dirX * walkSpeed * delta));
-                const sheerY = Math.pow(zn, 2.4) * 1.6;
 
                 // Güverte Direkleri ve Sunağa Çarpışma Kontrolü
                 if (window.EgyptCollisionEngine) {
@@ -2008,14 +2013,8 @@
                     player.root.position.z = nextZ;
                 }
 
-                let groundY = sheerY;
-                if (player.root.position.z < -37.5) groundY = 1.95;
-                else if (Math.abs(player.root.position.x) < 5.3 && player.root.position.z > -5.5 && player.root.position.z < 9.5) groundY = 0.85;
-
-                if (window.EgyptCollisionEngine) {
-                    window.EgyptCollisionEngine.setGroundElevation(() => groundY);
-                } else {
-                    player.root.position.y = groundY;
+                if (!window.EgyptCollisionEngine) {
+                    player.root.position.y = getSolarDeckGroundHeight(player.root.position.x, player.root.position.z);
                 }
 
                 const targetRot = Math.atan2(dirX, dirZ);

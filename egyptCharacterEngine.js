@@ -8,7 +8,7 @@
     'use strict';
 
     let heroicPoseActive = false;
-    const groundProbeCenter = new THREE.Vector3();
+    const groundProbePoint = new THREE.Vector3();
     const groundProbePosition = new THREE.Vector3();
     const FOOT_GROUND_CLEARANCE = 0.015;
 
@@ -1415,7 +1415,9 @@ function buildTextures(rendererInstance) {
             if (char === window.player && window.EgyptCollisionEngine && !window.EgyptCollisionEngine.isGrounded) return;
             if (char === window.player && window.EgyptFlightEngine && window.EgyptFlightEngine.isFlying) return;
 
-            let lowestFootY = Infinity;
+            char.root.getWorldPosition(groundProbePosition);
+            const collisionEngine = window.EgyptCollisionEngine;
+            let lowestGroundClearance = Infinity;
             for (const side of ['left', 'right']) {
                 const contact = char.legs[side] && char.legs[side].groundContact;
                 if (!contact) continue;
@@ -1425,25 +1427,26 @@ function buildTextures(rendererInstance) {
                 if (!geometry.boundingBox) geometry.computeBoundingBox();
                 const bounds = geometry.boundingBox;
                 const matrix = contact.matrixWorld;
-                groundProbeCenter.set(
-                    (bounds.min.x + bounds.max.x) * 0.5,
-                    (bounds.min.y + bounds.max.y) * 0.5,
-                    (bounds.min.z + bounds.max.z) * 0.5
-                ).applyMatrix4(matrix);
-
-                const halfX = (bounds.max.x - bounds.min.x) * 0.5;
-                const halfY = (bounds.max.y - bounds.min.y) * 0.5;
-                const halfZ = (bounds.max.z - bounds.min.z) * 0.5;
-                const elements = matrix.elements;
-                const verticalRadius = Math.abs(elements[1]) * halfX
-                    + Math.abs(elements[5]) * halfY
-                    + Math.abs(elements[9]) * halfZ;
-                lowestFootY = Math.min(lowestFootY, groundProbeCenter.y - verticalRadius);
+                for (const x of [bounds.min.x, bounds.max.x]) {
+                    for (const y of [bounds.min.y, bounds.max.y]) {
+                        for (const z of [bounds.min.z, bounds.max.z]) {
+                            groundProbePoint.set(x, y, z).applyMatrix4(matrix);
+                            const surfaceY = collisionEngine
+                                ? collisionEngine.getSurfaceHeight(groundProbePoint.x, groundProbePoint.z)
+                                : groundProbePosition.y;
+                            if (Number.isFinite(surfaceY)) {
+                                lowestGroundClearance = Math.min(
+                                    lowestGroundClearance,
+                                    groundProbePoint.y - surfaceY
+                                );
+                            }
+                        }
+                    }
+                }
             }
 
-            if (!Number.isFinite(lowestFootY)) return;
-            char.root.getWorldPosition(groundProbePosition);
-            const lift = groundProbePosition.y + FOOT_GROUND_CLEARANCE - lowestFootY;
+            if (!Number.isFinite(lowestGroundClearance)) return;
+            const lift = FOOT_GROUND_CLEARANCE - lowestGroundClearance;
             if (lift <= 0) return;
 
             if (!pelvis.parent) return;
