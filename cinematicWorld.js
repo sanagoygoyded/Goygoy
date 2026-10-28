@@ -511,7 +511,7 @@
         return 'stone';
     }
 
-    function addSurfaceDetail(scene, skyTexture, maxAnisotropy, profile) {
+    function addSurfaceDetail(scene, skyTexture, maxAnisotropy, profile, quality) {
         const surfaceMaps = {};
         const treatedMaterials = new Set();
         const treatedTextures = new Set();
@@ -613,7 +613,7 @@
         let surfaceDetailReady = false;
         const initializeSurfaceDetail = () => {
             if (surfaceDetailReady) return;
-            addSurfaceDetail(scene, skyTexture, maxAnisotropy, profile);
+            addSurfaceDetail(scene, skyTexture, maxAnisotropy, profile, quality);
             surfaceDetailReady = true;
         };
         if (window.requestIdleCallback) {
