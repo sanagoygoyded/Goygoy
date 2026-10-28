@@ -1,6 +1,6 @@
 /**
  * Shared cinematic atmosphere for the playable Egyptian realms.
- * Procedural effects are intentionally lightweight and require no external assets.
+ * Procedural atmosphere with shared CC0 PBR surface assets.
  */
 (function(window) {
     'use strict';
@@ -169,6 +169,15 @@
             moteCount: 150
         }
     ];
+
+    const PBR_SURFACE_ASSETS = {
+        sand: { id: 'Ground054_1K-JPG', repeat: 2 },
+        sandstone: { id: 'Tiles144_1K-JPG', repeat: 2 },
+        limestone: { id: 'Tiles139_1K-JPG', repeat: 2 },
+        cloth: { id: 'Fabric086_1K-JPG', repeat: 2 },
+        metal: { id: 'Metal048A_1K-JPG', repeat: 2 }
+    };
+    const fallbackSurfaceMaps = new WeakMap();
 
     function chooseProfile() {
         const path = decodeURIComponent(window.location.pathname.toLowerCase());
@@ -496,6 +505,100 @@
         return 'stone';
     }
 
+    function loadExternalSurfaceAssets(maxAnisotropy) {
+        const loader = new THREE.TextureLoader();
+        loader.setCrossOrigin('anonymous');
+        const isPalace = /saray/.test(decodeURIComponent(window.location.pathname.toLowerCase()));
+        const surfaceKinds = {
+            sand: 'sand',
+            stone: isPalace ? 'limestone' : 'sandstone',
+            cloth: 'cloth',
+            metal: 'metal'
+        };
+        const assets = {};
+        const isMobile = window.innerWidth < 720;
+        const maxColorSize = isMobile ? 512 : 1024;
+        const maxDetailSize = 512;
+        const loadTexture = (kind, suffix, isColor = false) => new Promise(resolve => {
+            const asset = PBR_SURFACE_ASSETS[kind];
+            const url = `assets/pbr/${asset.id}_${suffix}.jpg`;
+            loader.load(url, texture => {
+                const maxSize = isColor ? maxColorSize : maxDetailSize;
+                const image = texture.image;
+                if (Math.max(image.width, image.height) > maxSize) {
+                    const ratio = maxSize / Math.max(image.width, image.height);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.max(1, Math.round(image.width * ratio));
+                    canvas.height = Math.max(1, Math.round(image.height * ratio));
+                    const context = canvas.getContext('2d');
+                    if (!context) {
+                        console.error(`PBR ${kind} ${suffix} texture could not be resized: 2D context unavailable.`);
+                        texture.dispose();
+                        resolve(null);
+                        return;
+                    }
+                    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                    texture.image = canvas;
+                    texture.needsUpdate = true;
+                }
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(asset.repeat, asset.repeat);
+                texture.anisotropy = maxAnisotropy;
+                texture.generateMipmaps = true;
+                texture.minFilter = THREE.LinearMipmapLinearFilter;
+                texture.magFilter = THREE.LinearFilter;
+                if (isColor && THREE.sRGBEncoding !== undefined) texture.encoding = THREE.sRGBEncoding;
+                resolve(texture);
+            }, undefined, error => {
+                console.error(`CC0 PBR asset failed to load (${url}):`, error);
+                resolve(null);
+            });
+        });
+
+        return Promise.all(Object.entries(surfaceKinds).map(async ([surfaceKind, assetKind]) => {
+            const asset = PBR_SURFACE_ASSETS[assetKind];
+            const suffixes = [
+                ['map', 'Color', true],
+                ['normalMap', 'NormalGL', false],
+                ['roughnessMap', 'Roughness', false],
+                ['bumpMap', 'Displacement', false]
+            ];
+            if (assetKind === 'metal') suffixes.push(['metalnessMap', 'Metalness', false]);
+            const maps = await Promise.all(suffixes.map(([mapName, suffix, isColor]) =>
+                loadTexture(assetKind, suffix, isColor)
+            ));
+            assets[surfaceKind] = Object.fromEntries(
+                suffixes.map(([mapName], index) => [mapName, maps[index]]).filter(([, texture]) => texture)
+            );
+        })).then(() => assets);
+    }
+
+    function applyExternalSurfaceAssets(scene, assets) {
+        scene.traverse(object => {
+            if (!object.isMesh || !object.material) return;
+            const materials = Array.isArray(object.material) ? object.material : [object.material];
+            for (const material of materials) {
+                if (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial) continue;
+                const surfaceKind = material.userData && material.userData.cinematicSurfaceKind;
+                const assetMaps = surfaceKind && assets[surfaceKind];
+                if (!assetMaps) continue;
+                const fallbackMaps = fallbackSurfaceMaps.get(material);
+                for (const mapName of ['map', 'normalMap', 'roughnessMap', 'bumpMap', 'metalnessMap']) {
+                    const texture = assetMaps[mapName];
+                    if (!texture) continue;
+                    const isFallback = fallbackMaps && material[mapName] === fallbackMaps[mapName];
+                    if (!material[mapName] || isFallback) material[mapName] = texture;
+                }
+                if (surfaceKind === 'sand') material.bumpScale = 0.018;
+                else if (surfaceKind === 'cloth') material.bumpScale = 0.006;
+                else if (surfaceKind === 'metal') material.bumpScale = 0.002;
+                else material.bumpScale = 0.012;
+                material.needsUpdate = true;
+            }
+        });
+    }
+
     function addSurfaceDetail(scene, skyTexture, maxAnisotropy, profile) {
         const surfaceMaps = {};
         const treatedMaterials = new Set();
@@ -527,16 +630,20 @@
                 }
                 const kind = getSurfaceKind(material);
                 const maps = surfaceMaps[kind] || (surfaceMaps[kind] = createSurfaceMaps(kind, maxAnisotropy, profile));
-                if (!material.map) material.map = maps.map;
-                if (!material.normalMap) material.normalMap = maps.normalMap;
-                if (!material.roughnessMap) material.roughnessMap = maps.roughnessMap;
+                const fallbackMaps = {};
+                if (!material.map) material.map = fallbackMaps.map = maps.map;
+                if (!material.normalMap) material.normalMap = fallbackMaps.normalMap = maps.normalMap;
+                if (!material.roughnessMap) material.roughnessMap = fallbackMaps.roughnessMap = maps.roughnessMap;
                 if (!material.bumpMap) {
-                    material.bumpMap = maps.bumpMap;
+                    material.bumpMap = fallbackMaps.bumpMap = maps.bumpMap;
                     material.bumpScale = kind === 'skin' ? 0.0015
                         : kind === 'sand' ? 0.012
                             : kind === 'metal' ? 0.004
                                 : kind === 'cloth' ? 0.006 : 0.009;
                 }
+                if (!material.userData) material.userData = {};
+                material.userData.cinematicSurfaceKind = kind;
+                fallbackSurfaceMaps.set(material, fallbackMaps);
                 if (!material.normalScale) material.normalScale = new THREE.Vector2(0.13, 0.13);
                 else material.normalScale.multiplyScalar(0.82);
                 material.needsUpdate = true;
@@ -595,10 +702,16 @@
         const render = renderer.render.bind(renderer);
         let lastFrameTime = 0;
         let surfaceDetailReady = false;
+        let externalSurfaceAssets = null;
+        loadExternalSurfaceAssets(maxAnisotropy).then(assets => {
+            externalSurfaceAssets = assets;
+            if (surfaceDetailReady) applyExternalSurfaceAssets(scene, assets);
+        });
         const initializeSurfaceDetail = () => {
             if (surfaceDetailReady) return;
             addSurfaceDetail(scene, skyTexture, maxAnisotropy, profile);
             surfaceDetailReady = true;
+            if (externalSurfaceAssets) applyExternalSurfaceAssets(scene, externalSurfaceAssets);
         };
         if (window.requestIdleCallback) {
             window.requestIdleCallback(initializeSurfaceDetail, { timeout: 1600 });
