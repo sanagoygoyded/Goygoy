@@ -10,7 +10,7 @@
     let heroicPoseActive = false;
     const groundProbePoint = new THREE.Vector3();
     const groundProbePosition = new THREE.Vector3();
-    const FOOT_GROUND_CLEARANCE = 0.015;
+    const FOOT_GROUND_CLEARANCE = 0.035;
 
 function buildTextures(rendererInstance) {
             // 1. Stüdyo & Mısır Tapınağı HDR Yansıma Haritası

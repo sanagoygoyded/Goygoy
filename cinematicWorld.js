@@ -177,11 +177,12 @@
             || (nav.hardwareConcurrency > 0 && nav.hardwareConcurrency <= 4)
             || (nav.deviceMemory > 0 && nav.deviceMemory <= 4);
         return {
-            pixelRatio: isMobile ? 1.15 : lowPower ? 1.25 : 1.5,
+            lowPower,
+            pixelRatio: isMobile ? 0.85 : lowPower ? 1.25 : 1.5,
             shadowMapSize: lowPower ? 512 : 1024,
-            surfaceSize: lowPower ? 128 : 256,
-            moteScale: lowPower ? 0.55 : 1,
-            maxAnisotropy: lowPower ? 4 : 8
+            surfaceSize: lowPower ? 64 : 256,
+            moteScale: lowPower ? 0.35 : 1,
+            maxAnisotropy: lowPower ? 2 : 8
         };
     }
 
@@ -591,7 +592,7 @@
             renderer.outputEncoding = THREE.sRGBEncoding;
         }
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.enabled = !quality.lowPower;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         const maxAnisotropy = renderer.capabilities && renderer.capabilities.getMaxAnisotropy
             ? Math.min(renderer.capabilities.getMaxAnisotropy(), quality.maxAnisotropy)
@@ -613,7 +614,9 @@
         let surfaceDetailReady = false;
         const initializeSurfaceDetail = () => {
             if (surfaceDetailReady) return;
-            addSurfaceDetail(scene, skyTexture, maxAnisotropy, profile, quality);
+            if (!quality.lowPower) {
+                addSurfaceDetail(scene, skyTexture, maxAnisotropy, profile, quality);
+            }
             surfaceDetailReady = true;
         };
         if (window.requestIdleCallback) {

@@ -729,7 +729,8 @@
             abyssBed.position.set(0, -14.0, -40);
             worldGroup.add(abyssBed);
 
-            const riverGeo = new THREE.PlaneGeometry(380, 860, 72, 160);
+            const isMobile = window.innerWidth < 720;
+            const riverGeo = new THREE.PlaneGeometry(380, 860, isMobile ? 36 : 72, isMobile ? 80 : 160);
             const riverMat = new THREE.MeshStandardMaterial({
                 map: window.textures.soulRiverTex,
                 emissiveMap: window.textures.soulRiverTex,
@@ -746,8 +747,8 @@
             worldGroup.add(soulRiverMesh);
             riverPosAttr = riverGeo.attributes.position;
 
-            // 3.000 Yumuşak Parlayan Ruh Parçacığı (THREE.Points + Sprite Glow)
-            const wispCount = 3000;
+            // Mobilde de ayni parcacik efekti daha dusuk guncelleme maliyetiyle korunur.
+            const wispCount = isMobile ? 1200 : 3000;
             const wispGeo = new THREE.BufferGeometry();
             soulWispPositions = new Float32Array(wispCount * 3);
             const wispColors = new Float32Array(wispCount * 3);
