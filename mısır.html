@@ -71,6 +71,12 @@
         let villagers = [];
         let nearestCityNpc = null;
         let cityTalkPrompt = null;
+        let houseInteractPrompt = null;
+        let houseEntrances = [];
+        let marketStallAnchors = [];
+        let activeHouseInterior = null;
+        let savedExteriorState = null;
+        let nearbyHouseEntrance = null;
         let nileWaterMesh = null;
         let waterPosAttr = null;
         let waterWheels = [];
@@ -1007,6 +1013,8 @@
             const worldGroup = new THREE.Group();
             worldGroup.name = "GodsOfEgypt_OpenWorldMap";
             scene.add(worldGroup);
+            houseEntrances = [];
+            marketStallAnchors = [];
 
             const dummy = new THREE.Object3D();
 
@@ -2031,6 +2039,15 @@
                 }
             }
 
+            const interiorCandidates = houseSpecs
+                .filter(h => h.x > -40 && h.x < -16 && h.z > 10 && h.z < 28)
+                .slice(0, 2);
+            interiorCandidates.forEach((house, index) => {
+                house.interiorId = index === 0 ? 'family' : 'merchant';
+                house.interiorLabel = index === 0 ? 'Kerpiç Ev' : 'Tüccar Evi';
+                house.interiorPosition = new THREE.Vector3(-160, 0, index === 0 ? 160 : 130);
+            });
+
             const totalHouses = houseSpecs.length;
             // İçe Eğimli (Battered Wall) Otantik Mısır Trapez Bina Geometrisi
             const batteredHouseGeo = new THREE.CylinderGeometry(0.65, 0.72, 1.0, 4);
@@ -2098,6 +2115,35 @@
                 dummy.updateMatrix();
                 houseAwningInst.setMatrixAt(i, dummy.matrix);
 
+                if (h.interiorId) {
+                    const door = new THREE.Group();
+                    const darkWood = new THREE.MeshStandardMaterial({ color: 0x32170d, roughness: 0.88 });
+                    const doorTrim = new THREE.MeshStandardMaterial({ color: 0xd49a38, metalness: 0.48, roughness: 0.42 });
+                    const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(1.45, 2.25, 0.12), darkWood);
+                    doorPanel.position.set(0, 1.15, 0);
+                    door.add(doorPanel);
+                    [-0.82, 0.82].forEach(x => {
+                        const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 2.55, 0.22), doorTrim);
+                        post.position.set(x, 1.27, 0.03);
+                        door.add(post);
+                    });
+                    const lintel = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.18, 0.24), doorTrim);
+                    lintel.position.set(0, 2.55, 0.03);
+                    door.add(lintel);
+                    const doorX = h.x + Math.sin(h.rotY) * (h.d / 2 + 0.04);
+                    const doorZ = h.z + Math.cos(h.rotY) * (h.d / 2 + 0.04);
+                    door.position.set(doorX, 0, doorZ);
+                    door.rotation.y = h.rotY;
+                    worldGroup.add(door);
+                    houseEntrances.push({
+                        x: h.x + Math.sin(h.rotY) * (h.d / 2 + 2.4),
+                        z: h.z + Math.cos(h.rotY) * (h.d / 2 + 2.4),
+                        label: h.interiorLabel,
+                        position: h.interiorPosition,
+                        type: h.interiorId
+                    });
+                }
+
                 // İkinci Kat Kulesi
                 if (h.hasTop) {
                     const topH = h.h * 0.65;
@@ -2118,8 +2164,8 @@
                 }
 
                 // Her Evin Önünde 4 Amfora / Pazar Küpü
-                for (let a = 0; a < 4; a++) {
-                    const sideOff = (a - 1.5) * 0.65;
+                for (let a = 0; a < (h.interiorId ? 2 : 4); a++) {
+                    const sideOff = h.interiorId ? (a === 0 ? -1 : 1) * h.w * 0.34 : (a - 1.5) * 0.65;
                     const ax = h.x + fwdX + Math.cos(h.rotY) * sideOff;
                     const az = h.z + fwdZ - Math.sin(h.rotY) * sideOff;
                     dummy.position.set(ax, 0.36, az);
@@ -2135,6 +2181,148 @@
             houseBeamInst.count = beamCount;
             amphoraInst.count = ampCount;
             worldGroup.add(houseBaseInst, houseCorniceInst, houseStairInst, houseBeamInst, houseTopInst, houseAwningInst, houseWindInst, amphoraInst);
+
+            const marketStalls = [
+                { name: 'TAHIL · EKMEK', x: -18, z: 1, color: '#d97706', goods: [0xd6a33a, 0x9a4e26, 0xe9c46a] },
+                { name: 'BAHARAT', x: -28, z: 1, color: '#b91c1c', goods: [0xc2410c, 0x9f1239, 0xeab308] },
+                { name: 'KETEN · PAPİRÜS', x: -38, z: 1, color: '#0f766e', goods: [0xd6c6a3, 0x65a30d, 0xc2a878] },
+                { name: 'ÇÖMLEK · TESTİ', x: -48, z: 1, color: '#7c3f20', goods: [0xa64b2a, 0xc26c3a, 0x8c4a2f] }
+            ];
+            marketStallAnchors = marketStalls.map(stall => ({ x: stall.x, z: stall.z - 2.05 }));
+            const marketBox = new THREE.BoxGeometry(1, 1, 1);
+            const marketCounterInst = new THREE.InstancedMesh(marketBox, woodMat, marketStalls.length);
+            const marketCanopyInst = new THREE.InstancedMesh(marketBox, rugMat, marketStalls.length);
+            const marketTrimInst = new THREE.InstancedMesh(marketBox, goldMat, marketStalls.length);
+            const marketPostInst = new THREE.InstancedMesh(marketBox, woodMat, marketStalls.length * 4);
+            const marketBasketGeo = new THREE.CylinderGeometry(0.28, 0.38, 0.38, 8);
+            const marketBasketInst = new THREE.InstancedMesh(marketBasketGeo, clayMat, marketStalls.length * 2);
+            const marketGoodsGeo = new THREE.SphereGeometry(0.19, 8, 6);
+            const marketGoodsMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.68 });
+            const marketGoodsInst = new THREE.InstancedMesh(marketGoodsGeo, marketGoodsMat, marketStalls.length * 9);
+            const marketDummy = new THREE.Object3D();
+            const setMarketInstance = (mesh, index, x, y, z, sx, sy, sz) => {
+                marketDummy.position.set(x, y, z);
+                marketDummy.rotation.set(0, 0, 0);
+                marketDummy.scale.set(sx, sy, sz);
+                marketDummy.updateMatrix();
+                mesh.setMatrixAt(index, marketDummy.matrix);
+            };
+            const signGeometry = new THREE.PlaneGeometry(2.8, 0.72);
+            let postIndex = 0;
+            let basketIndex = 0;
+            let goodsIndex = 0;
+            marketStalls.forEach((stall, stallIndex) => {
+                const { x, z } = stall;
+                setMarketInstance(marketCounterInst, stallIndex, x, 0.62, z, 4.2, 1.12, 1.45);
+                setMarketInstance(marketCanopyInst, stallIndex, x, 3.18, z, 5.0, 0.18, 3.8);
+                setMarketInstance(marketTrimInst, stallIndex, x, 2.82, z + 1.84, 5.0, 0.42, 0.16);
+                [-2.25, 2.25].forEach(px => [-1.6, 1.6].forEach(pz => {
+                    setMarketInstance(marketPostInst, postIndex++, x + px, 1.55, z + pz, 0.16, 3.1, 0.16);
+                }));
+                [-1, 1].forEach(side => {
+                    setMarketInstance(marketBasketInst, basketIndex++, x + side * 1.25, 1.28, z + 0.18, 1, 1, 1);
+                });
+                for (let item = 0; item < 9; item++) {
+                    const row = Math.floor(item / 3);
+                    const col = item % 3;
+                    setMarketInstance(marketGoodsInst, goodsIndex, x - 0.56 + col * 0.56, 1.42 + (item % 2) * 0.08, z - 0.34 + row * 0.38, 1, 1, 1);
+                    marketGoodsInst.setColorAt(goodsIndex++, new THREE.Color(stall.goods[item % stall.goods.length]));
+                }
+
+                const signCanvas = document.createElement('canvas');
+                signCanvas.width = 512;
+                signCanvas.height = 128;
+                const signContext = signCanvas.getContext('2d');
+                signContext.fillStyle = '#2b160b';
+                signContext.fillRect(0, 0, signCanvas.width, signCanvas.height);
+                signContext.strokeStyle = stall.color;
+                signContext.lineWidth = 10;
+                signContext.strokeRect(5, 5, signCanvas.width - 10, signCanvas.height - 10);
+                signContext.fillStyle = '#fff1c2';
+                signContext.font = 'bold 42px system-ui';
+                signContext.textAlign = 'center';
+                signContext.textBaseline = 'middle';
+                signContext.fillText(stall.name, signCanvas.width / 2, signCanvas.height / 2);
+                const signTexture = new THREE.CanvasTexture(signCanvas);
+                const sign = new THREE.Mesh(signGeometry, new THREE.MeshBasicMaterial({ map: signTexture, side: THREE.DoubleSide }));
+                sign.position.set(x, 2.7, z + 1.94);
+                worldGroup.add(sign);
+            });
+            marketCounterInst.instanceMatrix.needsUpdate = true;
+            marketCanopyInst.instanceMatrix.needsUpdate = true;
+            marketTrimInst.instanceMatrix.needsUpdate = true;
+            marketPostInst.instanceMatrix.needsUpdate = true;
+            marketBasketInst.instanceMatrix.needsUpdate = true;
+            marketGoodsInst.instanceMatrix.needsUpdate = true;
+            marketCounterInst.castShadow = true;
+            marketCanopyInst.castShadow = true;
+            marketPostInst.castShadow = true;
+            marketGoodsInst.castShadow = true;
+            if (marketGoodsInst.instanceColor) marketGoodsInst.instanceColor.needsUpdate = true;
+            worldGroup.add(marketCounterInst, marketCanopyInst, marketTrimInst, marketPostInst, marketBasketInst, marketGoodsInst);
+
+            const interiorWallMat = new THREE.MeshStandardMaterial({ color: 0x9a6840, roughness: 0.95 });
+            const interiorFloorMat = new THREE.MeshStandardMaterial({ color: 0x9a7652, roughness: 0.92 });
+            const interiorLinenMat = new THREE.MeshStandardMaterial({ color: 0xd8bd84, roughness: 0.9 });
+            const interiorWoodMat = new THREE.MeshStandardMaterial({ color: 0x4f2c16, roughness: 0.86 });
+            const interiorGoldMat = new THREE.MeshStandardMaterial({ color: 0xc89438, metalness: 0.55, roughness: 0.38 });
+            const interiorPotMat = new THREE.MeshStandardMaterial({ color: 0x9b4726, roughness: 0.67 });
+            const makeInteriorBox = (group, material, x, y, z, sx, sy, sz) => {
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), material);
+                mesh.position.set(x, y, z);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                group.add(mesh);
+                return mesh;
+            };
+            houseEntrances.forEach(entrance => {
+                const room = new THREE.Group();
+                room.name = `${entrance.type}-house-interior`;
+                room.position.copy(entrance.position);
+                makeInteriorBox(room, interiorFloorMat, 0, -0.12, 0, 10.5, 0.24, 10.5);
+                makeInteriorBox(room, interiorWallMat, 0, 1.85, -5.05, 10.5, 3.7, 0.35);
+                makeInteriorBox(room, interiorWallMat, -5.05, 1.85, 0, 0.35, 3.7, 10.2);
+                makeInteriorBox(room, interiorWallMat, 5.05, 1.85, 0, 0.35, 3.7, 10.2);
+                makeInteriorBox(room, interiorWallMat, -3.35, 1.85, 5.05, 3.4, 3.7, 0.35);
+                makeInteriorBox(room, interiorWallMat, 3.35, 1.85, 5.05, 3.4, 3.7, 0.35);
+                for (let beam = 0; beam < 4; beam++) {
+                    makeInteriorBox(room, interiorWoodMat, 0, 3.62, -3.6 + beam * 2.4, 10, 0.18, 0.22);
+                }
+                makeInteriorBox(room, rugMat, 0, 0.025, 0.15, 5.6, 0.05, 4.2);
+                makeInteriorBox(room, interiorGoldMat, 0, 0.06, 0.15, 5.32, 0.03, 0.1);
+                if (entrance.type === 'family') {
+                    makeInteriorBox(room, interiorWoodMat, -2.65, 0.52, -2.55, 2.6, 0.62, 1.7);
+                    makeInteriorBox(room, interiorLinenMat, -2.65, 0.9, -2.55, 2.45, 0.22, 1.55);
+                    makeInteriorBox(room, interiorGoldMat, -2.65, 1.05, -3.08, 1.55, 0.18, 0.62);
+                    makeInteriorBox(room, interiorWoodMat, 2.55, 0.72, -2.6, 2.4, 1.35, 0.72);
+                    makeInteriorBox(room, interiorLinenMat, 2.55, 1.48, -2.6, 2.55, 0.18, 0.84);
+                    makeInteriorBox(room, interiorWoodMat, 0, 0.52, 2.45, 2.2, 0.18, 1.1);
+                } else {
+                    makeInteriorBox(room, interiorWoodMat, 0, 0.78, -2.25, 3.8, 1.1, 1.1);
+                    makeInteriorBox(room, interiorLinenMat, 0, 1.38, -2.25, 3.9, 0.16, 1.18);
+                    for (let shelf = 0; shelf < 3; shelf++) {
+                        makeInteriorBox(room, interiorWoodMat, -3.55, 0.8 + shelf * 0.72, -1.7, 0.72, 0.12, 3.4);
+                    }
+                    makeInteriorBox(room, interiorGoldMat, 2.55, 0.52, 2.45, 2.2, 0.18, 1.1);
+                }
+                [-3.6, 3.6].forEach((x, potIndex) => {
+                    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.32, 0.72, 9), interiorPotMat);
+                    pot.position.set(x, 0.36, 3.35 - potIndex * 1.0);
+                    pot.castShadow = true;
+                    room.add(pot);
+                });
+                const lamp = new THREE.Mesh(new THREE.OctahedronGeometry(0.25, 1), interiorGoldMat);
+                lamp.position.set(0, 3.15, -4.55);
+                lamp.castShadow = true;
+                room.add(lamp);
+                const warmLight = new THREE.PointLight(0xffc66d, 1.7, 16);
+                warmLight.position.set(0, 2.9, -3.8);
+                room.add(warmLight);
+                room.add(new THREE.AmbientLight(0xffd7a1, 0.42));
+                room.visible = false;
+                scene.add(room);
+                entrance.room = room;
+            });
 
             // Sokakların Üzerini Örten Asma Pazar Gölgelikleri
             for (let cx = -16; cx >= -128; cx -= 14) {
@@ -2932,7 +3120,7 @@
                 { id: 'thoth', name: 'Thoth', title: 'Köy Bilgesi', role: 'horus_human', persona: 'priest', start: [-8, 11], route: [[-8, 11], [-16, 16], [-18, 7]], greeting: 'Nil\'in hesabı şaşmaz; Set\'in vergisi şaşar. Bugün ne arıyorsun?', rumor: 'Dikilitaştaki yazılar, Horus\'un tapınağında kayıp bir gözden söz ediyor.', work: 'Köylülerin hasat kayıtlarını tutuyorum. Buğdayı saymak, tanrıları saymaktan kolay.', joke: 'Bir kâtip neden Nil\'e taşınmış? Hesapları akıp gitsin diye.' },
                 { id: 'nefru', name: 'Nefru', title: 'Nil Çiftçisi', role: 'villager', persona: 'farmer', start: [13, 14], route: [[13, 14], [18, 18], [22, 12]], greeting: 'Şu başakları görüyor musun? Set vergiyi almadan biçebilirsek bugün bayram.', rumor: 'Kuzey tarlasının su kanalı tıkandı; Nil bile bazen işe geç kalıyor.', work: 'Buğdayı biç, demet yap, siloya taşı. Tanrılar bile sofraya oturuyor.', joke: 'Buğday neden tapınağa girmiş? Başak çıkarmaya.' },
                 { id: 'hapu', name: 'Hapu', title: 'Çiftçi ve Değirmenci', role: 'villager', persona: 'farmer', start: [20, -16], route: [[20, -16], [15, -20], [10, -15]], greeting: 'Öğütülecek tahıl çok, değirmen tek. Bir de üstüne vergi memuru var!', rumor: 'Pazarın batı kapısında bu gece gölgeler dolaşmış.', work: 'Un öğütür, ekmek pişirir, sonra yine un öğütürüm.', joke: 'Değirmen neden dedikodu dinlemez? Her şeyi ağzında öğütür.' },
-                { id: 'merit', name: 'Merit', title: 'Pazar Tüccarı', role: 'villager', persona: 'merchant', start: [-18, 4], route: [[-18, 4], [-28, 12], [-33, 6]], greeting: 'Baharat, keten, papirüs! Fiyatlar Set\'ten daha acımasız değil, söz.', rumor: 'Bir hırsız dün kendi gölgesini takip edip pazardan çıktı.', work: 'Tartım doğru, pazarlık uzun. İkisi de ticaretin parçası.', joke: 'Tüccar Nil\'e ne demiş? Akıntıya kapılma, fiyatı ben belirlerim.' },
+                { id: 'merit', name: 'Merit', title: 'Pazar Tüccarı', role: 'villager', persona: 'merchant', marketStallIndex: 0, start: [-18, 4], route: [[-18, 4], [-28, 12], [-33, 6]], greeting: 'Baharat, keten, papirüs! Fiyatlar Set\'ten daha acımasız değil, söz.', rumor: 'Bir hırsız dün kendi gölgesini takip edip pazardan çıktı.', work: 'Tartım doğru, pazarlık uzun. İkisi de ticaretin parçası.', joke: 'Tüccar Nil\'e ne demiş? Akıntıya kapılma, fiyatı ben belirlerim.' },
                 { id: 'bek_nadif', name: 'Nadif', title: 'Gezgin Hırsız', role: 'bek', persona: 'thief', start: [-34, 24], route: [[-34, 24], [-45, 28], [-41, 12]], greeting: 'Ben mi? Sadece pazarı geziyorum. Kesenin neden hafiflediğini sonra konuşuruz.', rumor: 'Muhafızlar köprü başında nöbet değiştirirken gözlerini kapatıyor.', work: 'Kilit açarım. Bazen de insanlara doğru kapıyı gösteririm. Ücret karşılığı.', joke: 'Hırsız neden aynaya bakmaz? Aynadaki de ondan şüpheleniyor.' },
                 { id: 'bek_taia', name: 'Taia', title: 'Saraydan Kaçan Hırsız', role: 'bek', persona: 'thief', start: [-48, 38], route: [[-48, 38], [-58, 42], [-53, 26]], greeting: 'Sarayın kapısı kilitliydi. İçeriden açılması daha kolay oldu.', rumor: 'Set\'in mühürlü sandıkları batı yolundan taşınacakmış.', work: 'Ben iz bırakmam. Bıraktıysam da onu başka biri bulur.', joke: 'Hırsızın en sevdiği müzik? Cüzdanın şıngırtısı. Sessiz olanı.' },
                 { id: 'khepri', name: 'Khepri', title: 'Köprü Muhafızı', role: 'horus_human', persona: 'guard', start: [22, 2], route: [[22, 2], [25, 0], [22, -2]], greeting: 'Köprü açık. Ama şüpheli bir şey görürsen bana söyle; ben zaten bakıyorum.', rumor: 'Gece nöbetinde doğu kıyısından ışık parladığını gördüm.', work: 'Nöbet tutuyorum. Hırsızlar kaçıyor, sivrisinekler kalıyor.', joke: 'Muhafız neden köprüden geçmez? Vardiyası zaten köprüde.' },
@@ -2943,7 +3131,7 @@
                 { id: 'sabu', name: 'Sabu', title: 'Tahıl Taşıyıcısı', role: 'villager', persona: 'farmer', start: [16, 42], route: [[16, 42], [21, 46], [18, 52]], greeting: 'Bir çuval buğday mı? İki elim dolu. Üçüncü elimi arıyorum.', rumor: 'Silo kapısının yanında bir kedi nöbet tutuyor. Ücret istemiyor.', work: 'Tarladan siloya, silodan pazara. Ayaklarım haritayı ezberledi.', joke: 'Taşıyıcı neden şarkı söylemez? Yüksek notaya çıkınca çuval düşüyor.' },
                 { id: 'tamit', name: 'Tamit', title: 'Nil Kayıkçısı', role: 'villager', persona: 'merchant', start: [97, 30], route: [[97, 30], [103, 34], [100, 25]], greeting: 'Nil\'de yol kısa, akıntı uzundur. Nereye gideceğini söyle.', rumor: 'Doğu kıyısında papirüs arasında eski bir mühür bulmuşlar.', work: 'Kayığımı akıntıya bırakmam. Akıntı da beni bırakmaz.', joke: 'Kayıkçı neden karaya çıkmış? Suya biraz ara vermek istemiş.' },
                 { id: 'human_horus', name: 'İnsan Horus', title: 'Gökyüzü Kralı', role: 'horus_human', scale: 1.55, persona: 'noble', start: [-24, -54], route: [[-24, -54], [-30, -58], [-26, -64]], greeting: 'Sarayda herkes fısıldıyor. Burada en azından Nil cevap veriyor.', rumor: 'Set\'in askerleri tapınağa giden yolu sıkı tutuyor.', work: 'Halkın dileklerini saraya taşıyorum. Bazılarını yüksek sesle, bazılarını hiç.', joke: 'Elçi neden mektubu yürütmüş? Mühürlü diye ata emanet edememiş.' },
-                { id: 'nebet', name: 'Nebet', title: 'Baharatçı', role: 'villager', persona: 'merchant', start: [-38, 58], route: [[-38, 58], [-44, 62], [-40, 68]], greeting: 'Kimyon, kişniş, tarçın. Çölün tozu hariç her şey var.', rumor: 'Pazarda bir hırsız baharat çalmış; üç gün hapşırmış.', work: 'Baharatı tartarım, müşteriyi dinlerim, Set\'in vergisini görmezden gelirim.', joke: 'Baharatçı neden sır saklayamaz? Her lafa biraz kimyon katar.' },
+                { id: 'nebet', name: 'Nebet', title: 'Baharatçı', role: 'villager', persona: 'merchant', marketStallIndex: 1, start: [-38, 58], route: [[-38, 58], [-44, 62], [-40, 68]], greeting: 'Kimyon, kişniş, tarçın. Çölün tozu hariç her şey var.', rumor: 'Pazarda bir hırsız baharat çalmış; üç gün hapşırmış.', work: 'Baharatı tartarım, müşteriyi dinlerim, Set\'in vergisini görmezden gelirim.', joke: 'Baharatçı neden sır saklayamaz? Her lafa biraz kimyon katar.' },
                 { id: 'baket', name: 'Baket', title: 'Doğu Tarlası Çiftçisi', role: 'villager', persona: 'farmer', start: [96, -22], route: [[96, -22], [102, -18], [98, -28]], greeting: 'Doğu tarlasında başak bol, gölge az. Bir şapka bulursan haber ver.', rumor: 'Nil yükselince papirüs sazlığına balıklar kadar söylenti de doluyor.', work: 'Buğday biçer, papirüs toplar, akşam olunca kayığı bağlarım.', joke: 'Çiftçi neden Nil\'e şiir yazmış? Kafiye kendiliğinden akmış.' },
                 { id: 'horus_guard', name: 'Paser', title: 'Tapınak Muhafızı', role: 'horus_human', persona: 'guard', start: [2, -74], route: [[2, -74], [7, -78], [2, -82]], greeting: 'Tapınak yolu açık değil. Önce ne aradığını bilmelisin.', rumor: 'Gece nöbetinde kapının arkasından bir kartal sesi geldi.', work: 'Kutsal yolu korurum. Kum fırtınası bile sıraya girer.', joke: 'Muhafız neden tapınakta fısıldar? Duvarların kulağı var, heykellerin de.' },
                 { id: 'menna', name: 'Menna', title: 'Nil Çiftçisi', role: 'villager', persona: 'farmer', start: [18, 62], route: [[18, 62], [22, 66], [17, 70]], greeting: 'Hasat iyi giderse kış rahat geçer. Vergi memuru gelmezse daha da rahat.', rumor: 'Bir deve pazarda kendi fiyatını düşürmüş. Tüccar hâlâ şaşkın.', work: 'Başakları tek tek biçiyorum. Acele edenler samanı da topluyor.', joke: 'Buğday başağı neden utanmış? Herkes onunla ekmek yapıyormuş.' },
@@ -2963,8 +3151,8 @@
                 { id: 'kiya_city', name: 'Kiya', title: 'Saray Kâhyası', role: 'zaya', isFemale: true, skinTone: 'pearl', scale: 1.0, persona: 'noble', start: [11, -7], route: [[11, -7], [16, -4], [12, -1]], greeting: 'Sarayın kapıları herkese açık değil; ama doğru haberi getirene açılır.', rumor: 'Batı kapısında yeni muhafızlar göreve başlamış.', work: 'Sarayın erzak ve kumaş kayıtlarını tutarım.', joke: 'Kâhya neden liste tutar? Hafıza da bazen tatile çıkar.' },
                 { id: 'renenet_city', name: 'Renenet', title: 'Hasatçı', role: 'female_villager', isFemale: true, skinTone: 'golden', scale: 0.98, persona: 'farmer', start: [28, 12], route: [[28, 12], [33, 16], [29, 20]], greeting: 'Başaklar dolgun; bugün tarlada birkaç el daha çok işimize yarar.', rumor: 'Doğu kanalına su yeniden ulaşmış.', work: 'Buğdayı biçer, demetleri siloya taşırım.', joke: 'Hasatçı neden güne erken başlar? Başaklar öğlene kadar beklemez.' },
                 { id: 'tiaa_city', name: 'Tiaa', title: 'Tapınak Müzisyeni', role: 'dancer', isFemale: true, skinTone: 'bronze', scale: 0.99, persona: 'performer', start: [24, 28], route: [[24, 28], [29, 32], [23, 36]], greeting: 'Şenliğin ritmi uzaktan duyuluyor; akşam bize katıl.', rumor: 'Yeni davul ustası bu gece ilk kez sahne alacak.', work: 'Tapınakta müzik çalar, dansçılara ritim tutarım.', joke: 'Müzisyen neden Nil kıyısında prova yapar? Akışa kapılmamak için.' },
-                { id: 'neferu_city', name: 'Neferu', title: 'Baharat Tüccarı', role: 'female_villager', isFemale: true, skinTone: 'pearl', scale: 0.98, persona: 'merchant', start: [-31, 47], route: [[-31, 47], [-35, 51], [-29, 55]], greeting: 'Tarçın, kimyon ve kişniş; çölün tozu hariç aradığın her şey var.', rumor: 'Kervan yarın güne doğmadan şehre ulaşacak.', work: 'Kervanlardan baharat alır, pazarda tartıp satarım.', joke: 'Baharatçı neden çok konuşmaz? Her söze biraz tuz katar.' },
-                { id: 'henu_city', name: 'Henu', title: 'Çömlekçi', role: 'female_villager', isFemale: true, skinTone: 'golden', scale: 0.99, persona: 'merchant', start: [45, -14], route: [[45, -14], [50, -10], [46, -6]], greeting: 'Nil çamurundan yaptığım testiler suyu serin tutar.', rumor: 'Fırınımın çevresinde yeni kil damarları buldum.', work: 'Testi ve kâse yapar, pazardaki tezgâhımda satarım.', joke: 'Çömlekçi neden sakin kalır? Her şeyi döne döne çözer.' },
+                { id: 'neferu_city', name: 'Neferu', title: 'Baharat Tüccarı', role: 'female_villager', isFemale: true, skinTone: 'pearl', scale: 0.98, persona: 'merchant', marketStallIndex: 2, start: [-31, 47], route: [[-31, 47], [-35, 51], [-29, 55]], greeting: 'Tarçın, kimyon ve kişniş; çölün tozu hariç aradığın her şey var.', rumor: 'Kervan yarın güne doğmadan şehre ulaşacak.', work: 'Kervanlardan baharat alır, pazarda tartıp satarım.', joke: 'Baharatçı neden çok konuşmaz? Her söze biraz tuz katar.' },
+                { id: 'henu_city', name: 'Henu', title: 'Çömlekçi', role: 'female_villager', isFemale: true, skinTone: 'golden', scale: 0.99, persona: 'merchant', marketStallIndex: 3, start: [45, -14], route: [[45, -14], [50, -10], [46, -6]], greeting: 'Nil çamurundan yaptığım testiler suyu serin tutar.', rumor: 'Fırınımın çevresinde yeni kil damarları buldum.', work: 'Testi ve kâse yapar, pazardaki tezgâhımda satarım.', joke: 'Çömlekçi neden sakin kalır? Her şeyi döne döne çözer.' },
                 { id: 'mayet_city', name: 'Mayet', title: 'Tapınak Dansçısı', role: 'dancer', isFemale: true, skinTone: 'pearl', scale: 0.99, persona: 'performer', start: [-37, 13], route: [[-37, 13], [-42, 17], [-36, 21]], greeting: 'Yeni bir dans öğrendim; istersen şenlikte sana da öğretirim.', rumor: 'Hathor tapınağında akşam için hazırlık yapılıyor.', work: 'Şenliklerde dans eder ve gençlere adımları öğretirim.', joke: 'Dansçı neden kumda çalışır? Adımlarını iz bırakmadan öğrenmek için.' },
                 { id: 'rai_city', name: 'Rai', title: 'Şifalı Ot Toplayıcısı', role: 'female_villager', isFemale: true, skinTone: 'golden', scale: 0.98, persona: 'farmer', start: [31, -28], route: [[31, -28], [36, -24], [40, -29]], greeting: 'Çöl çiçekleri yağmurdan sonra açar; bugün topladıklarımı görmek ister misin?', rumor: 'Batı tepelerinde nadir bir bitki görülmüş.', work: 'Şifalı ot toplar, köyün şifacısına götürürüm.', joke: 'Ot toplayıcısı neden acele etmez? Faydalı olan her şey hemen bulunmaz.' },
                 { id: 'senet_city', name: 'Senet', title: 'Tahıl Ambarı Görevlisi', role: 'female_villager', isFemale: true, skinTone: 'bronze', scale: 0.98, persona: 'farmer', start: [2, 48], route: [[2, 48], [7, 52], [11, 47]], greeting: 'Ambarın kapısı açık; hasadını getir, birlikte düzgünce saklayalım.', rumor: 'Bu yılki tahıl stoğu geçen mevsimden daha bereketli.', work: 'Tahılı tartar, ambar kayıtlarını tutarım.', joke: 'Ambar görevlisi neden saymayı sever? Her tanenin bir hikâyesi var.' }
@@ -2994,6 +3182,18 @@
                 npc.root.rotation.y = Math.PI;
                 npc.isGathering = false;
                 npc.workTimer = profile.persona === 'farmer' ? 2 + (profile.id.length % 5) : 0;
+                if (Number.isInteger(profile.marketStallIndex) && marketStallAnchors[profile.marketStallIndex]) {
+                    const stall = marketStallAnchors[profile.marketStallIndex];
+                    npc.route = [
+                        new THREE.Vector3(stall.x, 0, stall.z),
+                        new THREE.Vector3(stall.x + 0.85, 0, stall.z - 0.25),
+                        new THREE.Vector3(stall.x - 0.55, 0, stall.z + 0.2)
+                    ];
+                    npc.routeIndex = 0;
+                    npc.aiTarget.copy(npc.route[0]);
+                    npc.root.position.set(stall.x, 0, stall.z);
+                    npc.root.rotation.y = 0;
+                }
                 scene.add(npc.root);
                 villagers.push(npc);
             });
@@ -3006,9 +3206,18 @@
                 if (nearestCityNpc && window.NPCSystem) window.NPCSystem.startCharacterDialog(nearestCityNpc);
             });
             document.body.appendChild(cityTalkPrompt);
+            houseInteractPrompt = document.createElement('button');
+            houseInteractPrompt.id = 'house-interact-prompt';
+            houseInteractPrompt.className = 'fixed hidden left-1/2 -translate-x-1/2 bottom-52 z-40 px-5 py-3 rounded-xl border border-amber-300/70 bg-black/90 text-amber-100 font-black text-xs shadow-xl';
+            houseInteractPrompt.addEventListener('click', () => toggleHouseInterior());
+            document.body.appendChild(houseInteractPrompt);
             window.addEventListener('keydown', event => {
                 if (event.key.toLowerCase() === 't' && nearestCityNpc && window.NPCSystem) {
                     window.NPCSystem.startCharacterDialog(nearestCityNpc);
+                }
+                if (!event.repeat && event.key.toLowerCase() === 'e' && (activeHouseInterior || nearbyHouseEntrance)) {
+                    event.preventDefault();
+                    toggleHouseInterior();
                 }
             });
 
@@ -3113,6 +3322,9 @@
                 window.EgyptCollisionEngine.addCylinderCollider(8, -12, 1.8);
                 window.EgyptCollisionEngine.addCylinderCollider(-22, 0, 2.2);
                 window.EgyptCollisionEngine.addCylinderCollider(118, 0, 2.2);
+                for (const stall of marketStallAnchors) {
+                    window.EgyptCollisionEngine.addBoxCollider(stall.x - 2.2, stall.x + 2.2, stall.z + 1.2, stall.z + 4.0, -0.1, 3.4);
+                }
             }
 
             if (window.EgyptCombatEngine) {
@@ -3239,6 +3451,70 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
+        function toggleHouseInterior() {
+            if (!player || (window.EgyptFlightEngine && window.EgyptFlightEngine.isFlying)) return;
+            if (activeHouseInterior) {
+                player.root.position.copy(savedExteriorState.playerPosition);
+                player.root.rotation.copy(savedExteriorState.playerRotation);
+                camYaw = savedExteriorState.camYaw;
+                camPitch = savedExteriorState.camPitch;
+                camDist = savedExteriorState.camDist;
+                desiredDist = savedExteriorState.desiredDist;
+                scene.background = savedExteriorState.background;
+                scene.fog = savedExteriorState.fog;
+                for (const item of savedExteriorState.visibility) item.object.visible = item.visible;
+                if (window.EgyptCollisionEngine) {
+                    window.EgyptCollisionEngine.colliders.length = savedExteriorState.colliderCount;
+                    window.EgyptCollisionEngine.velocityY = 0;
+                    window.EgyptCollisionEngine.isGrounded = true;
+                }
+                activeHouseInterior.room.visible = false;
+                activeHouseInterior = null;
+                savedExteriorState = null;
+                return;
+            }
+
+            const entrance = nearbyHouseEntrance;
+            if (!entrance || !entrance.room) return;
+            savedExteriorState = {
+                playerPosition: player.root.position.clone(),
+                playerRotation: player.root.rotation.clone(),
+                camYaw,
+                camPitch,
+                camDist,
+                desiredDist,
+                background: scene.background,
+                fog: scene.fog,
+                colliderCount: window.EgyptCollisionEngine ? window.EgyptCollisionEngine.colliders.length : 0,
+                visibility: scene.children.map(object => ({ object, visible: object.visible }))
+            };
+            activeHouseInterior = entrance;
+            for (const object of scene.children) {
+                object.visible = object === player.root || object === entrance.room || object.isLight;
+            }
+            entrance.room.visible = true;
+            scene.background = new THREE.Color(0x26190f);
+            scene.fog = null;
+            player.root.position.set(entrance.position.x, 0, entrance.position.z);
+            player.root.rotation.set(0, Math.PI, 0);
+            camYaw = 0;
+            camPitch = 0.18;
+            camDist = 6.5;
+            desiredDist = 6.5;
+            if (window.EgyptCollisionEngine) {
+                const x = entrance.position.x;
+                const z = entrance.position.z;
+                window.EgyptCollisionEngine.velocityY = 0;
+                window.EgyptCollisionEngine.isGrounded = true;
+                window.EgyptCollisionEngine.addBoxCollider(x - 5.2, x + 5.2, z - 5.25, z - 4.85, -1, 3.8);
+                window.EgyptCollisionEngine.addBoxCollider(x - 5.25, x - 4.85, z - 5.0, z + 5.0, -1, 3.8);
+                window.EgyptCollisionEngine.addBoxCollider(x + 4.85, x + 5.25, z - 5.0, z + 5.0, -1, 3.8);
+                window.EgyptCollisionEngine.addBoxCollider(x - 5.2, x - 1.15, z + 4.85, z + 5.25, -1, 3.8);
+                window.EgyptCollisionEngine.addBoxCollider(x + 1.15, x + 5.2, z + 4.85, z + 5.25, -1, 3.8);
+            }
+            if (cityTalkPrompt) cityTalkPrompt.classList.add('hidden');
+        }
+
         // ============================================================================
         // 6. CANLI AÇIK DÜNYA ANİMASYON DÖNGÜSÜ (60 FPS OPTİMİZASYONLU)
         // ============================================================================
@@ -3347,6 +3623,7 @@
 
             for (let i = 0; i < villagers.length; i++) {
                 const v = villagers[i];
+                if (activeHouseInterior) continue;
                 const distToPlayerSq = (v.root.position.x - px) ** 2 + (v.root.position.z - pz) ** 2;
                 if (distToPlayerSq < closestNpcDistSq) {
                     closestNpc = v;
@@ -3386,8 +3663,33 @@
                         v.isGathering = false;
                     } else {
                         const spd = v.persona === 'thief' ? 2.7 : (v.persona === 'guard' ? 2.1 : 1.45 + (i % 3) * 0.2);
-                        v.root.position.x += (dx / dist) * spd * delta;
-                        v.root.position.z += (dz / dist) * spd * delta;
+                        let steerX = dx / dist;
+                        let steerZ = dz / dist;
+                        for (let otherIndex = 0; otherIndex < villagers.length; otherIndex++) {
+                            if (otherIndex === i) continue;
+                            const other = villagers[otherIndex];
+                            const avoidX = v.root.position.x - other.root.position.x;
+                            const avoidZ = v.root.position.z - other.root.position.z;
+                            const separationSq = avoidX * avoidX + avoidZ * avoidZ;
+                            if (separationSq > 0.01 && separationSq < 2.25) {
+                                const strength = (1.5 - Math.sqrt(separationSq)) / 1.5;
+                                steerX += avoidX / Math.sqrt(separationSq) * strength * 1.35;
+                                steerZ += avoidZ / Math.sqrt(separationSq) * strength * 1.35;
+                            }
+                        }
+                        if (player && distToPlayerSq < 1.8 ** 2 && v.persona !== 'guard') {
+                            const playerDist = Math.sqrt(distToPlayerSq) || 1;
+                            steerX += (v.root.position.x - px) / playerDist * 1.8;
+                            steerZ += (v.root.position.z - pz) / playerDist * 1.8;
+                        }
+                        const steerLength = Math.hypot(steerX, steerZ) || 1;
+                        const nextX = v.root.position.x + (steerX / steerLength) * spd * delta;
+                        const nextZ = v.root.position.z + (steerZ / steerLength) * spd * delta;
+                        const resolved = window.EgyptCollisionEngine
+                            ? window.EgyptCollisionEngine.resolvePosition(v.root.position, { x: nextX, z: nextZ }, 0.34, v.root.position.y)
+                            : { x: nextX, z: nextZ };
+                        v.root.position.x = resolved.x;
+                        v.root.position.z = resolved.z;
                         v.root.position.y = (v.root.position.x > 26 && v.root.position.x < 88 && Math.abs(v.root.position.z) < 5.4) ? 0.58 : 0.0;
 
                         const tRot = Math.atan2(dx, dz);
@@ -3403,15 +3705,36 @@
                         }
                     }
                 }
-                window.EgyptCharacterEngine.keepCharacterFeetOnGround(v);
+                if (!activeHouseInterior) window.EgyptCharacterEngine.keepCharacterFeetOnGround(v);
             }
 
             nearestCityNpc = closestNpc && closestNpcDistSq < 4.8 ** 2 ? closestNpc : null;
             if (cityTalkPrompt) {
-                cityTalkPrompt.classList.toggle('hidden', !nearestCityNpc);
+                cityTalkPrompt.classList.toggle('hidden', !nearestCityNpc || Boolean(activeHouseInterior));
                 if (nearestCityNpc) {
                     cityTalkPrompt.textContent = `T · KONUŞ · ${nearestCityNpc.name} (${nearestCityNpc.title})`;
                 }
+            }
+            nearbyHouseEntrance = null;
+            if (!activeHouseInterior && player) {
+                let nearestDoorDistanceSq = 3.4 ** 2;
+                for (const entrance of houseEntrances) {
+                    const dx = entrance.x - px;
+                    const dz = entrance.z - pz;
+                    const distanceSq = dx * dx + dz * dz;
+                    if (distanceSq < nearestDoorDistanceSq) {
+                        nearestDoorDistanceSq = distanceSq;
+                        nearbyHouseEntrance = entrance;
+                    }
+                }
+            }
+            if (houseInteractPrompt) {
+                const canEnter = nearbyHouseEntrance && nearbyHouseEntrance.room;
+                const canExit = Boolean(activeHouseInterior);
+                houseInteractPrompt.classList.toggle('hidden', !canEnter && !canExit);
+                houseInteractPrompt.textContent = canExit
+                    ? 'E · EVİN DIŞINA ÇIK'
+                    : canEnter ? `E · ${nearbyHouseEntrance.label.toLocaleUpperCase('tr-TR')} İÇİNE GİR` : '';
             }
 
             // ==========================================
