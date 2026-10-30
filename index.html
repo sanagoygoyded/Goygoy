@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Gods of Egypt - Yerel Mısır Mitolojisi Aksiyon Prototipi</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="vendor/tailwindcss.js"></script>
+    <script src="vendor/three.min.js"></script>
+    <script src="webglSupport.js"></script>
     <link rel="stylesheet" href="gameHud.css">
     <style>
         body {
@@ -491,9 +492,16 @@
         // Arka plan Three.js sinematik parçacık ve dönen piramit animasyonu
         (function initBackgroundCanvas() {
             const canvas = document.getElementById('bg-canvas');
-            if (!canvas) return;
-            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            if (!canvas || !window.THREE) return;
+            let renderer;
+            try {
+                renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            } catch (error) {
+                console.warn('Arka plan WebGL sahnesi başlatılamadı; oyun menüsü kullanılabilir.', error);
+                canvas.hidden = true;
+                return;
+            }
 
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
@@ -692,12 +700,6 @@
                 if (charAvatar) charAvatar.innerHTML = getIcon('player', 'large');
             }
 
-            // Show tutorial for new players
-            setTimeout(() => {
-                if (window.TutorialSystem && window.TutorialSystem.currentStep === 0) {
-                    window.TutorialSystem.showTutorialStep();
-                }
-            }, 1500);
         });
     </script>
 </body>

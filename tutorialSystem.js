@@ -242,7 +242,8 @@
                 this.updateQuestTracker();
             }
 
-            if (!this.welcomeShown && this.currentStep === 0 && this.completedSteps.length === 0) {
+            const isLandingPage = /(?:^|\/)(?:index\.html)?$/i.test(window.location.pathname);
+            if (!isLandingPage && !this.welcomeShown && this.currentStep === 0 && this.completedSteps.length === 0) {
                 this.welcomeShown = true;
                 this.saveProgress();
                 const showWelcome = () => setTimeout(() => this.showTutorialStep(), 800);

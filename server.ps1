@@ -114,12 +114,11 @@ try {
                 $body = $encoding.GetBytes("400 Bad Request")
             }
 
-            $responseBody = if ($method -eq "HEAD") { [byte[]]@() } else { $body }
             $headers = "HTTP/1.1 $status $reason`r`nContent-Type: $contentType`r`nContent-Length: $($body.Length)`r`nConnection: close`r`nX-Content-Type-Options: nosniff`r`n`r`n"
             $headerBytes = [System.Text.Encoding]::ASCII.GetBytes($headers)
             $stream.Write($headerBytes, 0, $headerBytes.Length)
-            if ($responseBody.Length -gt 0) {
-                $stream.Write($responseBody, 0, $responseBody.Length)
+            if ($method -ne "HEAD" -and $body.Length -gt 0) {
+                $stream.Write($body, 0, $body.Length)
             }
             $stream.Flush()
         } catch {
