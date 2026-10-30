@@ -6,4 +6,10 @@ echo ======================================================
 echo Web sunucusu ve oyun baslatiliyor...
 cd /d "%~dp0"
 powershell -ExecutionPolicy Bypass -File "%~dp0server.ps1"
+if errorlevel 1 (
+    echo.
+    echo Sunucu baslatilamadi. PowerShell hatasini kontrol edin.
+    pause
+    exit /b 1
+)
 pause
