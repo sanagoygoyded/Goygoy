@@ -3386,7 +3386,8 @@
                 const px = player ? player.root.position.x : 0;
                 const pz = player ? player.root.position.z : 0;
 
-                for (let i = 0; i < wheatStalkData.length; i++) {
+                let updatedWheatCount = 0;
+                const updateWheatStalk = (i) => {
                     const st = wheatStalkData[i];
                     if (st.harvested && st.cutProgress >= 1 && elapsed >= st.regrowAt) {
                         st.harvested = false;
@@ -3428,8 +3429,36 @@
                     wheatAnimDummy.scale.set(st.scale, st.scale * Math.max(0.001, 1 - st.cutProgress), st.scale);
                     wheatAnimDummy.updateMatrix();
                     wheatInst.setMatrixAt(i, wheatAnimDummy.matrix);
+                    updatedWheatCount++;
+                };
+
+                if (window.innerWidth < 720 || (navigator.maxTouchPoints > 0 && window.innerHeight < 720)) {
+                    const activeRadius = 30;
+                    const activeRadiusSq = activeRadius * activeRadius;
+                    const minCellX = Math.floor((px - activeRadius) / wheatCellSize);
+                    const maxCellX = Math.floor((px + activeRadius) / wheatCellSize);
+                    const minCellZ = Math.floor((pz - activeRadius) / wheatCellSize);
+                    const maxCellZ = Math.floor((pz + activeRadius) / wheatCellSize);
+                    for (let cellX = minCellX; cellX <= maxCellX; cellX++) {
+                        for (let cellZ = minCellZ; cellZ <= maxCellZ; cellZ++) {
+                            const indices = wheatStalkGrid.get(`${cellX},${cellZ}`);
+                            if (!indices) continue;
+                            for (let index = 0; index < indices.length; index++) {
+                                const stalkIndex = indices[index];
+                                const stalk = wheatStalkData[stalkIndex];
+                                const dx = stalk.x - px;
+                                const dz = stalk.z - pz;
+                                if (!stalk.harvested && dx * dx + dz * dz > activeRadiusSq) continue;
+                                updateWheatStalk(stalkIndex);
+                            }
+                        }
+                    }
+                } else {
+                    for (let i = 0; i < wheatStalkData.length; i++) updateWheatStalk(i);
                 }
-                wheatInst.instanceMatrix.needsUpdate = true;
+                if (updatedWheatCount > 0) {
+                    wheatInst.instanceMatrix.needsUpdate = true;
+                }
             }
 
             for (let i = wheatFlyIcons.length - 1; i >= 0; i--) {

@@ -5,6 +5,24 @@
 (function(window) {
     'use strict';
 
+    function isMobileViewport() {
+        const nav = window.navigator || {};
+        return window.innerWidth < 720
+            || (nav.maxTouchPoints > 0 && window.innerHeight < 720);
+    }
+
+    if (window.THREE && window.THREE.WebGLRenderer) {
+        const OriginalWebGLRenderer = window.THREE.WebGLRenderer;
+        const MobileOptimizedWebGLRenderer = function(parameters = {}) {
+            const rendererOptions = Object.assign({}, parameters);
+            if (isMobileViewport()) rendererOptions.antialias = false;
+            return new OriginalWebGLRenderer(rendererOptions);
+        };
+        MobileOptimizedWebGLRenderer.prototype = OriginalWebGLRenderer.prototype;
+        Object.setPrototypeOf(MobileOptimizedWebGLRenderer, OriginalWebGLRenderer);
+        window.THREE.WebGLRenderer = MobileOptimizedWebGLRenderer;
+    }
+
     const WORLD_PROFILES = [
         {
             match: /raningemisi/,
@@ -172,13 +190,14 @@
 
     function getPerformanceProfile() {
         const nav = window.navigator || {};
-        const isMobile = window.innerWidth < 720;
+        const isMobile = isMobileViewport();
         const lowPower = isMobile
             || (nav.hardwareConcurrency > 0 && nav.hardwareConcurrency <= 4)
             || (nav.deviceMemory > 0 && nav.deviceMemory <= 4);
         return {
             lowPower,
-            pixelRatio: isMobile ? 0.85 : lowPower ? 1.25 : 1.5,
+            pixelRatio: isMobile ? 0.75 : lowPower ? 1.25 : 1.5,
+            minPixelRatio: isMobile ? 0.55 : 0.8,
             shadowMapSize: lowPower ? 512 : 1024,
             surfaceSize: lowPower ? 64 : 256,
             moteScale: lowPower ? 0.35 : 1,
@@ -610,6 +629,9 @@
 
         const render = renderer.render.bind(renderer);
         let lastFrameTime = 0;
+        let qualitySampleStart = performance.now();
+        let qualityFrameCount = 0;
+        let currentPixelRatio = pixelRatio;
         let shadowQualityApplied = false;
         let surfaceDetailReady = false;
         const initializeSurfaceDetail = () => {
@@ -641,6 +663,34 @@
                 const delta = lastFrameTime ? Math.min(now - lastFrameTime, 0.05) : 0;
                 lastFrameTime = now;
                 updateMotes(delta, now);
+
+                if (quality.lowPower) {
+                    const studio = window.EgyptCinematicStudio;
+                    if (studio && (studio.isRecording || studio.isPreparingRecording)) {
+                        qualitySampleStart = performance.now();
+                        qualityFrameCount = 0;
+                    } else {
+                        qualityFrameCount++;
+                        const sampleNow = performance.now();
+                        const sampleDuration = sampleNow - qualitySampleStart;
+                        if (sampleDuration >= 1000) {
+                            const framesPerSecond = qualityFrameCount * 1000 / sampleDuration;
+                            let nextPixelRatio = currentPixelRatio;
+                            if (framesPerSecond < 27) {
+                                nextPixelRatio = Math.max(quality.minPixelRatio, currentPixelRatio - 0.1);
+                            } else if (framesPerSecond > 42) {
+                                nextPixelRatio = Math.min(pixelRatio, currentPixelRatio + 0.05);
+                            }
+                            if (Math.abs(nextPixelRatio - currentPixelRatio) >= 0.02) {
+                                currentPixelRatio = nextPixelRatio;
+                                renderer.setPixelRatio(currentPixelRatio);
+                                renderer.setSize(window.innerWidth, window.innerHeight);
+                            }
+                            qualitySampleStart = sampleNow;
+                            qualityFrameCount = 0;
+                        }
+                    }
+                }
             }
             return render(activeScene, activeCamera);
         };
