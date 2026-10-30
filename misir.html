@@ -2159,6 +2159,255 @@
             if (marketGoodsInst.instanceColor) marketGoodsInst.instanceColor.needsUpdate = true;
             worldGroup.add(marketCounterInst, marketCanopyInst, marketTrimInst, marketPostInst, marketBasketInst, marketGoodsInst);
 
+            const createVillageTexture = (width, height, paint) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                paint(canvas.getContext('2d'), width, height);
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                if ('colorSpace' in texture) texture.colorSpace = THREE.SRGBColorSpace;
+                return texture;
+            };
+            const villageLinenTex = createVillageTexture(512, 256, (ctx, width, height) => {
+                ctx.fillStyle = '#b98b56';
+                ctx.fillRect(0, 0, width, height);
+                for (let y = 0; y < height; y += 3) {
+                    ctx.fillStyle = y % 6 === 0 ? 'rgba(255,239,196,0.16)' : 'rgba(72,39,20,0.10)';
+                    ctx.fillRect(0, y, width, 1);
+                }
+                ctx.fillStyle = '#126d69';
+                ctx.fillRect(0, 18, width, 20);
+                ctx.fillRect(0, height - 38, width, 20);
+                ctx.fillStyle = '#a9472a';
+                ctx.fillRect(0, 44, width, 8);
+                ctx.fillRect(0, height - 52, width, 8);
+                for (let x = 20; x < width; x += 48) {
+                    ctx.strokeStyle = x % 96 === 20 ? '#e5ba61' : '#f1d9a1';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(x, 62);
+                    ctx.lineTo(x + 16, 82);
+                    ctx.lineTo(x, 102);
+                    ctx.lineTo(x - 16, 82);
+                    ctx.closePath();
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(x, height - 62);
+                    ctx.lineTo(x + 16, height - 82);
+                    ctx.lineTo(x, height - 102);
+                    ctx.lineTo(x - 16, height - 82);
+                    ctx.closePath();
+                    ctx.stroke();
+                }
+            });
+            const villageCeramicTex = createVillageTexture(512, 256, (ctx, width, height) => {
+                ctx.fillStyle = '#a94f2f';
+                ctx.fillRect(0, 0, width, height);
+                for (let i = 0; i < 1800; i++) {
+                    const shade = i % 2 ? 'rgba(255,202,130,0.11)' : 'rgba(70,31,20,0.09)';
+                    ctx.fillStyle = shade;
+                    ctx.fillRect((i * 73) % width, (i * 47) % height, 2, 2);
+                }
+                ctx.fillStyle = '#e2b75a';
+                ctx.fillRect(0, 32, width, 12);
+                ctx.fillRect(0, height - 44, width, 12);
+                ctx.fillStyle = '#163f48';
+                ctx.fillRect(0, 52, width, 7);
+                ctx.fillRect(0, height - 59, width, 7);
+                for (let x = 24; x < width; x += 64) {
+                    ctx.strokeStyle = '#f2d28c';
+                    ctx.lineWidth = 5;
+                    ctx.beginPath();
+                    ctx.moveTo(x, 96);
+                    ctx.lineTo(x + 18, 116);
+                    ctx.lineTo(x, 136);
+                    ctx.lineTo(x - 18, 116);
+                    ctx.closePath();
+                    ctx.stroke();
+                    ctx.fillStyle = '#173f46';
+                    ctx.fillRect(x - 4, 109, 8, 15);
+                }
+            });
+            const villageReedTex = createVillageTexture(256, 256, (ctx, width, height) => {
+                ctx.fillStyle = '#9b7445';
+                ctx.fillRect(0, 0, width, height);
+                for (let y = -width; y < height + width; y += 14) {
+                    ctx.strokeStyle = y % 28 === 0 ? 'rgba(235,204,143,0.72)' : 'rgba(74,49,26,0.58)';
+                    ctx.lineWidth = 5;
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y + width);
+                    ctx.stroke();
+                }
+                for (let x = 0; x < width; x += 20) {
+                    ctx.strokeStyle = 'rgba(241,218,168,0.36)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
+                    ctx.stroke();
+                }
+            });
+            const villageLinenMat = new THREE.MeshStandardMaterial({
+                map: villageLinenTex,
+                roughness: 0.94,
+                side: THREE.DoubleSide
+            });
+            const villageCeramicMat = new THREE.MeshStandardMaterial({
+                map: villageCeramicTex,
+                roughness: 0.58,
+                metalness: 0.04
+            });
+            const villageReedMat = new THREE.MeshStandardMaterial({
+                map: villageReedTex,
+                roughness: 0.96
+            });
+
+            const villageHomes = houseSpecs
+                .filter(h => h.x > -132 && h.x < -54 && h.z > -5 && h.z < 92 && !h.interiorId)
+                .filter((_, index) => index % 2 === 0)
+                .slice(0, 28);
+            const villageWeavers = villageHomes.filter((_, index) => index % 4 === 0);
+            const villageBakers = villageHomes.filter((_, index) => index % 4 === 1);
+            const villageGardeners = villageHomes.filter((_, index) => index % 4 === 2);
+            const villagePotters = villageHomes.filter((_, index) => index % 4 === 3);
+            const villageItem = (mesh, index, house, side, forward, y, sx, sy, sz, rotation = 0) => {
+                const angle = house.rotY;
+                const distance = house.d / 2 + forward;
+                dummy.position.set(
+                    house.x + Math.cos(angle) * side + Math.sin(angle) * distance,
+                    y,
+                    house.z - Math.sin(angle) * side + Math.cos(angle) * distance
+                );
+                dummy.rotation.set(0, angle + rotation, 0);
+                dummy.scale.set(sx, sy, sz);
+                dummy.updateMatrix();
+                mesh.setMatrixAt(index, dummy.matrix);
+            };
+            const villagePotProfile = [
+                new THREE.Vector2(0, 0), new THREE.Vector2(0.2, 0.04),
+                new THREE.Vector2(0.34, 0.2), new THREE.Vector2(0.39, 0.45),
+                new THREE.Vector2(0.31, 0.7), new THREE.Vector2(0.19, 0.84),
+                new THREE.Vector2(0.21, 0.92), new THREE.Vector2(0.15, 0.96),
+                new THREE.Vector2(0.12, 0.89), new THREE.Vector2(0.18, 0.76),
+                new THREE.Vector2(0.26, 0.45), new THREE.Vector2(0.2, 0.18),
+                new THREE.Vector2(0, 0.12)
+            ];
+            const villagePotGeo = new THREE.LatheGeometry(villagePotProfile, 12);
+            const villagePotRimGeo = new THREE.TorusGeometry(0.18, 0.035, 6, 12);
+            villagePotRimGeo.rotateX(Math.PI / 2);
+            const villageBasketRimGeo = new THREE.TorusGeometry(0.33, 0.035, 6, 12);
+            villageBasketRimGeo.rotateX(Math.PI / 2);
+            const villagePotInst = new THREE.InstancedMesh(villagePotGeo, villageCeramicMat, villageHomes.length * 2);
+            const villagePotRimInst = new THREE.InstancedMesh(villagePotRimGeo, goldMat, villageHomes.length * 2);
+            const villageBasketInst = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.32, 0.4, 0.46, 10), villageReedMat, villageHomes.length);
+            const villageBasketRimInst = new THREE.InstancedMesh(villageBasketRimGeo, woodMat, villageHomes.length);
+            const villageLoomPostInst = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 1.8, 0.12), woodMat, villageWeavers.length * 2);
+            const villageLoomBeamInst = new THREE.InstancedMesh(new THREE.BoxGeometry(2.2, 0.14, 0.16), woodMat, villageWeavers.length);
+            const villageClothInst = new THREE.InstancedMesh(new THREE.BoxGeometry(0.78, 0.98, 0.055), villageLinenMat, villageWeavers.length * 2);
+            const villageOvenBaseInst = new THREE.InstancedMesh(new THREE.BoxGeometry(1.35, 0.46, 1.22), mudbrickMat, villageBakers.length);
+            const villageOvenDomeInst = new THREE.InstancedMesh(
+                new THREE.SphereGeometry(0.72, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+                mudbrickMat,
+                villageBakers.length
+            );
+            const villageOvenMouthInst = new THREE.InstancedMesh(new THREE.BoxGeometry(0.42, 0.27, 0.04), obsidianMat, villageBakers.length);
+            const villageGardenBedInst = new THREE.InstancedMesh(new THREE.BoxGeometry(1.8, 0.44, 1.0), mudbrickMat, villageGardeners.length);
+            const villageGardenSoilInst = new THREE.InstancedMesh(new THREE.BoxGeometry(1.55, 0.08, 0.76), sandMat, villageGardeners.length);
+            const villageHerbInst = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.035, 0.055, 0.7, 5), reedMat, villageGardeners.length * 7);
+            const villageWaterTroughInst = new THREE.InstancedMesh(new THREE.BoxGeometry(1.35, 0.28, 0.48), hieroMat, villageGardeners.length);
+            const villageTroughWaterInst = new THREE.InstancedMesh(new THREE.BoxGeometry(1.12, 0.035, 0.28), new THREE.MeshBasicMaterial({ color: 0x37a9ae }), villageGardeners.length);
+            const villagePotterTableInst = new THREE.InstancedMesh(new THREE.BoxGeometry(1.55, 0.16, 0.82), woodMat, villagePotters.length);
+            const villagePotterLegInst = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.72, 0.12), woodMat, villagePotters.length * 4);
+            const villagePotterWheelInst = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.42, 0.46, 0.12, 12), hieroMat, villagePotters.length);
+            const villagePotterySampleInst = new THREE.InstancedMesh(villagePotGeo, villageCeramicMat, villagePotters.length * 2);
+            const villageDummyColor = new THREE.Color();
+            let potCount = 0, basketCount = 0, loomPostCount = 0, clothCount = 0, potterLegCount = 0, sampleCount = 0;
+            let ovenCount = 0, gardenCount = 0, herbCount = 0, troughCount = 0;
+            villageHomes.forEach((house, index) => {
+                for (let sideIndex = 0; sideIndex < 2; sideIndex++) {
+                    const side = sideIndex === 0 ? -2.15 : 2.15;
+                    villageItem(villagePotInst, potCount, house, side, 2.35, 0, 0.92, 0.95 + (index % 3) * 0.08, 0.92, (index % 2) * 0.12);
+                    villageItem(villagePotRimInst, potCount, house, side, 2.35, 0.88 * (0.95 + (index % 3) * 0.08), 0.92, 0.92, 0.92);
+                    villagePotInst.setColorAt(potCount, villageDummyColor.setHex([0xffffff, 0xe9d2a0, 0xc3a777][(index + sideIndex) % 3]));
+                    villagePotRimInst.setColorAt(potCount, villageDummyColor.setHex([0xd7a64b, 0x8e4528, 0x175e63][(index + sideIndex) % 3]));
+                    potCount++;
+                }
+                villageItem(villageBasketInst, basketCount, house, index % 2 ? 3.2 : -3.2, 2.15, 0.23, 1, 1, 1);
+                villageItem(villageBasketRimInst, basketCount, house, index % 2 ? 3.2 : -3.2, 2.15, 0.45, 1, 1, 1);
+                basketCount++;
+            });
+            villageWeavers.forEach((house, index) => {
+                const centerSide = 2.65;
+                [-0.95, 0.95].forEach(sideOffset => {
+                    villageItem(villageLoomPostInst, loomPostCount++, house, centerSide + sideOffset, 2.4, 0.9, 1, 1, 1);
+                });
+                villageItem(villageLoomBeamInst, index, house, centerSide, 2.4, 1.78, 1, 1, 1);
+                [-0.48, 0.48].forEach((sideOffset, clothIndex) => {
+                    const clothIndexOnMesh = clothCount++;
+                    villageItem(villageClothInst, clothIndexOnMesh, house, centerSide + sideOffset, 2.4, 1.12, 1, 1, 1);
+                    villageClothInst.setColorAt(clothIndexOnMesh, villageDummyColor.setHex(
+                        [0xffffff, 0xd9b66f, 0xc7774a, 0x9db7a1][(index + clothIndex) % 4]
+                    ));
+                });
+            });
+            villageBakers.forEach((house, index) => {
+                const side = -2.75;
+                villageItem(villageOvenBaseInst, index, house, side, 2.35, 0.24, 1, 1, 1);
+                villageItem(villageOvenDomeInst, index, house, side, 2.35, 0.46, 1, 1, 1);
+                villageItem(villageOvenMouthInst, index, house, side, 3.08, 0.31, 1, 1, 1);
+            });
+            villageGardeners.forEach((house, index) => {
+                const side = 2.75;
+                villageItem(villageGardenBedInst, index, house, side, 2.35, 0.23, 1, 1, 1);
+                villageItem(villageGardenSoilInst, index, house, side, 2.35, 0.49, 1, 1, 1);
+                for (let herb = 0; herb < 7; herb++) {
+                    const xOffset = ((herb % 4) - 1.5) * 0.34;
+                    const zOffset = (Math.floor(herb / 4) - 0.5) * 0.42;
+                    villageItem(villageHerbInst, herbCount, house, side + xOffset, 2.35 + zOffset, 0.84 + (herb % 3) * 0.07, 0.8, 0.8 + (herb % 3) * 0.12, 0.8, herb * 0.7);
+                    villageHerbInst.setColorAt(herbCount++, villageDummyColor.setHex([0x3f7f3b, 0x65934a, 0x9b9b45][herb % 3]));
+                }
+                villageItem(villageWaterTroughInst, index, house, -2.7, 2.28, 0.14, 1, 1, 1);
+                villageItem(villageTroughWaterInst, index, house, -2.7, 2.28, 0.3, 1, 1, 1);
+                troughCount++;
+                gardenCount++;
+            });
+            villagePotters.forEach((house, index) => {
+                const side = -2.65;
+                villageItem(villagePotterTableInst, index, house, side, 2.45, 0.86, 1, 1, 1);
+                [-0.62, 0.62].forEach(sideOffset => [-0.28, 0.28].forEach(forwardOffset => {
+                    villageItem(villagePotterLegInst, potterLegCount++, house, side + sideOffset, 2.45 + forwardOffset, 0.36, 1, 1, 1);
+                }));
+                villageItem(villagePotterWheelInst, index, house, side, 2.45, 1.0, 1, 1, 1);
+                [-0.45, 0.45].forEach((sideOffset, sampleIndex) => {
+                    villageItem(villagePotterySampleInst, sampleCount, house, side + sideOffset, 2.45, 0.95, 0.44, 0.5 + sampleIndex * 0.08, 0.44);
+                    villagePotterySampleInst.setColorAt(sampleCount++, villageDummyColor.setHex(sampleIndex ? 0xf0d49a : 0xffffff));
+                });
+            });
+            [
+                [villagePotInst, potCount], [villagePotRimInst, potCount],
+                [villageBasketInst, basketCount], [villageBasketRimInst, basketCount],
+                [villageLoomPostInst, loomPostCount], [villageLoomBeamInst, villageWeavers.length],
+                [villageClothInst, clothCount], [villageOvenBaseInst, villageBakers.length],
+                [villagePotterTableInst, villagePotters.length], [villagePotterLegInst, potterLegCount],
+                [villagePotterWheelInst, villagePotters.length], [villagePotterySampleInst, sampleCount],
+                [villageOvenDomeInst, villageBakers.length], [villageOvenMouthInst, villageBakers.length],
+                [villageGardenBedInst, gardenCount], [villageGardenSoilInst, gardenCount],
+                [villageHerbInst, herbCount], [villageWaterTroughInst, troughCount],
+                [villageTroughWaterInst, troughCount]
+            ].forEach(([mesh, count]) => {
+                mesh.count = count;
+                mesh.castShadow = mesh === villageLoomPostInst
+                    || mesh === villageOvenDomeInst
+                    || mesh === villageHerbInst;
+                mesh.receiveShadow = true;
+                if (mesh.instanceMatrix) mesh.instanceMatrix.needsUpdate = true;
+                if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+                worldGroup.add(mesh);
+            });
+
             const interiorWallMat = new THREE.MeshStandardMaterial({ color: 0x9a6840, roughness: 0.95 });
             const interiorFloorMat = new THREE.MeshStandardMaterial({ color: 0x9a7652, roughness: 0.92 });
             const interiorLinenMat = new THREE.MeshStandardMaterial({ color: 0xd8bd84, roughness: 0.9 });
