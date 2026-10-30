@@ -1,30 +1,34 @@
 # Gods of Egypt MMORPG - Yerel HTTP Web Sunucusu
+$scriptDirectory = $PSScriptRoot
+if (-not $scriptDirectory) {
+    $scriptDirectory = (Get-Location).Path
+}
+$root = [System.IO.Path]::GetFullPath($scriptDirectory)
+
+$listener = $null
 $port = 8080
-$prefix = "http://localhost:$port/"
-$root = (Get-Location).Path
-
-$listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add($prefix)
-
-try {
-    $listener.Start()
-} catch {
-    $port = 8088
-    $prefix = "http://localhost:$port/"
-    $listener = New-Object System.Net.HttpListener
-    $listener.Prefixes.Add($prefix)
-    $listener.Start()
+foreach ($candidatePort in @(8080, 8088) + (8081..8087) + (8089..8099)) {
+    $candidateListener = [System.Net.Sockets.TcpListener]::new(
+        [System.Net.IPAddress]::Loopback,
+        [int]$candidatePort
+    )
+    try {
+        $candidateListener.Start()
+        $listener = $candidateListener
+        $port = $candidatePort
+        break
+    } catch {
+        $candidateListener.Stop()
+    }
 }
 
-Write-Host "======================================================"
-Write-Host "  GODS OF EGYPT MMORPG SUNUCUSU AKTIF!"
-Write-Host "  Sunucu Adresi : $prefix"
-Write-Host "  Kok Dizin     : $root"
-Write-Host "======================================================"
+if (-not $listener) {
+    throw "8080-8099 aralığında kullanılabilir bir port bulunamadı."
+}
 
-# Tarayicida ac
-Start-Process $prefix
-
+$address = "http://127.0.0.1:$port/"
+$rootPrefix = $root.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+$encoding = [System.Text.Encoding]::UTF8
 $mimeTypes = @{
     ".html" = "text/html; charset=utf-8"
     ".htm"  = "text/html; charset=utf-8"
@@ -37,65 +41,94 @@ $mimeTypes = @{
     ".gif"  = "image/gif"
     ".svg"  = "image/svg+xml"
     ".ico"  = "image/x-icon"
+    ".webp" = "image/webp"
+    ".mp4"  = "video/mp4"
+    ".webm" = "video/webm"
 }
 
-while ($listener.IsListening) {
-    try {
-        $context = $listener.GetContext()
-        $request = $context.Request
-        $response = $context.Response
+Write-Host "======================================================"
+Write-Host "  GODS OF EGYPT MMORPG SUNUCUSU AKTIF!"
+Write-Host "  Sunucu Adresi : $address"
+Write-Host "  Kok Dizin     : $root"
+Write-Host "======================================================"
+Start-Process $address
 
-        # URL cozme (UTF-8 ve Turkce karakter destegi)
-        $raw = $request.RawUrl.Split('?')[0]
-        $urlPath = [System.Uri]::UnescapeDataString($raw)
-        if ($urlPath -eq "/" -or $urlPath -eq "") {
-            $urlPath = "/index.html"
-        }
+try {
+    while ($listener) {
+        $client = $listener.AcceptTcpClient()
+        $stream = $client.GetStream()
+        try {
+            $reader = [System.IO.StreamReader]::new(
+                $stream,
+                [System.Text.Encoding]::ASCII,
+                $false,
+                1024,
+                $true
+            )
+            $requestLine = $reader.ReadLine()
+            while (($headerLine = $reader.ReadLine()) -and $headerLine.Length -gt 0) {}
 
-        $relPath = $urlPath.TrimStart("/").Replace("/", [System.IO.Path]::DirectorySeparatorChar)
-        $filePath = [System.IO.Path]::Combine($root, $relPath)
+            $status = 200
+            $reason = "OK"
+            $contentType = "text/plain; charset=utf-8"
+            $body = [byte[]]@()
+            $method = ""
 
-        if (-not (Test-Path $filePath -PathType Leaf)) {
-            $searchName = [System.IO.Path]::GetFileName($filePath)
-            $searchNorm = $searchName.Replace('ı','i').Replace('İ','i').ToLower()
-            $candidate = Get-ChildItem -Path $root -File | Where-Object {
-                $nNorm = $_.Name.Replace('ı','i').Replace('İ','i').ToLower()
-                $_.Name -eq $searchName -or $nNorm -eq $searchNorm
-            } | Select-Object -First 1
-            if ($candidate) {
-                $filePath = $candidate.FullName
+            if ($requestLine -match '^(\S+)\s+(\S+)\s+HTTP/\d(?:\.\d)?$') {
+                $method = $Matches[1].ToUpperInvariant()
+                if ($method -notin @("GET", "HEAD")) {
+                    $status = 405
+                    $reason = "Method Not Allowed"
+                    $body = $encoding.GetBytes("405 Method Not Allowed")
+                } else {
+                    $requestPath = $Matches[2].Split('?')[0]
+                    $relativePath = [System.Uri]::UnescapeDataString($requestPath).TrimStart('/')
+                    if (-not $relativePath) {
+                        $relativePath = "index.html"
+                    }
+
+                    $filePath = [System.IO.Path]::GetFullPath(
+                        [System.IO.Path]::Combine($root, $relativePath.Replace('/', [System.IO.Path]::DirectorySeparatorChar))
+                    )
+                    if (-not $filePath.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                        $status = 403
+                        $reason = "Forbidden"
+                        $body = $encoding.GetBytes("403 Forbidden")
+                    } elseif (Test-Path -LiteralPath $filePath -PathType Leaf) {
+                        $extension = [System.IO.Path]::GetExtension($filePath).ToLowerInvariant()
+                        if ($mimeTypes.ContainsKey($extension)) {
+                            $contentType = $mimeTypes[$extension]
+                        } else {
+                            $contentType = "application/octet-stream"
+                        }
+                        $body = [System.IO.File]::ReadAllBytes($filePath)
+                    } else {
+                        $status = 404
+                        $reason = "Not Found"
+                        $body = $encoding.GetBytes("404 Dosya Bulunamadi: $requestPath")
+                    }
+                }
+            } else {
+                $status = 400
+                $reason = "Bad Request"
+                $body = $encoding.GetBytes("400 Bad Request")
             }
-        }
 
-        $response.AddHeader("Access-Control-Allow-Origin", "*")
-        $response.AddHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        $response.AddHeader("Access-Control-Allow-Headers", "*")
-
-        if ($request.HttpMethod -eq "OPTIONS") {
-            $response.StatusCode = 200
-            $response.Close()
-            continue
-        }
-
-        if (Test-Path $filePath -PathType Leaf) {
-            $ext = [System.IO.Path]::GetExtension($filePath).ToLower()
-            $mime = "application/octet-stream"
-            if ($mimeTypes.ContainsKey($ext)) {
-                $mime = $mimeTypes[$ext]
+            $responseBody = if ($method -eq "HEAD") { [byte[]]@() } else { $body }
+            $headers = "HTTP/1.1 $status $reason`r`nContent-Type: $contentType`r`nContent-Length: $($body.Length)`r`nConnection: close`r`nX-Content-Type-Options: nosniff`r`n`r`n"
+            $headerBytes = [System.Text.Encoding]::ASCII.GetBytes($headers)
+            $stream.Write($headerBytes, 0, $headerBytes.Length)
+            if ($responseBody.Length -gt 0) {
+                $stream.Write($responseBody, 0, $responseBody.Length)
             }
-            $response.ContentType = $mime
-
-            $bytes = [System.IO.File]::ReadAllBytes($filePath)
-            $response.ContentLength64 = $bytes.Length
-            $response.OutputStream.Write($bytes, 0, $bytes.Length)
-            $response.StatusCode = 200
-        } else {
-            $response.StatusCode = 404
-            $errBytes = [System.Text.Encoding]::UTF8.GetBytes("404 Dosya Bulunamadi: $urlPath")
-            $response.OutputStream.Write($errBytes, 0, $errBytes.Length)
+            $stream.Flush()
+        } catch {
+            Write-Warning "Istek islenemedi: $($_.Exception.Message)"
+        } finally {
+            $stream.Dispose()
+            $client.Dispose()
         }
-        $response.Close()
-    } catch {
-        # Istemci baglantiyi kestiginde donguye devam et
     }
+} finally {
+    $listener.Stop()
 }
